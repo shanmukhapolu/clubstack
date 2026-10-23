@@ -171,6 +171,7 @@ export const demoApi: ClubStackApi = {
         leaderName: leader.displayName,
         leaderTitle: input.leaderTitle || 'President',
         officers: input.officers ?? [],
+        officerIds: (input.officers ?? []).map((officer) => officer.uid),
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
