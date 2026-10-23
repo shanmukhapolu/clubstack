@@ -21,7 +21,7 @@ function keyFor(date: Date): string {
 export function ClubMeetingsPage() {
   const { clubId='' }=useParams()
   const { user }=useAuth()
-  const { clubs, isJoined, refresh }=useClubs()
+  const { clubs, isJoined }=useClubs()
   const { notify }=useToast()
   const fromContext=clubs.find(item=>item.id===clubId) ?? null
   const [club,setClub]=useState<Club|null>(fromContext)
