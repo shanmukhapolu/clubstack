@@ -45,6 +45,7 @@ export function ClubPage() {
 
   const [club, setClub] = useState<Club | null>(() => clubs.find((item) => item.id === clubId) ?? null)
   const [missing, setMissing] = useState(false)
+  const [hasPendingOfficerInvite, setHasPendingOfficerInvite] = useState(false)
   const [busy, setBusy] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -92,13 +93,27 @@ export function ClubPage() {
     }
   }, [clubId, clubs, clubsLoading])
 
+  useEffect(() => {
+    if (!user || user.role !== 'student' || !clubId) {
+      setHasPendingOfficerInvite(false)
+      return
+    }
+    let active = true
+    void api.officerInvitations.listForUser(user.id).then(invitations => {
+      if (active) setHasPendingOfficerInvite(invitations.some(item => item.clubId === clubId && item.status === 'pending'))
+    }).catch(() => {
+      if (active) setHasPendingOfficerInvite(false)
+    })
+    return () => { active = false }
+  }, [clubId, user?.id, user?.role])
+
   const upcomingEvents = useMemo(() => upcoming(events), [events])
   const joined = isJoined(clubId)
 
   if (!user) return null
 
   const canView =
-    club && (club.status === 'approved' || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id))
+    club && (club.status === 'approved' || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id) || hasPendingOfficerInvite)
 
   if (!club || !canView) {
     return (
@@ -110,7 +125,7 @@ export function ClubPage() {
         <p className="mt-2 text-sm leading-relaxed text-muted">
           {missing || !club
             ? 'The link may be out of date, or the club page may have been removed.'
-            : 'This club is still waiting for admin approval, so only its leader and admins can see it.'}
+            : 'This club is awaiting administrator approval. Its leader, administrators, accepted advisors, current officers, and invited officers can also view it.'}
         </p>
         <Link to="/discover" className={buttonStyles('primary', 'md', 'mt-6')}>
           Browse the directory
