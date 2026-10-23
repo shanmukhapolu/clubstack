@@ -13,11 +13,11 @@ import { useToast } from '../context/ToastContext'
 import { api } from '../lib/backend'
 import { friendlyError } from '../lib/helpers'
 import { relativeTime } from '../lib/dates'
-import type { AppUser, Club, ClubStatus, Role } from '../lib/types'
+import type { AppUser, Club, ClubStatus, ModerationReport, ReportStatus, Role } from '../lib/types'
 import { PageHeader } from '../components/PageHeader'
 import { Avatar, Badge, Button, ClubMark, Spinner } from '../components/ui'
 
-type Tab = 'clubs' | 'people'
+type Tab = 'clubs' | 'people' | 'reports'
 
 export function AdminPage() {
   const { user } = useAuth()
@@ -26,6 +26,8 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('clubs')
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
+  const [reports, setReports] = useState<ModerationReport[]>([])
+  const [reportsLoading, setReportsLoading] = useState(true)
   const [workingId, setWorkingId] = useState<string | null>(null)
 
   const loadUsers = useCallback(async () => {
@@ -39,9 +41,21 @@ export function AdminPage() {
     }
   }, [notify])
 
+  const loadReports = useCallback(async () => {
+    setReportsLoading(true)
+    try {
+      setReports(await api.moderation.list())
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setReportsLoading(false)
+    }
+  }, [notify])
+
   useEffect(() => {
     void loadUsers()
-  }, [loadUsers])
+    void loadReports()
+  }, [loadUsers, loadReports])
 
   const pendingClubs = useMemo(
     () =>
@@ -80,7 +94,20 @@ export function AdminPage() {
           candidate.id === target.id ? { ...candidate, role } : candidate,
         ),
       )
-      notify(`${target.displayName} is now ${role === 'admin' ? 'an admin' : 'a student'}.`)
+      notify(`${target.displayName} is now ${role === 'admin' ? 'an admin' : role === 'teacher' ? 'a teacher/advisor' : 'a student'}.`)
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setWorkingId(null)
+    }
+  }
+
+  async function setReportStatus(report: ModerationReport, status: ReportStatus) {
+    setWorkingId(report.id)
+    try {
+      await api.moderation.setStatus(report.id, status)
+      setReports((current) => current.map((item) => item.id === report.id ? { ...item, status } : item))
+      notify(`Report marked ${status}.`)
     } catch (caught) {
       notify(friendlyError(caught), 'error')
     } finally {
@@ -119,6 +146,7 @@ export function AdminPage() {
         {([
           { key: 'clubs', label: 'Club approvals' },
           { key: 'people', label: 'People' },
+          { key: 'reports', label: 'Reports' },
         ] as { key: Tab; label: string }[]).map((item) => (
           <button
             key={item.key}
@@ -243,7 +271,7 @@ export function AdminPage() {
             </div>
           </section>
         </div>
-      ) : (
+      ) : tab === 'people' ? (
         <section className="mt-5">
           <h2 className="mb-2.5 text-[15px] font-extrabold">People</h2>
           <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
@@ -287,6 +315,7 @@ export function AdminPage() {
                         title={isSelf ? 'You cannot change your own role' : undefined}
                       >
                         <option value="student">Student</option>
+                        <option value="teacher">Teacher / Advisor</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
@@ -299,6 +328,38 @@ export function AdminPage() {
                   <Users size={18} /> No people have signed up yet.
                 </div>
               )}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="mt-5">
+          <h2 className="mb-2.5 text-[15px] font-extrabold">Moderation reports</h2>
+          <p className="mb-3 text-[12.5px] leading-relaxed text-muted">Review concerns submitted by teachers and take action when needed.</p>
+          {reportsLoading ? (
+            <Spinner label="Loading reports" />
+          ) : reports.length === 0 ? (
+            <div className="rounded-2xl border border-line bg-surface px-4 py-5 text-[13px] text-muted">No reports have been submitted.</div>
+          ) : (
+            <div className="space-y-3">
+              {reports.map((report) => (
+                <div key={report.id} className="card p-4">
+                  <div className="flex flex-wrap items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/clubs/${report.clubId}`} className="text-[14px] font-bold hover:underline">{report.clubName}</Link>
+                        <Badge tone={report.status === 'resolved' ? 'lime' : report.status === 'open' ? 'warn' : 'muted'}>{report.status}</Badge>
+                      </div>
+                      <p className="mt-1 text-[12px] text-muted">{report.reason} · Reported by {report.reporterName} · {relativeTime(report.createdAt)}</p>
+                      {report.details && <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">{report.details}</p>}
+                    </div>
+                    <select value={report.status} disabled={workingId === report.id} onChange={(event) => void setReportStatus(report, event.target.value as ReportStatus)} className="field h-9 py-0 text-[12.5px] disabled:opacity-60" aria-label={`Status for report about ${report.clubName}`}>
+                      <option value="open">Open</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

@@ -5,6 +5,7 @@ import type {
   ClubEvent,
   ClubCategory,
   Membership,
+  ModerationReport,
 } from './types'
 
 export interface DemoStore {
@@ -14,6 +15,7 @@ export interface DemoStore {
   memberships: Membership[]
   announcements: Announcement[]
   events: ClubEvent[]
+  reports: ModerationReport[]
   currentUid: string | null
 }
 
@@ -59,6 +61,13 @@ export const DEMO_USERS: AppUser[] = [
     email: 'ediaz@northgate.edu',
     role: 'admin',
     createdAt: Date.now() - 400 * DAY,
+  },
+  {
+    id: 'u-teacher',
+    displayName: 'Jordan Taylor',
+    email: 'jtaylor@northgate.edu',
+    role: 'teacher',
+    createdAt: Date.now() - 90 * DAY,
   },
 ]
 
@@ -618,6 +627,7 @@ export function createDemoStore(): DemoStore {
     memberships: [...seedMemberships],
     announcements,
     events,
+    reports: [],
     currentUid: null,
   }
 }

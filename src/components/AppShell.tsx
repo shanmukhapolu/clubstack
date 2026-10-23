@@ -6,6 +6,7 @@ import {
   House,
   LogOut,
   ShieldCheck,
+  BookOpen,
   Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -70,7 +71,9 @@ export function AppShell() {
   const isAdmin = user.role === 'admin'
   const links = isAdmin
     ? [...navItems, { to: '/admin', label: 'Admin', icon: ShieldCheck }]
-    : navItems
+    : user.role === 'teacher'
+      ? [...navItems, { to: '/teacher', label: 'Advisor', icon: BookOpen }]
+      : navItems
 
   return (
     <div className="min-h-screen lg:pl-[268px]">
@@ -134,7 +137,7 @@ export function AppShell() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-bold leading-tight">{user.displayName}</p>
               <p className="truncate text-[11.5px] text-muted">
-                {isAdmin ? 'Administrator' : 'Student'}
+                {isAdmin ? 'Administrator' : user.role === 'teacher' ? 'Teacher / Advisor' : 'Student'}
               </p>
             </div>
             <button
@@ -201,15 +204,17 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
-          <NavLink
-            to="/clubs/new"
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-semibold text-muted"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ink text-white">
-              <Plus size={13} strokeWidth={3} />
-            </span>
-            Create
-          </NavLink>
+          {user.role !== 'teacher' && (
+            <NavLink
+              to="/clubs/new"
+              className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-semibold text-muted"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ink text-white">
+                <Plus size={13} strokeWidth={3} />
+              </span>
+              Create
+            </NavLink>
+          )}
         </div>
       </nav>
     </div>

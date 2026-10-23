@@ -1,6 +1,6 @@
 import type { ClubStackApi } from './backend'
 import { createDemoStore, DEMO_PASSWORD, DEMO_USERS, type DemoStore } from './demoSeed'
-import type { AppUser, Club } from './types'
+import type { AppUser, Club, ModerationReport, ReportStatus, Role } from './types'
 
 const STORAGE_KEY = 'clubstack.demo.v1'
 const RESEED_AFTER_MS = 1000 * 60 * 60 * 24 * 14
@@ -23,6 +23,7 @@ function load(): DemoStore {
         Array.isArray(parsed.clubs) &&
         Date.now() - parsed.seededAt < RESEED_AFTER_MS
       ) {
+        if (!Array.isArray(parsed.reports)) parsed.reports = []
         return parsed
       }
     }
@@ -115,14 +116,14 @@ export const demoApi: ClubStackApi = {
       emit()
     },
 
-    async signUp(name, email) {
+    async signUp(name, email, _password, role: Role) {
       await wait()
       const id = `u-${Math.random().toString(36).slice(2, 10)}`
       const user: AppUser = {
         id,
         displayName: name.trim() || 'New Student',
         email: email.trim() || `${id}@student.northgate.edu`,
-        role: 'student',
+        role,
         createdAt: Date.now(),
       }
       mutate((draft) => {
@@ -317,6 +318,35 @@ export const demoApi: ClubStackApi = {
     },
   },
 
+  moderation: {
+    async list() {
+      await wait()
+      return [...read().reports].sort((a, b) => b.createdAt - a.createdAt)
+    },
+
+    async create(input, reporter) {
+      await wait()
+      mutate((store) => {
+        const report: ModerationReport = {
+          id: `r-${Math.random().toString(36).slice(2, 10)}`,
+          ...input,
+          reporterId: reporter.id,
+          reporterName: reporter.displayName,
+          status: 'open',
+          createdAt: Date.now(),
+        }
+        store.reports.unshift(report)
+      })
+    },
+
+    async setStatus(id, status: ReportStatus) {
+      await wait()
+      mutate((store) => {
+        store.reports = store.reports.map((report) => report.id === id ? { ...report, status } : report)
+      })
+    },
+  },
+
   users: {
     async list() {
       await wait()
@@ -336,11 +366,13 @@ export const demoApi: ClubStackApi = {
     accounts: DEMO_USERS.map((user) => ({
       user,
       label:
-        user.role === 'admin' ? 'Admin' : user.id === 'u-marcus' ? 'Club leader' : 'Student',
+        user.role === 'admin' ? 'Admin' : user.role === 'teacher' ? 'Teacher' : user.id === 'u-marcus' ? 'Club leader' : 'Student',
       description:
         user.role === 'admin'
-          ? 'Approve clubs, manage roles, oversee the platform.'
-          : user.id === 'u-marcus'
+          ? 'Approve clubs, moderate reports, manage roles.'
+          : user.role === 'teacher'
+            ? 'Review school-wide club activity and report concerns.'
+            : user.id === 'u-marcus'
             ? 'Runs the Robotics Collective; can post updates and events.'
             : 'Member of 3 clubs; can discover and join more.',
     })),

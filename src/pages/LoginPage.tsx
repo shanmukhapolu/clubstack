@@ -6,6 +6,7 @@ import { api } from '../lib/backend'
 import { DEMO_PASSWORD } from '../lib/demoSeed'
 import { friendlyError, isEmail } from '../lib/helpers'
 import { Avatar, Button } from '../components/ui'
+import type { Role } from '../lib/types'
 
 type Mode = 'signin' | 'signup'
 
@@ -40,11 +41,15 @@ export function LoginPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<Role>('student')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (user) navigate(from, { replace: true })
+    if (user) {
+      const destination = from === '/' ? user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/' : from
+      navigate(destination, { replace: true })
+    }
   }, [user, from, navigate])
 
   async function handleSubmit(event: FormEvent) {
@@ -67,7 +72,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       if (formMode === 'signup') {
-        await api.auth.signUp(name.trim(), email.trim(), password)
+        await api.auth.signUp(name.trim(), email.trim(), password, role)
       } else {
         await api.auth.signIn(email.trim(), password)
       }
@@ -151,6 +156,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-7 space-y-4">
             {formMode === 'signup' && (
+              <>
               <div>
                 <label htmlFor="name" className="label">
                   Full name
@@ -165,6 +171,16 @@ export function LoginPage() {
                   required
                 />
               </div>
+              <div>
+                <label htmlFor="account-role" className="label">Account type</label>
+                <select id="account-role" className="field" value={role} onChange={(event) => setRole(event.target.value as Role)}>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher / Advisor</option>
+                  <option value="admin">Platform Admin</option>
+                </select>
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">All account types are open during testing.</p>
+              </div>
+              </>
             )}
 
             <div>
@@ -211,7 +227,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {mode === 'firebase' && (
+          {mode === 'firebase' && formMode === 'signin' && (
             <>
               <div className="my-5 flex items-center gap-3 text-[11.5px] font-semibold uppercase tracking-wider text-muted">
                 <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
