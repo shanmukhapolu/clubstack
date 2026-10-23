@@ -263,6 +263,11 @@ export const firebaseApi: ClubStackApi = {
         status: 'pending' satisfies ClubStatus,
         leaderId: leader.id,
         leaderName: leader.displayName,
+        leaderTitle: input.leaderTitle || 'President',
+        officers: input.officers ?? [],
+        sponsorId: input.sponsorId ?? '',
+        sponsorName: input.sponsorName ?? '',
+        sponsorStatus: input.sponsorId ? 'pending' : 'none',
         memberCount: 0,
         createdAt,
       })
