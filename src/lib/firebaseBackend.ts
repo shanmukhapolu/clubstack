@@ -588,9 +588,9 @@ export const firebaseApi: ClubStackApi = {
       if (needle.length < 2) return []
       const resultLimit = Math.max(1, Math.min(100, Math.floor(maxResults)))
       const db = requireDb()
-      const lowerQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('nameLower', '>=', needle), where('nameLower', '<=', needle + '\uf8ff'), limit(15))
+      const lowerQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('nameLower', '>=', needle), where('nameLower', '<=', needle + '\uf8ff'), limit(resultLimit))
       const legacyPrefix = needle.charAt(0).toLocaleUpperCase() + needle.slice(1)
-      const legacyQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('displayName', '>=', legacyPrefix), where('displayName', '<=', legacyPrefix + '\uf8ff'), limit(15))
+      const legacyQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('displayName', '>=', legacyPrefix), where('displayName', '<=', legacyPrefix + '\uf8ff'), limit(resultLimit))
       const [lower, legacy] = await Promise.all([getDocs(lowerQuery), getDocs(legacyQuery)])
       const byId = new Map<string, AppUser>()
       for (const item of [...lower.docs, ...legacy.docs]) {
