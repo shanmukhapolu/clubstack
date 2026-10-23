@@ -21,8 +21,7 @@ import { useClubFeed } from '../hooks/useClubFeed'
 import { api } from '../lib/backend'
 import { toDateTimeInput, defaultEventStart, fromDateTimeInput, upcoming } from '../lib/dates'
 import { friendlyError } from '../lib/helpers'
-import { CATEGORIES, CLUB_COLORS, MEETING_DAYS } from '../lib/types'
-import type { Announcement, Club, ClubEvent, ClubInput } from '../lib/types'
+import type { Announcement, Club, ClubEvent } from '../lib/types'
 import { AnnouncementCard } from '../components/AnnouncementCard'
 import { EventRow } from '../components/EventRow'
 import {
@@ -61,8 +60,6 @@ export function ClubPage() {
   const [eventEnd, setEventEnd] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState<ClubInput | null>(null)
 
   useEffect(() => {
     if (!clubId) return
@@ -235,35 +232,6 @@ export function ClubPage() {
     }
   }
 
-  function openEdit() {
-    if (!club) return
-    setEditForm({
-      name: club.name, description: club.description, category: club.category,
-      meetingDay: club.meetingDay, meetingTime: club.meetingTime, location: club.location,
-      emoji: club.emoji, color: club.color, contactEmail: club.contactEmail,
-      leaderTitle: club.leaderTitle || 'President', officers: club.officers || [],
-      sponsorId: club.sponsorId || '', sponsorName: club.sponsorName || '',
-    })
-    setEditOpen(true)
-  }
-
-  async function handleSaveClub(event: FormEvent) {
-    event.preventDefault()
-    if (!club || !editForm) return
-    setSaving(true)
-    try {
-      await api.clubs.update(club.id, editForm)
-      setClub({ ...club, ...editForm })
-      await refresh()
-      setEditOpen(false)
-      notify('Club information updated.')
-    } catch (caught) {
-      notify(friendlyError(caught), 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function handleDeleteClub() {
     if (!club || !window.confirm(`Permanently delete ${club.name} and its club data? This cannot be undone.`)) return
     try {
@@ -336,7 +304,7 @@ export function ClubPage() {
             <div className="flex items-center gap-2 pb-1">
               {canManage ? (
                 <Badge tone="brand">
-                  <ShieldCheck size={12} /> {isAdmin ? 'Admin access' : isLeader ? 'You lead this club' : isAcceptedSponsor ? 'Teacher sponsor access' : 'Officer access'}
+                  <ShieldCheck size={12} /> {isAdmin ? 'Admin access' : isLeader ? 'You lead this club' : isAcceptedSponsor ? 'Advisor access' : 'Officer access'}
                 </Badge>
               ) : (
                 <Button
@@ -394,9 +362,15 @@ export function ClubPage() {
         </div>
       </section>
 
+      <nav aria-label="Club pages" className="mt-4 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
+        <Link to={`/clubs/${club.id}`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
+        <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
+        {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}
+      </nav>
+
       {canManage && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={openEdit}><Pencil size={15} /> Edit club information</Button>
+          <Button variant="secondary" size="sm" onClick={() => navigate(`/clubs/${club.id}/settings`)}><Pencil size={15} /> Club settings</Button>
           {isAdmin && <Button variant="danger" size="sm" onClick={() => void handleDeleteClub()}><Trash2 size={15} /> Delete club</Button>}
           <Button variant="brand" size="sm" onClick={() => setAnnouncementOpen(true)}>
             <Megaphone size={15} /> Post announcement
@@ -459,7 +433,7 @@ export function ClubPage() {
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>
               <Link
-                to="/calendar"
+                to={`/clubs/${club.id}/meetings`}
                 className="text-[12px] font-semibold text-brand-600 hover:underline"
               >
                 Calendar
@@ -522,7 +496,7 @@ export function ClubPage() {
               {club.sponsorName && (
                 <div className="flex gap-2.5">
                   <ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted" />
-                  <div><dt className="font-semibold">Teacher sponsor</dt><dd className="text-muted">{club.sponsorName}{club.sponsorStatus === 'pending' ? ' · request pending' : club.sponsorStatus === 'accepted' ? ' · accepted' : ''}</dd></div>
+                  <div><dt className="font-semibold">Teacher sponsor</dt><dd className="text-muted">{club.sponsorName}</dd></div>
                 </div>
               )}
               {(club.officers ?? []).length > 0 && (
@@ -575,30 +549,6 @@ export function ClubPage() {
           )}
         </aside>
       </div>
-
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit club information" description="Update the details shown on this club's page." size="lg">
-        {editForm && <form onSubmit={(event) => void handleSaveClub(event)} className="space-y-3">
-          <div><label className="label" htmlFor="edit-club-name">Club name</label><input id="edit-club-name" className="field" value={editForm.name} maxLength={80} required onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} /></div>
-          <div><label className="label" htmlFor="edit-club-description">Description</label><textarea id="edit-club-description" className="field min-h-24 resize-y" value={editForm.description} maxLength={600} required onChange={(event) => setEditForm({ ...editForm, description: event.target.value })} /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label" htmlFor="edit-club-category">Category</label><select id="edit-club-category" className="field" value={editForm.category} onChange={(event) => setEditForm({ ...editForm, category: event.target.value as ClubInput['category'] })}>{CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></div>
-            <div><label className="label" htmlFor="edit-club-day">Meeting day</label><select id="edit-club-day" className="field" value={editForm.meetingDay} onChange={(event) => setEditForm({ ...editForm, meetingDay: event.target.value })}>{MEETING_DAYS.map((item) => <option key={item}>{item}</option>)}</select></div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label" htmlFor="edit-club-time">Meeting time</label><input id="edit-club-time" className="field" value={editForm.meetingTime} required onChange={(event) => setEditForm({ ...editForm, meetingTime: event.target.value })} /></div>
-            <div><label className="label" htmlFor="edit-club-location">Location</label><input id="edit-club-location" className="field" value={editForm.location} onChange={(event) => setEditForm({ ...editForm, location: event.target.value })} /></div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label" htmlFor="edit-club-email">Club email</label><input id="edit-club-email" type="email" className="field" value={editForm.contactEmail} required onChange={(event) => setEditForm({ ...editForm, contactEmail: event.target.value })} /></div>
-            <div><label className="label" htmlFor="edit-club-leader-title">Owner's club role</label><input id="edit-club-leader-title" className="field" value={editForm.leaderTitle} onChange={(event) => setEditForm({ ...editForm, leaderTitle: event.target.value })} /></div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="label" htmlFor="edit-club-emoji">Icon / emoji</label><input id="edit-club-emoji" className="field" value={editForm.emoji} onChange={(event) => setEditForm({ ...editForm, emoji: event.target.value })} /></div>
-            <div><label className="label" htmlFor="edit-club-color">Accent color</label><select id="edit-club-color" className="field" value={editForm.color} onChange={(event) => setEditForm({ ...editForm, color: event.target.value })}>{CLUB_COLORS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button><Button type="submit" loading={saving}>Save changes</Button></div>
-        </form>}
-      </Modal>
 
       <Modal
         open={announcementOpen}
