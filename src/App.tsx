@@ -9,6 +9,7 @@ import { DiscoverPage } from './pages/DiscoverPage'
 import { ClubPage } from './pages/ClubPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { AdminPage } from './pages/AdminPage'
+import { TeacherPage } from './pages/TeacherPage'
 import { CreateClubPage } from './pages/CreateClubPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -36,6 +37,12 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function RequireTeacher() {
+  const { user } = useAuth()
+  if (user?.role !== 'teacher') return <Navigate to="/" replace />
+  return <Outlet />
+}
+
 function RequireAdmin() {
   const { user } = useAuth()
   if (user?.role !== 'admin') return <Navigate to="/" replace />
@@ -58,6 +65,9 @@ export default function App() {
                   <Route path="clubs/new" element={<CreateClubPage />} />
                   <Route path="clubs/:clubId" element={<ClubPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
+                  <Route element={<RequireTeacher />}>
+                    <Route path="teacher" element={<TeacherPage />} />
+                  </Route>
                   <Route element={<RequireAdmin />}>
                     <Route path="admin" element={<AdminPage />} />
                   </Route>
