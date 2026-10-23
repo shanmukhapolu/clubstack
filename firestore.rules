@@ -26,6 +26,12 @@ service cloud.firestore {
       return isSignedIn() && clubDoc(clubId).leaderId == request.auth.uid;
     }
 
+    function isClubSponsor(clubId) {
+      return isSignedIn()
+        && clubDoc(clubId).sponsorId == request.auth.uid
+        && clubDoc(clubId).sponsorStatus == 'accepted';
+    }
+
     function onlyChanged(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
@@ -92,18 +98,53 @@ service cloud.firestore {
         && request.resource.data.emoji is string
         && request.resource.data.contactEmail is string
         && request.resource.data.memberCount == 0
-        && request.resource.data.createdAt is number;
+        && request.resource.data.createdAt is number
+        && request.resource.data.leaderTitle is string
+        && request.resource.data.officers is list
+        && request.resource.data.sponsorId is string
+        && request.resource.data.sponsorName is string
+        && request.resource.data.sponsorStatus in ['pending', 'none'];
 
       allow update: if isAdmin()
         || (isClubLeader(clubId)
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
                  ['leaderId', 'status', 'createdAt', 'memberCount']))
+        || (isClubSponsor(clubId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle', 'officers']))
+        || (isTeacher()
+            && resource.data.sponsorId == request.auth.uid
+            && resource.data.sponsorStatus == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorStatus'])
+            && request.resource.data.sponsorStatus in ['accepted', 'declined'])
         || (isSignedIn()
             && onlyChanged(['memberCount'])
             && request.resource.data.memberCount is number
             && request.resource.data.memberCount >= 0
             && (request.resource.data.memberCount == resource.data.memberCount + 1
                 || request.resource.data.memberCount == resource.data.memberCount - 1));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Teacher sponsor requests ──────────────────────────────────────────
+    match /clubSponsorRequests/{requestId} {
+      allow create: if isSignedIn()
+        && request.resource.data.requestedById == request.auth.uid
+        && request.resource.data.teacherId is string
+        && request.resource.data.clubId is string
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is number;
+
+      allow read: if isAdmin()
+        || (isSignedIn() && (resource.data.teacherId == request.auth.uid || resource.data.requestedById == request.auth.uid));
+
+      allow update: if isAdmin()
+        || (isTeacher()
+            && resource.data.teacherId == request.auth.uid
+            && resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status in ['accepted', 'declined']);
 
       allow delete: if isAdmin();
     }
