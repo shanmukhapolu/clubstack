@@ -218,6 +218,7 @@ export const demoApi: ClubStackApi = {
         store.events = store.events.filter((item) => item.clubId !== id)
         store.sponsorRequests = store.sponsorRequests.filter((item) => item.clubId !== id)
         store.officerInvitations = store.officerInvitations.filter((item) => item.clubId !== id)
+        store.officerInvitations = store.officerInvitations.filter((item) => item.clubId !== id)
       })
     },
   },
