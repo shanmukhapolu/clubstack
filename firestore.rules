@@ -139,9 +139,9 @@ service cloud.firestore {
         || (isSignedIn()
             && isClubManager(clubId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds'])
-            && resource.data.officerIds is list
+            && resource.data.get('officerIds', []) is list
             && request.resource.data.officerIds is list
-            && resource.data.officerIds.hasAll(request.resource.data.officerIds))
+            && resource.data.get('officerIds', []).hasAll(request.resource.data.officerIds))
         || (isTeacher()
             && resource.data.sponsorId == request.auth.uid
             && resource.data.sponsorStatus == 'pending'
