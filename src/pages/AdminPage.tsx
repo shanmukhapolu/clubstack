@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Users,
   X,
+  Trash2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -68,6 +69,20 @@ export function AdminPage() {
   const leaderCount = new Set(clubs.map((club) => club.leaderId)).size
 
   if (!user) return null
+
+  async function deleteClub(club: Club) {
+    if (!window.confirm(`Permanently delete ${club.name} and its club data? This cannot be undone.`)) return
+    setWorkingId(club.id)
+    try {
+      await api.clubs.delete(club.id)
+      await refresh()
+      notify(`${club.name} deleted.`)
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setWorkingId(null)
+    }
+  }
 
   async function setClubStatus(club: Club, status: ClubStatus) {
     if (status === 'rejected' && !window.confirm(`Reject “${club.name}”? The leader can revise it.`)) {
@@ -254,6 +269,12 @@ export function AdminPage() {
                       </p>
                     </div>
                     <StatusBadge status={club.status} />
+                    <Link to={`/clubs/${club.id}`} className="rounded-full p-1.5 text-muted hover:bg-canvas" title="Edit club details" aria-label={`Edit ${club.name}`}>
+                      <ShieldCheck size={15} />
+                    </Link>
+                    <button type="button" onClick={() => void deleteClub(club)} disabled={workingId === club.id} className="rounded-full p-1.5 text-muted hover:bg-[#fff0eb] hover:text-[#9c2f18] disabled:opacity-50" title="Delete club" aria-label={`Delete ${club.name}`}>
+                      <Trash2 size={15} />
+                    </button>
                     {club.status !== 'approved' && (
                       <button
                         type="button"
