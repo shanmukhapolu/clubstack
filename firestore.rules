@@ -40,7 +40,8 @@ service cloud.firestore {
     // During testing, signup can create student, teacher, or admin profiles.
     // Restrict this allowlist before opening ClubStack for real school use.
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // School-only testing: signed-in users need the directory to select teachers and student officers.
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn()
         && request.auth.uid == userId
