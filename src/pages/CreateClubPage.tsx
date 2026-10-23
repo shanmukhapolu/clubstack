@@ -60,7 +60,7 @@ export function CreateClubPage() {
 
   useEffect(() => {
     let active = true
-    void api.users.list().then((items) => {
+    void api.users.listDirectory().then((items) => {
       if (active) setUsers(items)
     }).catch(() => {
       if (active) setUsers([])
