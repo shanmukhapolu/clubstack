@@ -16,6 +16,7 @@ export interface DemoStore {
   announcements: Announcement[]
   events: ClubEvent[]
   reports: ModerationReport[]
+  sponsorRequests: import('./types').ClubSponsorRequest[]
   currentUid: string | null
 }
 
@@ -592,6 +593,11 @@ export function createDemoStore(): DemoStore {
     ...club,
     status: club.status ?? 'approved',
     contactEmail: `${club.name.toLowerCase().replace(/[^a-z]+/g, '.')}@northgate.edu`,
+    leaderTitle: 'President',
+    officers: [],
+    sponsorId: '',
+    sponsorName: '',
+    sponsorStatus: 'none',
     createdAt: club.createdAt,
   }))
 
@@ -628,6 +634,7 @@ export function createDemoStore(): DemoStore {
     announcements,
     events,
     reports: [],
+    sponsorRequests: [],
     currentUid: null,
   }
 }
