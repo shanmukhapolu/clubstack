@@ -57,6 +57,10 @@ export function friendlyError(error: unknown): string {
       return 'Google sign-in was closed before it finished.'
     case 'auth/popup-blocked':
       return 'Your browser blocked the Google sign-in window. Allow pop-ups and try again.'
+    case 'auth/operation-not-allowed':
+      return 'That sign-in method is not enabled for this Firebase project yet. Enable it in Firebase Authentication.'
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorized for Firebase sign-in. Add it under Authentication → Settings → Authorized domains.'
     case 'permission-denied':
       return 'You do not have permission to do that.'
     case 'unavailable':

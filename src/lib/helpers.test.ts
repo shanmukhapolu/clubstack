@@ -90,5 +90,11 @@ describe('small helpers', () => {
     expect(friendlyError(Object.assign(new Error('x'), { code: 'permission-denied' }))).toBe(
       'You do not have permission to do that.',
     )
+    expect(friendlyError(Object.assign(new Error('x'), { code: 'auth/operation-not-allowed' }))).toBe(
+      'That sign-in method is not enabled for this Firebase project yet. Enable it in Firebase Authentication.',
+    )
+    expect(friendlyError(Object.assign(new Error('x'), { code: 'auth/unauthorized-domain' }))).toBe(
+      'This domain is not authorized for Firebase sign-in. Add it under Authentication → Settings → Authorized domains.',
+    )
   })
 })

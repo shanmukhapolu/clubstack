@@ -4,9 +4,10 @@ One place for every school club. ClubStack replaces the tangle of Remind, Discor
 GroupMe, and Band links with a searchable club directory, club pages, announcements, and a shared
 calendar — backed by Firebase Authentication and Cloud Firestore.
 
-> **Previewing right now?** With no Firebase configuration present, ClubStack automatically runs in
-> **demo mode**: the full app is usable, with sample clubs and local browser storage. Add your
-> Firebase values to `.env.local` to switch to the real backend.
+> **Backend:** ClubStack is wired to the `clubstackapp2` Firebase project — Authentication for
+> sign-in and Cloud Firestore for data. The browser config lives in `src/lib/firebaseConfig.ts`;
+> publish `firestore.rules` before using it (step 3 below). To explore the app offline instead, set
+> `VITE_DEMO_MODE=true` in `.env.local`.
 
 ## What's included
 
@@ -46,9 +47,13 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Without Firebase environment variables the app starts in **demo mode**.
+Open http://localhost:3000. The app uses the `clubstackapp2` Firebase project by default: create an
+account with email or Google, then promote yourself to admin (step 4 below).
 
 ### Demo accounts
+
+Demo mode is opt-in. Start the server with `VITE_DEMO_MODE=true` in `.env.local` to use the sample
+data below instead of Firebase.
 
 Click any account on the sign-in screen, or use the demo role switcher in the sidebar.
 
@@ -76,20 +81,27 @@ Sign-ups in demo mode create a local student account.
 
 ## Firebase setup
 
-### 1. Create the project and enable services
+### 1. Enable services in the Firebase console
 
-1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
-2. **Authentication → Get started → Sign-in method**
-   - Enable **Email/Password** (required).
-   - Enable **Google** if you want the “Continue with Google” button. Set a support email.
-3. **Firestore Database → Create database**
-   - Choose **Production mode** (rules are provided below) and a region near your school.
-4. **Project settings → General → Your apps → Web (`</>`)**
-   - Register the app, then copy the `firebaseConfig` values.
+The `clubstackapp2` project exists and its web config is committed, so the app already points at
+it. In [console.firebase.google.com](https://console.firebase.google.com) confirm that:
 
-### 2. Add the credentials
+1. **Authentication → Get started → Sign-in method**
+   - **Email/Password** is enabled (already verified for this project).
+   - **Google** is still disabled; enable it (with a support email) before using the
+     “Continue with Google” button. Until then that button returns a “sign-in method not enabled”
+     message.
+2. **Firestore Database** exists (already verified for this project)
+   - Production mode and a region near your school are recommended; rules are published in step 3.
 
-Copy `.env.example` to `.env.local` and fill in the values. This file is git-ignored.
+For a different project, register a Web (`</>`) app under **Project settings → General → Your apps**
+and update `src/lib/firebaseConfig.ts` (or set the env overrides below).
+
+### 2. Configuration
+
+`src/lib/firebaseConfig.ts` holds the web config for `clubstackapp2`, so there is nothing to fill in
+to run locally. Env vars are optional overrides for pointing a build at another project: copy
+`.env.example` to `.env.local` (git-ignored) and values there take precedence over the defaults.
 
 | `.env.local` variable | Firebase config field |
 | --- | --- |
@@ -99,23 +111,28 @@ Copy `.env.example` to `.env.local` and fill in the values. This file is git-ign
 | `VITE_FIREBASE_STORAGE_BUCKET` | `storageBucket` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` |
 | `VITE_FIREBASE_APP_ID` | `appId` |
+| `VITE_FIREBASE_MEASUREMENT_ID` | `measurementId` (unused until Analytics is added) |
 
 These identifiers are public client configuration, not secrets. Access is controlled by Firebase
-Security Rules, so never add a service account key or admin SDK credential to this app.
+Security Rules, so never add a service account key or admin SDK credential to this app. Optionally
+restrict the API key to your domains in **Google Cloud console → APIs & Services → Credentials**.
 
-Restart the dev server after editing `.env.local`. To force demo mode while keys are configured, set
-`VITE_DEMO_MODE=true`.
+Restart the dev server after editing `.env.local`. To force demo mode while Firebase is configured,
+set `VITE_DEMO_MODE=true`.
 
 ### 3. Deploy the security rules
 
-Either paste [`firestore.rules`](firestore.rules) into **Firestore → Rules** in the console and
-publish, or use the Firebase CLI:
+Rules must be published before the app can read or write data. `.firebaserc` pins the CLI to
+`clubstackapp2`. Either paste [`firestore.rules`](firestore.rules) into **Firestore → Rules** in the
+console and publish, or use the Firebase CLI:
 
 ```bash
 npx firebase-tools login
-npx firebase-tools use --add          # select your project, give it an alias
 npx firebase-tools deploy --only firestore:rules
 ```
+
+Re-run that deploy after any rules edit. For a different project, run `npx firebase-tools use --add`
+once and pass `--project <id>`.
 
 [`firestore.indexes.json`](firestore.indexes.json) contains no composite indexes: every query uses
 single-field filters and sorts client-side, so no index prompts appear. If the directory grows well
@@ -255,7 +272,8 @@ src/
   hooks/useClubFeed.ts     Announcements + events for a set of clubs
   lib/
     backend.ts             Backend interface + mode selection
-    firebase.ts            Firebase initialization from Vite env vars
+    firebaseConfig.ts      Public clubstackapp2 web config (env-overridable)
+    firebase.ts            Firebase initialization
     firebaseBackend.ts     Auth + Firestore implementation
     demoBackend.ts         localStorage demo implementation
     demoSeed.ts            Sample clubs, users, announcements, events
@@ -265,6 +283,7 @@ src/
 firestore.rules            Server-side security rules
 firestore.indexes.json     Composite indexes (none required for the MVP)
 firebase.json              Rules + Hosting + emulator configuration
+.firebaserc                Firebase CLI project (`clubstackapp2`)
 ```
 
 The UI talks only to the `ClubStackApi` interface in `src/lib/backend.ts`. The Firebase and demo
