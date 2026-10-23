@@ -217,6 +217,7 @@ export const demoApi: ClubStackApi = {
         store.announcements = store.announcements.filter((item) => item.clubId !== id)
         store.events = store.events.filter((item) => item.clubId !== id)
         store.sponsorRequests = store.sponsorRequests.filter((item) => item.clubId !== id)
+        store.officerInvitations = store.officerInvitations.filter((item) => item.clubId !== id)
       })
     },
   },
@@ -468,11 +469,12 @@ export const demoApi: ClubStackApi = {
       return [...read().users].sort((a, b) => a.displayName.localeCompare(b.displayName))
     },
 
-    async searchDirectory(prefix, role) {
+    async searchDirectory(prefix, role, maxResults = 15) {
       await wait()
       const needle = prefix.trim().toLocaleLowerCase()
       if (needle.length < 2) return []
-      return [...read().users].filter((person) => person.role === role && person.displayName.toLocaleLowerCase().startsWith(needle)).sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, 15)
+      const resultLimit = Math.max(1, Math.min(100, Math.floor(maxResults)))
+      return [...read().users].filter((person) => person.role === role && person.displayName.toLocaleLowerCase().startsWith(needle)).sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, resultLimit)
     },
 
     async setRole(uid, role) {
