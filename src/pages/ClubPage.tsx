@@ -310,8 +310,7 @@ export function ClubPage() {
           <p className="leading-relaxed">
             {club.status === 'pending' ? (
               <>
-                <strong className="font-bold">Pending approval.</strong> This page is only visible
-                to you and school admins until it is approved. You can still post updates to get
+                <strong className="font-bold">Pending approval.</strong> This page is only visible to the club owner, listed officers, accepted sponsor, and admins until it is approved. You can still post updates to get
                 ready.
               </>
             ) : (
