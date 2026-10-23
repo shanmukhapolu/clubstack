@@ -419,11 +419,6 @@ export const demoApi: ClubStackApi = {
       return [...read().users].map(({ id, displayName, role, createdAt }) => ({ id, displayName, role, createdAt, email: '' })).sort((a, b) => a.displayName.localeCompare(b.displayName))
     },
 
-    async listDirectory() {
-      await wait()
-      return [...read().users].map(({ id, displayName, role, createdAt }) => ({ id, displayName, role, createdAt, email: '' })).sort((a, b) => a.displayName.localeCompare(b.displayName))
-    },
-
     async setRole(uid, role) {
       await wait()
       mutate((store) => {
