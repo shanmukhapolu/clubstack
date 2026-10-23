@@ -26,6 +26,7 @@ export function ClubMeetingsPage() {
   const fromContext=clubs.find(item=>item.id===clubId) ?? null
   const [club,setClub]=useState<Club|null>(fromContext)
   const [clubLoading,setClubLoading]=useState(!fromContext)
+  const [hasPendingOfficerInvite,setHasPendingOfficerInvite]=useState(false)
   const { events,loading,refresh:refreshFeed }=useClubFeed(clubId?[clubId]:[])
   const [view,setView]=useState<'calendar'|'list'>('calendar')
   const [month,setMonth]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1))
@@ -55,8 +56,22 @@ export function ClubMeetingsPage() {
     return () => { active = false }
   }, [clubId, fromContext])
 
+  useEffect(() => {
+    if (!user || user.role !== 'student' || !clubId) {
+      setHasPendingOfficerInvite(false)
+      return
+    }
+    let active = true
+    void api.officerInvitations.listForUser(user.id).then(invitations => {
+      if (active) setHasPendingOfficerInvite(invitations.some(item => item.clubId === clubId && item.status === 'pending'))
+    }).catch(() => {
+      if (active) setHasPendingOfficerInvite(false)
+    })
+    return () => { active = false }
+  }, [clubId, user?.id, user?.role])
+
   const canManage=!!(user&&club&&(user.role==='admin'||club.leaderId===user.id||(club.sponsorId===user.id&&club.sponsorStatus==='accepted')||(club.officerIds ?? []).includes(user.id)))
-  const canView=!!(user&&club&&(club.status==='approved'||canManage||isJoined(club.id)))
+  const canView=!!(user&&club&&(club.status==='approved'||canManage||isJoined(club.id)||hasPendingOfficerInvite))
   const grid=useMemo(()=>buildMonthGrid(month),[month])
   const byDay=useMemo(()=>{
     const result=new Map<string,ClubEvent[]>()
