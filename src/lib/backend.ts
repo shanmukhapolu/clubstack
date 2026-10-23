@@ -15,7 +15,7 @@ export interface AuthApi {
   /** Subscribes to the signed-in profile. Returns an unsubscribe function. */
   subscribe(callback: (user: AppUser | null) => void): () => void
   signIn(email: string, password: string): Promise<void>
-  signUp(name: string, email: string, password: string): Promise<void>
+  signUp(name: string, email: string, password: string, role: Role): Promise<void>
   signInWithGoogle(): Promise<void>
   signOut(): Promise<void>
 }
@@ -51,6 +51,12 @@ export interface EventsApi {
   remove(id: string): Promise<void>
 }
 
+export interface ModerationApi {
+  list(): Promise<ModerationReport[]>
+  create(input: { clubId: string; clubName: string; reason: string; details: string }, reporter: AppUser): Promise<void>
+  setStatus(id: string, status: ReportStatus): Promise<void>
+}
+
 export interface UsersApi {
   list(): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
@@ -69,6 +75,7 @@ export interface ClubStackApi {
   announcements: AnnouncementsApi
   events: EventsApi
   users: UsersApi
+  moderation: ModerationApi
   demo?: DemoApi
 }
 
