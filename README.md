@@ -37,6 +37,8 @@ New signups are always students. Club leaders and admins must be granted by an e
 
 Admin access is enforced by Firestore rules, not only by the interface. To bootstrap the first admin, create a normal account, then update that user's profile document in the Firebase Console to `role: "admin"`. After that, use the in-app admin tools to grant leader roles and suspend accounts.
 
+**Before publishing the new rules:** the earlier prototype allowed role selection at signup. Review existing `users` documents and remove any test-created `admin` or `leader` assignments that should not remain. The new rules prevent new public signups from assigning elevated roles, but they do not automatically downgrade existing profiles.
+
 ## Firestore data model
 
 - `users/{uid}`: `name`, `email`, `role` (`student`, `leader`, `admin`), optional `suspended`.
