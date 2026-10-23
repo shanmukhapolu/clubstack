@@ -70,7 +70,7 @@ export function AppShell() {
     .sort((a, b) => a.name.localeCompare(b.name))
   const isAdmin = user.role === 'admin'
   const links = isAdmin
-    ? [...navItems, { to: '/admin', label: 'Admin', icon: ShieldCheck }]
+    ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }]
     : user.role === 'teacher'
       ? [...navItems, { to: '/teacher', label: 'Advisor', icon: BookOpen }]
       : navItems
@@ -100,7 +100,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="mt-8 flex min-h-0 flex-1 flex-col">
+        {!isAdmin && <div className="mt-8 flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">My clubs</p>
             <span className="text-[11px] font-semibold text-muted">{joinedIds.size}</span>
@@ -128,7 +128,7 @@ export function AppShell() {
               <p className="px-3 pt-1 text-[12px] text-muted">+{myClubs.length - 6} more</p>
             )}
           </div>
-        </div>
+        </div>}
 
         <div className="mt-4 space-y-3 border-t border-line pt-4">
           {mode === 'demo' && <DemoSwitcher />}
@@ -204,7 +204,7 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
-          {user.role !== 'teacher' && (
+          {user.role === 'student' && (
             <NavLink
               to="/clubs/new"
               className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-semibold text-muted"
