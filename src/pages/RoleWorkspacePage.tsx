@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Check, X, ShieldAlert, Users,
-  Building2, Clock3, Flag, Trash2, CheckCircle2, ClipboardList,
+  CalendarDays, ChevronLeft, ChevronRight, Check, X, ShieldAlert,
+  Building2, Flag, Trash2, ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
