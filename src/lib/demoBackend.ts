@@ -170,8 +170,8 @@ export const demoApi: ClubStackApi = {
         leaderId: leader.id,
         leaderName: leader.displayName,
         leaderTitle: input.leaderTitle || 'President',
-        officers: input.officers ?? [],
-        officerIds: (input.officers ?? []).map((officer) => officer.uid),
+        officers: [],
+        officerIds: [],
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
@@ -226,6 +226,11 @@ export const demoApi: ClubStackApi = {
       return read()
         .memberships.filter((membership) => membership.uid === uid)
         .map((membership) => membership.clubId)
+    },
+
+    async listMembers(clubId) {
+      await wait()
+      return read().memberships.filter((membership) => membership.clubId === clubId).map((membership) => membership.uid)
     },
 
     async join(clubId) {
@@ -350,6 +355,11 @@ export const demoApi: ClubStackApi = {
       return [...read().reports].sort((a, b) => b.createdAt - a.createdAt)
     },
 
+    async listMine(uid) {
+      await wait()
+      return [...read().reports].filter((report) => report.reporterId === uid).sort((a, b) => b.createdAt - a.createdAt)
+    },
+
     async create(input, reporter) {
       await wait()
       mutate((store) => {
@@ -408,6 +418,44 @@ export const demoApi: ClubStackApi = {
     },
   },
 
+  officerInvitations: {
+    async listForUser(uid) {
+      await wait()
+      return [...read().officerInvitations].filter((item) => item.invitedUserId === uid).sort((a, b) => b.createdAt - a.createdAt)
+    },
+    async listForClub(clubId) {
+      await wait()
+      return [...read().officerInvitations].filter((item) => item.clubId === clubId).sort((a, b) => b.createdAt - a.createdAt)
+    },
+    async create(clubId, clubName, officer, inviter) {
+      await wait()
+      const id = `${clubId}_${officer.uid}`
+      mutate((store) => {
+        store.officerInvitations = store.officerInvitations.filter((item) => item.id !== id)
+        store.officerInvitations.unshift({ id, clubId, clubName, invitedUserId: officer.uid, invitedUserName: officer.displayName, invitedById: inviter.id, invitedByName: inviter.displayName, title: officer.title, status: 'pending', createdAt: Date.now() })
+      })
+    },
+    async respond(invitationId, status) {
+      await wait()
+      const store = read()
+      const invitation = store.officerInvitations.find((item) => item.id === invitationId)
+      const user = requireUser(store)
+      if (!invitation || invitation.invitedUserId !== user.id) throw new Error('This invitation is not available to your account.')
+      if (invitation.status !== 'pending') throw new Error('This invitation has already been answered.')
+      mutate((draft) => {
+        const current = draft.officerInvitations.find((item) => item.id === invitationId)
+        if (!current) return
+        current.status = status
+        if (status === 'accepted') {
+          updateClub(draft, current.clubId, {
+            officers: [...(draft.clubs.find((club) => club.id === current.clubId)?.officers ?? []).filter((item) => item.uid !== current.invitedUserId), { uid: current.invitedUserId, displayName: current.invitedUserName, email: '', title: current.title }],
+            officerIds: [...new Set([...(draft.clubs.find((club) => club.id === current.clubId)?.officerIds ?? []), current.invitedUserId])],
+          })
+        }
+      })
+    },
+  },
+
   users: {
     async list() {
       await wait()
@@ -416,7 +464,14 @@ export const demoApi: ClubStackApi = {
 
     async listDirectory() {
       await wait()
-      return [...read().users].map(({ id, displayName, role, createdAt }) => ({ id, displayName, role, createdAt, email: '' })).sort((a, b) => a.displayName.localeCompare(b.displayName))
+      return [...read().users].sort((a, b) => a.displayName.localeCompare(b.displayName))
+    },
+
+    async searchDirectory(prefix, role) {
+      await wait()
+      const needle = prefix.trim().toLocaleLowerCase()
+      if (needle.length < 2) return []
+      return [...read().users].filter((person) => person.role === role && person.displayName.toLocaleLowerCase().startsWith(needle)).sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, 15)
     },
 
     async setRole(uid, role) {
