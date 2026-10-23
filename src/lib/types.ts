@@ -25,6 +25,27 @@ export interface AppUser {
   createdAt: number
 }
 
+export interface ClubOfficer {
+  uid: string
+  displayName: string
+  email: string
+  title: string
+}
+
+export type SponsorRequestStatus = 'pending' | 'accepted' | 'declined'
+
+export interface ClubSponsorRequest {
+  id: string
+  clubId: string
+  clubName: string
+  teacherId: string
+  teacherName: string
+  requestedById: string
+  requestedByName: string
+  status: SponsorRequestStatus
+  createdAt: number
+}
+
 export interface Club {
   id: string
   name: string
@@ -38,6 +59,11 @@ export interface Club {
   status: ClubStatus
   leaderId: string
   leaderName: string
+  leaderTitle: string
+  officers: ClubOfficer[]
+  sponsorId: string
+  sponsorName: string
+  sponsorStatus: SponsorRequestStatus | 'none'
   contactEmail: string
   memberCount: number
   createdAt: number
@@ -82,6 +108,10 @@ export interface ClubInput {
   emoji: string
   color: string
   contactEmail: string
+  leaderTitle: string
+  officers: ClubOfficer[]
+  sponsorId: string
+  sponsorName: string
 }
 
 export const CATEGORIES = [
