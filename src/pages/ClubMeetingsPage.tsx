@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, List, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -11,7 +11,8 @@ import { addMonths, buildMonthGrid, formatDateLong, isSameDay, monthLabel, start
 import { friendlyError } from '../lib/helpers'
 import type { Club, ClubEvent } from '../lib/types'
 import { PageHeader } from '../components/PageHeader'
-import { Badge, Button, ClubMark, EventRow, Spinner } from '../components/ui'
+import { Button, ClubMark, Spinner } from '../components/ui'
+import { EventRow } from '../components/EventRow'
 
 function keyFor(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
@@ -37,13 +38,22 @@ export function ClubMeetingsPage() {
   const [end,setEnd]=useState('')
   const [saving,setSaving]=useState(false)
 
-  useMemo(()=>{
-    if (fromContext) { setClub(fromContext); setClubLoading(false) }
-  },[fromContext])
-  // Fetch clubs that are not present in the student's current directory filter (e.g. pending officer invites).
-  if (!club && !clubLoading && !clubs.some(item=>item.id===clubId)) {
-    void api.clubs.get(clubId).then(found=>{setClub(found);setClubLoading(false)}).catch(()=>setClubLoading(false))
-  }
+  useEffect(() => {
+    if (fromContext) {
+      setClub(fromContext)
+      setClubLoading(false)
+      return
+    }
+    let active = true
+    void api.clubs.get(clubId).then(found => {
+      if (!active) return
+      setClub(found)
+      setClubLoading(false)
+    }).catch(() => {
+      if (active) setClubLoading(false)
+    })
+    return () => { active = false }
+  }, [clubId, fromContext])
 
   const canManage=!!(user&&club&&(user.role==='admin'||club.leaderId===user.id||(club.sponsorId===user.id&&club.sponsorStatus==='accepted')||club.officerIds.includes(user.id)))
   const canView=!!(user&&club&&(club.status==='approved'||canManage||isJoined(club.id)))
@@ -85,7 +95,7 @@ export function ClubMeetingsPage() {
     <nav aria-label="Club pages" className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5"><Link to={`/clubs/${club.id}`} className={`rounded-xl px-3.5 py-2 text-[12px] font-semibold ${window.location.pathname===`/clubs/${club.id}`?'bg-ink text-white':'text-ink-soft hover:bg-canvas'}`}>Overview</Link><Link to={`/clubs/${club.id}/meetings`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Meetings</Link>{canManage&&<Link to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}</nav>
     <PageHeader eyebrow="Calendar & agenda" title="Meetings and events." description="Every student who can view this club can see its meetings. Club managers can add or remove events."/>
     {addOpen&&canManage&&<form onSubmit={createEvent} className="card mb-5 grid gap-3 p-4 sm:grid-cols-2 sm:p-5"><div className="sm:col-span-2"><label className="label" htmlFor="meeting-title">Meeting title</label><input id="meeting-title" className="field" value={title} onChange={e=>setTitle(e.target.value)} maxLength={100} required/></div><div className="sm:col-span-2"><label className="label" htmlFor="meeting-description">Details</label><textarea id="meeting-description" className="field min-h-20 resize-y" value={description} onChange={e=>setDescription(e.target.value)} maxLength={500}/></div><div><label className="label" htmlFor="meeting-start">Starts</label><input id="meeting-start" type="datetime-local" className="field" value={start} onChange={e=>setStart(e.target.value)} required/></div><div><label className="label" htmlFor="meeting-end">Ends (optional)</label><input id="meeting-end" type="datetime-local" className="field" value={end} onChange={e=>setEnd(e.target.value)}/></div><div className="sm:col-span-2"><label className="label" htmlFor="meeting-location">Location</label><input id="meeting-location" className="field" value={location} onChange={e=>setLocation(e.target.value)} placeholder={club.location||'Add a location'}/></div><div className="flex justify-end gap-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={()=>setAddOpen(false)}>Cancel</Button><Button type="submit" loading={saving}><Plus size={15}/> Save meeting</Button></div></form>}
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="inline-flex rounded-full border border-line bg-surface p-1"><button type="button" onClick={()=>setView('calendar')} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${view==='calendar'?'bg-ink text-white':'text-ink-soft'}`}><CalendarDays size={14}/> Calendar</button><button type="button" onClick={()=>setView('list')} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${view==='list'?'bg-ink text-white':'text-ink-soft'}`}><List size={14}/> List</button></div>{view==='calendar'&&<div className="flex items-center gap-1.5"><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface" onClick={()=>setMonth(date=>addMonths(date,-1)} aria-label="Previous month"><ChevronLeft size={16}/></button><span className="min-w-[126px] text-center text-[12.5px] font-bold">{monthLabel(month)}</span><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface" onClick={()=>setMonth(date=>addMonths(date,1)} aria-label="Next month"><ChevronRight size={16}/></button><Button size="sm" variant="ghost" onClick={()=>{const now=new Date();setMonth(new Date(now.getFullYear(),now.getMonth(),1));setSelectedDate(startOfDay(now))}}>Today</Button></div>}</div>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div className="inline-flex rounded-full border border-line bg-surface p-1"><button type="button" onClick={()=>setView('calendar')} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${view==='calendar'?'bg-ink text-white':'text-ink-soft'}`}><CalendarDays size={14}/> Calendar</button><button type="button" onClick={()=>setView('list')} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold ${view==='list'?'bg-ink text-white':'text-ink-soft'}`}><List size={14}/> List</button></div>{view==='calendar'&&<div className="flex items-center gap-1.5"><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface" onClick={()=>setMonth(date=>addMonths(date,-1))} aria-label="Previous month"><ChevronLeft size={16}/></button><span className="min-w-[126px] text-center text-[12.5px] font-bold">{monthLabel(month)}</span><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface" onClick={()=>setMonth(date=>addMonths(date,1))} aria-label="Next month"><ChevronRight size={16}/></button><Button size="sm" variant="ghost" onClick={()=>{const now=new Date();setMonth(new Date(now.getFullYear(),now.getMonth(),1));setSelectedDate(startOfDay(now))}}>Today</Button></div>}</div>
     {loading?<Spinner label="Loading meetings"/>:view==='calendar'?<><div className="overflow-hidden rounded-2xl border border-line bg-surface"><div className="grid grid-cols-7 border-b border-line bg-canvas/70">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=><div key={day} className="py-2 text-center text-[10px] font-bold uppercase text-muted">{day}</div>)}</div><div className="grid grid-cols-7">{grid.map(date=>{const dayEvents=byDay.get(keyFor(date))??[];const current=date.getMonth()===month.getMonth();return <button key={keyFor(date)} type="button" onClick={()=>setSelectedDate(startOfDay(date))} className={`min-h-[90px] min-w-0 border-b border-r border-line p-1 text-left sm:min-h-[112px] sm:p-1.5 ${current?'bg-surface hover:bg-canvas':'bg-canvas/40'} ${isSameDay(date,selectedDate)?'ring-2 ring-inset ring-brand-300':''}`}><span className={`mb-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${isSameDay(date,today)?'bg-ink text-white':current?'text-ink':'text-muted'}`}>{date.getDate()}</span><span className="block space-y-1">{dayEvents.slice(0,3).map(item=><span key={item.id} className="block truncate rounded px-1 py-1 text-[9px] font-semibold leading-tight" style={{backgroundColor:`${club.color}2a`,borderLeft:`2px solid ${club.color}`}} title={item.title}>{item.title}</span>)}{dayEvents.length>3&&<span className="block px-1 text-[9px] font-bold text-muted">+{dayEvents.length-3} more</span>}</span></button>})}</div></div><section className="mt-5"><div className="mb-3 flex items-baseline justify-between"><h2 className="text-[15px] font-extrabold">{isSameDay(selectedDate,today)?'Today':formatDateLong(selectedDate.getTime())}</h2><span className="text-[12px] text-muted">{selected.length} meeting(s)</span></div>{selected.length===0?<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center text-[13px] text-muted">Nothing scheduled for this day.</div>:<div className="grid gap-2.5 lg:grid-cols-2">{selected.map(item=><div key={item.id} className="relative"><EventRow event={item} club={club}/>{canManage&&<button type="button" onClick={()=>void deleteEvent(item)} className="absolute right-2 top-2 rounded-lg bg-surface/90 p-1.5 text-muted hover:text-[#9c2f18]" title="Delete meeting" aria-label={`Delete ${item.title}`}><Trash2 size={14}/></button>}</div>)}</div>}</section></>:events.length===0?<div className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">No meetings or events have been added yet.</div>:<div className="space-y-2.5">{[...events].sort((a,b)=>a.startAt-b.startAt).map(item=><div key={item.id} className="relative"><EventRow event={item} club={club}/>{canManage&&<button type="button" onClick={()=>void deleteEvent(item)} className="absolute right-2 top-2 rounded-lg bg-surface/90 p-1.5 text-muted hover:text-[#9c2f18]" title="Delete meeting" aria-label={`Delete ${item.title}`}><Trash2 size={14}/></button>}</div>)}</div>}
   </div>
 }
