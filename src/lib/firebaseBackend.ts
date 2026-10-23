@@ -36,6 +36,8 @@ import type {
   ClubInput,
   ClubStatus,
   Membership,
+  ModerationReport,
+  ReportStatus,
   Role,
 } from './types'
 
@@ -54,7 +56,7 @@ function toUser(id: string, data: Record<string, unknown>): AppUser {
     id,
     displayName: stringOr(data.displayName, 'Student'),
     email: stringOr(data.email, ''),
-    role: data.role === 'admin' ? 'admin' : 'student',
+    role: data.role === 'admin' || data.role === 'teacher' ? data.role : 'student',
     grade: typeof data.grade === 'string' ? data.grade : undefined,
     createdAt: numberOr(data.createdAt),
   }
@@ -90,6 +92,20 @@ function toAnnouncement(id: string, data: Record<string, unknown>): Announcement
     body: stringOr(data.body, ''),
     authorId: stringOr(data.authorId, ''),
     authorName: stringOr(data.authorName, 'Club leader'),
+    createdAt: numberOr(data.createdAt),
+  }
+}
+
+function toModerationReport(id: string, data: Record<string, unknown>): ModerationReport {
+  return {
+    id,
+    reporterId: stringOr(data.reporterId, ''),
+    reporterName: stringOr(data.reporterName, 'User'),
+    clubId: stringOr(data.clubId, ''),
+    clubName: stringOr(data.clubName, 'Unknown club'),
+    reason: stringOr(data.reason, 'Other'),
+    details: stringOr(data.details, ''),
+    status: (['open', 'reviewed', 'resolved'].includes(String(data.status)) ? data.status : 'open') as ReportStatus,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -174,7 +190,7 @@ export const firebaseApi: ClubStackApi = {
       await signInWithEmailAndPassword(requireAuth(), email, password)
     },
 
-    async signUp(name, email, password) {
+    async signUp(name, email, password, role) {
       const auth = requireAuth()
       const db = requireDb()
       const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -182,7 +198,7 @@ export const firebaseApi: ClubStackApi = {
       await setDoc(doc(db, 'users', credential.user.uid), {
         displayName: name,
         email,
-        role: 'student' satisfies Role,
+        role,
         createdAt: Date.now(),
       })
     },
@@ -360,6 +376,27 @@ export const firebaseApi: ClubStackApi = {
 
     async remove(id) {
       await deleteDoc(doc(requireDb(), 'events', id))
+    },
+  },
+
+  moderation: {
+    async list() {
+      const snapshot = await getDocs(collection(requireDb(), 'moderationReports'))
+      return snapshot.docs.map((item) => toModerationReport(item.id, item.data())).sort(byNewest)
+    },
+
+    async create(input, reporter) {
+      await addDoc(collection(requireDb(), 'moderationReports'), {
+        ...input,
+        reporterId: reporter.id,
+        reporterName: reporter.displayName,
+        status: 'open' satisfies ReportStatus,
+        createdAt: Date.now(),
+      })
+    },
+
+    async setStatus(id, status) {
+      await updateDoc(doc(requireDb(), 'moderationReports', id), { status })
     },
   },
 
