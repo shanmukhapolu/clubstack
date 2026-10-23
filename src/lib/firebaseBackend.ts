@@ -328,6 +328,7 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'events'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'clubSponsorRequests'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'moderationReports'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'officerInvitations'), where('clubId', '==', id))),
       ])
       const batch = writeBatch(db)
       related.flatMap((snapshot) => snapshot.docs).forEach((item) => batch.delete(item.ref))
@@ -582,9 +583,10 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => toUser(item.id, item.data())).sort((a, b) => a.displayName.localeCompare(b.displayName))
     },
 
-    async searchDirectory(prefix, role) {
+    async searchDirectory(prefix, role, maxResults = 15) {
       const needle = prefix.trim().toLocaleLowerCase()
       if (needle.length < 2) return []
+      const resultLimit = Math.max(1, Math.min(100, Math.floor(maxResults)))
       const db = requireDb()
       const lowerQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('nameLower', '>=', needle), where('nameLower', '<=', needle + '\uf8ff'), limit(15))
       const legacyPrefix = needle.charAt(0).toLocaleUpperCase() + needle.slice(1)
@@ -596,7 +598,7 @@ export const firebaseApi: ClubStackApi = {
         const person = toUser(item.id, data)
         if (person.role === role && person.displayName.toLocaleLowerCase().includes(needle)) byId.set(person.id, person)
       }
-      return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, 15)
+      return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, resultLimit)
     },
 
     async setRole(uid, role) {
