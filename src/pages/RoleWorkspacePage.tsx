@@ -84,9 +84,10 @@ export function RoleWorkspacePage() {
   const { user } = useAuth()
   const { clubs, loading: clubsLoading, refresh: refreshClubs } = useClubs()
   const { notify } = useToast()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const isAdmin = user?.role === 'admin'
   const section = pathname.split('/')[2] || 'home'
+  const requestedClubTab = new URLSearchParams(search).get('tab')
   const [users, setUsers] = useState<AppUser[]>([])
   const [events, setEvents] = useState<ClubEvent[]>([])
   const [reports, setReports] = useState<ModerationReport[]>([])
@@ -96,6 +97,12 @@ export function RoleWorkspacePage() {
   const [userTab, setUserTab] = useState<'student' | 'teacher' | 'admin'>('student')
   const [userSearch, setUserSearch] = useState('')
   const [clubTab, setClubTab] = useState<'active' | 'proposals' | 'other'>('active')
+
+  useEffect(() => {
+    if (requestedClubTab === 'proposals' || requestedClubTab === 'active' || requestedClubTab === 'other') {
+      setClubTab(requestedClubTab)
+    }
+  }, [requestedClubTab])
 
   useEffect(() => {
     if (!user) return
@@ -213,7 +220,7 @@ export function RoleWorkspacePage() {
       </div>
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="card p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-extrabold">Club proposals</h2><Link to="/admin/clubs" className="text-[12px] font-semibold text-brand-600 hover:underline">Review all</Link></div>
+          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-extrabold">Club proposals</h2><Link to="/admin/clubs?tab=proposals" className="text-[12px] font-semibold text-brand-600 hover:underline">Review all</Link></div>
           {clubsLoading ? <Spinner label="Loading proposals" /> : pendingClubs.length === 0 ? <p className="rounded-xl bg-canvas px-3.5 py-4 text-[13px] text-muted">No proposals are waiting for review.</p> : <div className="space-y-2.5">{pendingClubs.slice(0, 5).map(club => <div key={club.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-line p-3"><ClubMark club={club} size={38} /><div className="min-w-0 flex-1"><Link to={`/clubs/${club.id}`} className="text-[13px] font-bold hover:underline">{club.name}</Link><p className="mt-0.5 text-[11.5px] text-muted">By {club.leaderName} · {relativeTime(club.createdAt)}</p></div><Badge tone="warn">Pending</Badge></div>)}</div>}
         </section>
         <section className="card p-4 sm:p-5">
