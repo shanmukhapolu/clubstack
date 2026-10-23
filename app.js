@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import { getFirestore, collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, query, where, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -338,7 +338,7 @@ async function renderCalendar() {
   let events = [];
   try {
     const eventSnap = await getDocs(query(
-      collectionGroup(db, 'events'),
+      collection(db, 'calendarEvents'),
       where('status', '==', 'published'),
       where('date', '>=', new Date(Date.now() - 86400000)),
       orderBy('date', 'asc'),
@@ -537,10 +537,14 @@ async function submitPost(event) {
         toast('Choose the event date and time.');
         return;
       }
-      await addDoc(collection(db, 'clubs', id, 'events'), {
+      const eventData = {
         title, description: body, date: new Date(value), location: $('#post-location').value.trim(),
         clubId: id, clubName: club.name, status: 'published', createdBy: user.uid, createdAt: serverTimestamp()
-      });
+      };
+      const batch = writeBatch(db);
+      batch.set(doc(collection(db, 'clubs', id, 'events')), eventData);
+      batch.set(doc(collection(db, 'calendarEvents')), eventData);
+      await batch.commit();
     } else {
       await addDoc(collection(db, 'clubs', id, 'announcements'), {
         title, body, createdBy: user.uid, createdAt: serverTimestamp()
@@ -567,12 +571,13 @@ async function moderateClub(id, action) {
       await updateDoc(doc(db, 'clubs', id), { status: 'approved', approvedAt: serverTimestamp(), approvedBy: user.uid });
       toast('Club approved.');
     } else {
-      const [posts, clubEvents, memberships] = await Promise.all([
+      const [posts, clubEvents, calendarEvents, memberships] = await Promise.all([
         getDocs(collection(db, 'clubs', id, 'announcements')),
         getDocs(collection(db, 'clubs', id, 'events')),
+        getDocs(query(collection(db, 'calendarEvents'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'memberships'), where('clubId', '==', id)))
       ]);
-      const cleanup = [...posts.docs, ...clubEvents.docs, ...memberships.docs];
+      const cleanup = [...posts.docs, ...clubEvents.docs, ...calendarEvents.docs, ...memberships.docs];
       await Promise.all(cleanup.map((item) => deleteDoc(item.ref)));
       await deleteDoc(doc(db, 'clubs', id));
       toast(action === 'reject' ? 'Submission rejected.' : 'Club and its data removed.');
