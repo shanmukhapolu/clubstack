@@ -322,6 +322,7 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'announcements'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'events'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'clubSponsorRequests'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'moderationReports'), where('clubId', '==', id))),
       ])
       const batch = writeBatch(db)
       related.flatMap((snapshot) => snapshot.docs).forEach((item) => batch.delete(item.ref))
