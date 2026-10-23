@@ -2,27 +2,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-    function isAdmin() { return signedIn() && userDoc().data.role == 'admin'; }
+    function profileExists() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return profileExists() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
     function isLeader(clubId) {
       return signedIn() && (
-        request.auth.uid in get(/databases/$(database)/documents/clubs/$(clubId)).data.get('leaderIds', []) ||
-        get(/databases/$(database)/documents/clubs/$(clubId)).data.get('createdBy', '') == request.auth.uid
+        (exists(/databases/$(database)/documents/clubs/$(clubId)) &&
+          request.auth.uid in get(/databases/$(database)/documents/clubs/$(clubId)).data.get('leaderIds', [])) ||
+        (exists(/databases/$(database)/documents/clubs/$(clubId)) &&
+          get(/databases/$(database)/documents/clubs/$(clubId)).data.get('createdBy', '') == request.auth.uid)
       );
     }
     function canManageClub(clubId) { return isAdmin() || isLeader(clubId); }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'student';
+      // TESTING ONLY: role selection permits self-assigning admin/leader.
+      // Restore role == 'student' before inviting real students.
+      allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.role in ['student', 'leader', 'admin'];
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow update: if signedIn() && (isAdmin() || (request.auth.uid == uid && request.resource.data.role == resource.data.role && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL', 'updatedAt'])));
+      allow update: if signedIn() && (
+        isAdmin() ||
+        (request.auth.uid == uid &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL', 'updatedAt']))
+      );
       allow delete: if isAdmin();
     }
 
     match /clubs/{clubId} {
-      allow read: if resource.data.status == 'approved' || (signedIn() && (isAdmin() || resource.data.get('createdBy', '') == request.auth.uid || request.auth.uid in resource.data.get('leaderIds', [])));
-      allow create: if signedIn() && request.resource.data.status == 'pending' && request.resource.data.createdBy == request.auth.uid && request.auth.uid in request.resource.data.leaderIds;
-      allow update: if isAdmin() || (isLeader(clubId) && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.status == resource.data.status && request.resource.data.leaderIds == resource.data.leaderIds);
+      allow read: if resource.data.status == 'approved' ||
+        (signedIn() && (isAdmin() ||
+          resource.data.get('createdBy', '') == request.auth.uid ||
+          request.auth.uid in resource.data.get('leaderIds', [])));
+      allow create: if signedIn() &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.auth.uid in request.resource.data.leaderIds;
+      allow update: if isAdmin() ||
+        (isLeader(clubId) &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.leaderIds == resource.data.leaderIds);
       allow delete: if isAdmin();
 
       match /announcements/{announcementId} {
@@ -38,9 +63,14 @@ service cloud.firestore {
     }
 
     match /memberships/{membershipId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid && request.resource.data.clubId is string && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.status == 'approved';
-      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isLeader(resource.data.clubId));
-      allow delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isLeader(resource.data.clubId));
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.clubId is string &&
+        get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.status == 'approved';
+      allow read: if signedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin() || isLeader(resource.data.clubId));
+      allow delete: if signedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin() || isLeader(resource.data.clubId));
       allow update: if false;
     }
   }
