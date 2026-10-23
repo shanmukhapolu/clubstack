@@ -477,6 +477,9 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async create(club, teacher, requester) {
+      await updateDoc(doc(requireDb(), 'clubs', club.id), {
+        sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending',
+      })
       await addDoc(collection(requireDb(), 'clubSponsorRequests'), {
         clubId: club.id,
         clubName: club.name,
@@ -486,9 +489,6 @@ export const firebaseApi: ClubStackApi = {
         requestedByName: requester.displayName,
         status: 'pending' satisfies SponsorRequestStatus,
         createdAt: Date.now(),
-      })
-      await updateDoc(doc(requireDb(), 'clubs', club.id), {
-        sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending',
       })
     },
 
