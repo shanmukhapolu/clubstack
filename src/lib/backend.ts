@@ -5,6 +5,8 @@ import type {
   ClubEvent,
   ClubInput,
   ClubStatus,
+  ModerationReport,
+  ReportStatus,
   Role,
 } from './types'
 import { isDemoMode } from './firebase'
