@@ -317,7 +317,7 @@ export function CreateClubPage() {
               onChange={(event) => {
                 const value = event.target.value
                 setSponsorSearch(value)
-                const match = teachers.find((teacher) => value === `${teacher.displayName} · ${teacher.email}`)
+                const match = teachers.find((teacher) => value === teacher.displayName)
                 update('sponsorId', match?.id ?? '')
                 update('sponsorName', match?.displayName ?? '')
               }}
@@ -326,7 +326,7 @@ export function CreateClubPage() {
               required
             />
             <datalist id="club-teacher-options">
-              {teachers.map((teacher) => <option key={teacher.id} value={`${teacher.displayName} · ${teacher.email}`} />)}
+              {teachers.map((teacher) => <option key={teacher.id} value={teacher.displayName} />)}
             </datalist>
             <p className="mt-1 text-[11px] text-muted">The selected teacher will receive a sponsor request and can edit the club after accepting.</p>
             {teachers.length === 0 && <p className="mt-1 text-[11px] text-muted">No teacher accounts are registered yet. A teacher must create an account with the Teacher / Advisor role first.</p>}
@@ -337,7 +337,7 @@ export function CreateClubPage() {
             <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
               <select className="field" value={selectedOfficerId} onChange={(event) => setSelectedOfficerId(event.target.value)} aria-label="Select student officer">
                 <option value="">Select a student</option>
-                {students.filter((student) => !form.officers.some((officer) => officer.uid === student.id)).map((student) => <option key={student.id} value={student.id}>{student.displayName} · {student.email}</option>)}
+                {students.filter((student) => !form.officers.some((officer) => officer.uid === student.id)).map((student) => <option key={student.id} value={student.id}>{student.displayName}</option>)}
               </select>
               <select className="field" value={selectedOfficerTitle} onChange={(event) => setSelectedOfficerTitle(event.target.value)} aria-label="Officer title">
                 {['Vice President', 'Officer', 'Treasurer', 'Secretary', 'Event Coordinator', 'Other'].map((title) => <option key={title}>{title}</option>)}
