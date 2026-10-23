@@ -34,6 +34,21 @@ export interface ClubOfficer {
 
 export type SponsorRequestStatus = 'pending' | 'accepted' | 'declined'
 
+export type OfficerInvitationStatus = 'pending' | 'accepted' | 'declined'
+
+export interface OfficerInvitation {
+  id: string
+  clubId: string
+  clubName: string
+  invitedUserId: string
+  invitedUserName: string
+  invitedById: string
+  invitedByName: string
+  title: string
+  status: OfficerInvitationStatus
+  createdAt: number
+}
+
 export interface ClubSponsorRequest {
   id: string
   clubId: string
