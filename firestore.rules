@@ -132,10 +132,16 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (isClubLeader(clubId)
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
-                 ['leaderId', 'status', 'createdAt', 'memberCount']))
+                 ['leaderId', 'status', 'createdAt', 'memberCount', 'officers', 'officerIds', 'sponsorId', 'sponsorName', 'sponsorStatus']))
         || ((isClubSponsor(clubId) || isClubOfficer(clubId))
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle', 'officers', 'officerIds']))
+                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle']))
+        || (isSignedIn()
+            && isClubManager(clubId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds'])
+            && resource.data.officerIds is list
+            && request.resource.data.officerIds is list
+            && resource.data.officerIds.hasAll(request.resource.data.officerIds))
         || (isTeacher()
             && resource.data.sponsorId == request.auth.uid
             && resource.data.sponsorStatus == 'pending'
