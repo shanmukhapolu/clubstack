@@ -41,10 +41,14 @@ service cloud.firestore {
           resource.data.get('createdBy', '') == request.auth.uid ||
           request.auth.uid in resource.data.get('leaderIds', [])));
       allow create: if activeUser() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['leader', 'admin'] &&
-        request.resource.data.status in (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ? ['approved', 'pending'] : ['pending']) &&
         request.resource.data.createdBy == request.auth.uid &&
-        request.auth.uid in request.resource.data.leaderIds;
+        request.auth.uid in request.resource.data.leaderIds &&
+        (
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+            request.resource.data.status in ['approved', 'pending']) ||
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leader' &&
+            request.resource.data.status == 'pending')
+        );
       allow update: if isAdmin() ||
         (isLeader(clubId) &&
           request.resource.data.createdBy == resource.data.createdBy &&
