@@ -13,6 +13,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isTeacher() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+
     function clubDoc(clubId) {
       return get(/databases/$(database)/documents/clubs/$(clubId)).data;
     }
@@ -52,7 +57,7 @@ service cloud.firestore {
     // Public account registration currently allows teacher/admin roles for testing.
     // Reports are visible to platform admins and to their original reporter.
     match /moderationReports/{reportId} {
-      allow create: if isSignedIn()
+      allow create: if isTeacher()
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.reporterName is string
         && request.resource.data.clubId is string
