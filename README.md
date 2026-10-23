@@ -27,7 +27,7 @@ Open http://localhost:8000.
 3. Confirm the values in `firebase-config.js` match your Firebase web app.
 4. Publish the repository's Firestore rules:
    ```powershell
-   firebase deploy --only hosting,firestore:rules
+   firebase deploy --only hosting,firestore
    ```
 5. Add your deployed domain under Authentication → Settings → Authorized domains.
 
@@ -41,9 +41,10 @@ Admin access is enforced by Firestore rules, not only by the interface. To boots
 
 - `users/{uid}`: `name`, `email`, `role` (`student`, `leader`, `admin`), optional `suspended`.
 - `clubs/{clubId}`: `name`, `category`, `description`, `meetingInfo`, `status` (`pending`, `approved`), `createdBy`, `leaderIds`, `glyph`.
-- `memberships/{clubId_uid}`: `clubId`, `userId`, `joinedAt`.
+- `memberships/{clubId_uid}`: `clubId`, `userId`, optional `memberName`, `joinedAt`.
 - `clubs/{clubId}/announcements/{announcementId}`: `title`, `body`, `createdBy`, `createdAt`.
-- `clubs/{clubId}/events/{eventId}`: `title`, `description`, `date`, `location`, `createdBy`, `createdAt`.
+- `clubs/{clubId}/events/{eventId}`: event details stored with the club page.
+- `calendarEvents/{eventId}`: indexed event copy used to load the shared calendar in one query. The composite index is defined in `firestore.indexes.json`.
 
 ## Before a school-wide launch
 
