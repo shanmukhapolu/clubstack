@@ -12,32 +12,36 @@ calendar — backed by Firebase Authentication and Cloud Firestore.
 ## What's included
 
 **Students**
-- Searchable directory of clubs with category filters and meeting information
-- Club pages with descriptions, leader contact, announcements, and upcoming meetings
-- One-tap join/leave, with a dashboard of joined clubs and their latest updates
-- Shared calendar showing your clubs or every club at school
+- Searchable club directory with categories, meeting details, announcements, and upcoming events
+- Join or leave approved clubs and see joined clubs from the dashboard and sidebar
+- View club-specific meeting calendars and list agendas
+- Receive and accept or decline student-officer invitations
 
-**Club leaders**
-- Create a club page (submitted to admins for approval)
-- Post and delete announcements
-- Add and remove meetings/events that appear on the school calendar
-- Manage the club page while it waits for approval
+**Club leaders and officers**
+- Submit club proposals for administrator review
+- Edit club information from a dedicated settings page
+- Invite existing club members to officer roles; invitees must accept before permissions are granted
+- Post announcements and add or remove meetings and events
+
+**Teachers / advisors**
+- Review and accept or decline requests to sponsor a club
+- Use a dedicated home dashboard, calendar, My Clubs page, and report history
+- Edit clubs they advise after accepting sponsorship and report concerns
 
 **Admins**
-- Approve or reject club pages, with pending and all-club queues
-- Search/review pending submissions with leader and description details
-- View all users and promote/demote admins
-- Pending approval counts surfaced on the dashboard and admin console
+- View platform statistics, recent submissions, upcoming meetings, and open reports
+- Search the user directory and manage student, teacher, and admin roles
+- Browse active clubs, review proposals in a separate queue, and approve or reject them
+- View all club events on a color-coded calendar and review reports from students and teachers
 
 **Platform**
 - Firebase Authentication (email/password + Google)
-- Firestore Security Rules enforcing every permission server-side
-- Responsive layout: desktop sidebar, mobile header and bottom tabs
+- Firestore Security Rules enforce roles, club management, and invitation acceptance
+- Responsive layout with role-specific navigation and club-specific overview, settings, and meeting pages
 - Accessible forms, empty states, loading states, and toast feedback
 
 Out of scope for this MVP (intentionally): direct messaging, external platform integrations,
-push notifications, image uploads, and club editing/deletion beyond status management.
-
+push notifications, and image uploads.
 ---
 
 ## Quick start
