@@ -235,7 +235,7 @@ async function openClub(id) {
   let members = [];
   if (manageable && configured && db && !club.demo) {
     try {
-      const memberSnap = await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id), limit(100)));
+      const memberSnap = await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id)));
       members = memberSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
     } catch (error) { console.warn(error); }
   }
