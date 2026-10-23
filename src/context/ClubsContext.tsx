@@ -62,7 +62,7 @@ export function ClubsProvider({ children }: { children: ReactNode }) {
   const clubs = useMemo(() => {
     if (!user) return []
     if (user.role === 'admin' || user.role === 'teacher') return allClubs
-    return allClubs.filter((club) => club.status === 'approved' || club.leaderId === user.id)
+    return allClubs.filter((club) => club.status === 'approved' || club.leaderId === user.id || (club.officerIds ?? []).includes(user.id))
   }, [allClubs, user])
 
   const join = useCallback(
