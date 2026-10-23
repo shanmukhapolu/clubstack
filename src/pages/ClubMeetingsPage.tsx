@@ -55,7 +55,7 @@ export function ClubMeetingsPage() {
     return () => { active = false }
   }, [clubId, fromContext])
 
-  const canManage=!!(user&&club&&(user.role==='admin'||club.leaderId===user.id||(club.sponsorId===user.id&&club.sponsorStatus==='accepted')||club.officerIds.includes(user.id)))
+  const canManage=!!(user&&club&&(user.role==='admin'||club.leaderId===user.id||(club.sponsorId===user.id&&club.sponsorStatus==='accepted')||(club.officerIds ?? []).includes(user.id)))
   const canView=!!(user&&club&&(club.status==='approved'||canManage||isJoined(club.id)))
   const grid=useMemo(()=>buildMonthGrid(month),[month])
   const byDay=useMemo(()=>{
