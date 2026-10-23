@@ -234,6 +234,7 @@ service cloud.firestore {
         && (resource.data.uid == request.auth.uid || isAdmin() || isClubManager(resource.data.clubId));
 
       allow create: if isSignedIn()
+        && membershipId == request.auth.uid + '_' + request.resource.data.clubId
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.clubId is string
         && request.resource.data.joinedAt is number
@@ -243,8 +244,11 @@ service cloud.firestore {
                 && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'));
 
-      allow delete: if isSignedIn()
-        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin()
+        || (isSignedIn()
+            && resource.data.uid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/clubs/$(resource.data.clubId)).data.memberCount
+                == get(/databases/$(database)/documents/clubs/$(resource.data.clubId)).data.memberCount - 1);
 
       allow update: if false;
     }
