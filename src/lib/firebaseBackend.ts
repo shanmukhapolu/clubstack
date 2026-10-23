@@ -557,6 +557,8 @@ export const firebaseApi: ClubStackApi = {
         await updateDoc(invitationRef, { status })
         return
       }
+      const uid = auth.currentUser?.uid
+      if (!uid) throw new Error('You must be signed in to accept an officer invitation.')
       const clubRef = doc(db, 'clubs', invitation.clubId)
       const clubSnapshot = await getDoc(clubRef)
       if (!clubSnapshot.exists()) throw new Error('The club no longer exists.')
@@ -565,9 +567,25 @@ export const firebaseApi: ClubStackApi = {
       const officer = { uid: invitation.invitedUserId, displayName: invitation.invitedUserName, email: '', title: invitation.title }
       const nextOfficers = [...officers.filter((item) => item.uid !== officer.uid), officer]
       const nextIds = [...new Set([...(Array.isArray(clubData.officerIds) ? clubData.officerIds as string[] : []), officer.uid])]
+      const membershipsSnapshot = await getDocs(query(
+        collection(db, 'memberships'),
+        where('uid', '==', uid),
+      ))
+      const alreadyMember = membershipsSnapshot.docs.some(item => item.data().clubId === invitation.clubId)
       const batch = writeBatch(db)
       batch.update(invitationRef, { status })
-      batch.update(clubRef, { officers: nextOfficers, officerIds: nextIds })
+      batch.update(clubRef, {
+        officers: nextOfficers,
+        officerIds: nextIds,
+        ...(!alreadyMember ? { memberCount: increment(1) } : {}),
+      })
+      if (!alreadyMember) {
+        batch.set(doc(db, 'memberships', `${uid}_${invitation.clubId}`), {
+          uid,
+          clubId: invitation.clubId,
+          joinedAt: Date.now(),
+        })
+      }
       await batch.commit()
     },
   },
