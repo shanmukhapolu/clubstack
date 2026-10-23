@@ -41,6 +41,8 @@ import type {
   Role,
 } from './types'
 
+let accountCreationInProgress = false
+
 function requireDb(): Firestore {
   if (!firestore) throw new Error('Firebase is not configured.')
   return firestore
@@ -156,10 +158,11 @@ export const firebaseApi: ClubStackApi = {
         }
 
         const profileRef = doc(db, 'users', firebaseUser.uid)
+        const profileCreationBelongsToSignup = accountCreationInProgress
         void (async () => {
           try {
             const existing = await getDoc(profileRef)
-            if (!existing.exists()) {
+            if (!existing.exists() && !profileCreationBelongsToSignup) {
               await setDoc(profileRef, {
                 displayName:
                   firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Student',
@@ -193,14 +196,19 @@ export const firebaseApi: ClubStackApi = {
     async signUp(name, email, password, role) {
       const auth = requireAuth()
       const db = requireDb()
-      const credential = await createUserWithEmailAndPassword(auth, email, password)
-      await firebaseUpdateProfile(credential.user, { displayName: name })
-      await setDoc(doc(db, 'users', credential.user.uid), {
-        displayName: name,
-        email,
-        role,
-        createdAt: Date.now(),
-      })
+      accountCreationInProgress = true
+      try {
+        const credential = await createUserWithEmailAndPassword(auth, email, password)
+        await firebaseUpdateProfile(credential.user, { displayName: name })
+        await setDoc(doc(db, 'users', credential.user.uid), {
+          displayName: name,
+          email,
+          role,
+          createdAt: Date.now(),
+        })
+      } finally {
+        accountCreationInProgress = false
+      }
     },
 
     async signInWithGoogle() {
