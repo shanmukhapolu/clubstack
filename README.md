@@ -60,16 +60,20 @@ Approved club pages and their public announcements/events can be read without si
 
 ## Deploy with Firebase Hosting
 
-Install the Firebase CLI, sign in, and initialize Hosting in this directory. Choose the current directory (`.`) as the public directory and configure it as a single-page app only if you later add client-side routes; the current version does not need an SPA rewrite.
+Install the Firebase CLI and select the existing `clubstackapp2` project from this repository directory. The repository already includes `firebase.json`; do not run `firebase init` unless you intentionally want to reconfigure it.
 
-```bash
+PowerShell commands (run from the folder containing `firebase.json`):
+
+```powershell
 npm install -g firebase-tools
 firebase login
-firebase init hosting
-firebase deploy --only hosting
+firebase projects:list
+firebase use --add
+# Select clubstackapp2 when prompted and choose an alias such as default.
+firebase deploy --only firestore:rules,hosting
 ```
 
-If prompted for a framework/build command, this app has no build step. Verify the public directory contains `index.html`, `styles.css`, `app.js`, and `firebase-config.js`. Add the deployed domain to Firebase Authentication's authorized domains.
+Before deploying, enable **Authentication → Sign-in method → Email/Password** and create the Cloud Firestore database in the Firebase Console. The deployment command publishes the repository's `firestore.rules` and the static site. This app has no build step. Add the deployed Hosting domain to Authentication → Settings → Authorized domains. If `firebase use --add` has already configured the project, you can deploy directly with `firebase deploy --only firestore:rules,hosting`.
 
 ## Before using it school-wide
 
