@@ -26,8 +26,8 @@ service cloud.firestore {
     }
 
     // ── User profiles ──────────────────────────────────────────────────────
-    // A profile is created with role "student" on first sign-in. Only an
-    // existing admin can promote or demote someone.
+    // During testing, signup can create student, teacher, or admin profiles.
+    // Restrict this allowlist before opening ClubStack for real school use.
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
 
