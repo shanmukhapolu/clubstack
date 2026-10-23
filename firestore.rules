@@ -201,7 +201,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.clubId is string
-        && (isAdmin() || isClubLeader(request.resource.data.clubId))
+        && isClubManager(request.resource.data.clubId)
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.startAt is number
@@ -211,7 +211,7 @@ service cloud.firestore {
         || (isClubManager(resource.data.clubId)
             && onlyChanged(['title', 'description', 'location', 'startAt', 'endAt']));
 
-      allow delete: if isAdmin() || isClubLeader(resource.data.clubId);
+      allow delete: if isClubManager(resource.data.clubId);
     }
   }
 }
