@@ -116,7 +116,12 @@ export function ClubSettingsPage() {
   if (!canManage) return <div className="rounded-2xl border border-line bg-surface p-6 text-center"><Settings2 size={24} className="mx-auto text-muted"/><p className="mt-2 text-[14px] font-bold">Settings are limited to club managers</p><p className="mt-1 text-[12px] text-muted">You can view the club’s overview and meetings, but only its leader, officers, accepted advisor, or admins can edit settings.</p><Link to={`/clubs/${club.id}`} className="mt-3 inline-block text-[12px] font-semibold text-brand-600 hover:underline">Back to club</Link></div>
 
   return <div className="fade-in">
-    <div className="mb-4 flex flex-wrap items-center gap-2 text-[12px]"><Link to={`/clubs/${club.id}`} className="font-semibold text-muted hover:text-ink">{club.name}</Link><span className="text-muted">/</span><span className="font-semibold text-ink">Settings</span></div>
+    <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px]"><Link to={`/clubs/${club.id}`} className="font-semibold text-muted hover:text-ink">{club.name}</Link><span className="text-muted">/</span><span className="font-semibold text-ink">Settings</span></div>
+    <nav aria-label="Club pages" className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
+      <Link to={`/clubs/${club.id}`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Overview</Link>
+      <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
+      <span aria-current="page" className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
+    </nav>
     <PageHeader eyebrow="Club settings" title="Club information." description="Update the details shown to students and manage student officer invitations. Officers added later must already be club members." />
     <div className="grid items-start gap-5 xl:grid-cols-[1fr_0.9fr]">
       <form onSubmit={saveDetails} className="card space-y-4 p-4 sm:p-6">
