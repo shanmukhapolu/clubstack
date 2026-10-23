@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Check, X, ShieldAlert,
-  Building2, Flag, Trash2, ClipboardList,
+  Building2, Trash2, ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -157,19 +157,6 @@ export function RoleWorkspacePage() {
     finally { setWorkingId(null) }
   }
 
-  async function reportClub(club: Club) {
-    const reason = window.prompt(`What concern are you reporting about ${club.name}? (Safety, policy, inaccurate information, or other)`)
-    if (!reason?.trim()) return
-    const details = window.prompt('Add details for the platform administrators (optional).') ?? ''
-    setWorkingId(club.id)
-    try {
-      await api.moderation.create({ clubId: club.id, clubName: club.name, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000) }, user)
-      if (user.role === 'teacher') setReports((current) => [{ id: `local-${Date.now()}`, reporterId: user.id, reporterName: user.displayName, clubId: club.id, clubName: club.name, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000), status: 'open', createdAt: Date.now() }, ...current])
-      notify('Report sent to platform administrators.')
-    } catch (caught) { notify(friendlyError(caught), 'error') }
-    finally { setWorkingId(null) }
-  }
-
   async function setClubStatus(club: Club, status: ClubStatus) {
     if (status === 'rejected' && !window.confirm(`Reject “${club.name}”? The leader can revise it.`)) return
     setWorkingId(club.id)
@@ -271,7 +258,7 @@ export function RoleWorkspacePage() {
 
   if (!isAdmin && section === 'clubs') return <div className="fade-in">
     <PageHeader eyebrow="Teacher workspace" title="My clubs." description="Clubs appear here after you accept their sponsorship request. Open a club to see its details and meetings." />
-    {clubsLoading?<Spinner label="Loading your clubs"/>:teacherClubs.length===0?<div className="rounded-2xl border border-dashed border-line bg-surface px-4 py-9 text-center"><Building2 size={24} className="mx-auto text-muted"/><p className="mt-3 text-[14px] font-bold">No advised clubs yet</p><p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted">When a student asks you to sponsor a club, the request will appear on your home page. Accepted clubs will be listed here.</p><Link to="/teacher" className={buttonStyles('secondary','sm','mt-4')}>Review requests</Link></div>:<div className="grid gap-3 md:grid-cols-2">{teacherClubs.map(club=><div key={club.id} className="card p-4"><div className="flex items-start gap-3"><ClubMark club={club} size={44}/><div className="min-w-0 flex-1"><Link to={`/clubs/${club.id}`} className="text-[14px] font-bold hover:underline">{club.name}</Link><p className="mt-1 text-[11.5px] text-muted">{club.category} · {club.memberCount} members</p><p className="mt-2 line-clamp-2 text-[12.5px] leading-relaxed text-ink-soft">{club.description}</p></div></div><div className="mt-4 flex flex-wrap gap-2"><Link to={`/clubs/${club.id}`} className={buttonStyles('secondary','sm')}>Open club</Link><Link to={`/clubs/${club.id}/meetings`} className={buttonStyles('ghost','sm')}>Meetings</Link><Button size="sm" variant="ghost" loading={workingId===club.id} onClick={()=>void reportClub(club)}><Flag size={14}/> Report concern</Button></div></div>)}</div>}
+    {clubsLoading?<Spinner label="Loading your clubs"/>:teacherClubs.length===0?<div className="rounded-2xl border border-dashed border-line bg-surface px-4 py-9 text-center"><Building2 size={24} className="mx-auto text-muted"/><p className="mt-3 text-[14px] font-bold">No advised clubs yet</p><p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted">When a student asks you to sponsor a club, the request will appear on your home page. Accepted clubs will be listed here.</p><Link to="/teacher" className={buttonStyles('secondary','sm','mt-4')}>Review requests</Link></div>:<div className="grid gap-3 md:grid-cols-2">{teacherClubs.map(club=><div key={club.id} className="card p-4"><div className="flex items-start gap-3"><ClubMark club={club} size={44}/><div className="min-w-0 flex-1"><Link to={`/clubs/${club.id}`} className="text-[14px] font-bold hover:underline">{club.name}</Link><p className="mt-1 text-[11.5px] text-muted">{club.category} · {club.memberCount} members</p><p className="mt-2 line-clamp-2 text-[12.5px] leading-relaxed text-ink-soft">{club.description}</p></div></div><div className="mt-4 flex flex-wrap gap-2"><Link to={`/clubs/${club.id}`} className={buttonStyles('secondary','sm')}>Open club</Link><Link to={`/clubs/${club.id}/meetings`} className={buttonStyles('ghost','sm')}>Meetings</Link></div></div>)}</div>}
   </div>
 
   if (!isAdmin && section === 'calendar') {
@@ -282,7 +269,7 @@ export function RoleWorkspacePage() {
 
   if (!isAdmin && section === 'reports') return <div className="fade-in">
     <PageHeader eyebrow="Teacher workspace" title="Your reports." description="Reports you have sent to platform administrators and their current status." />
-    {loadingData?<Spinner label="Loading your reports"/>:reports.length===0?<div className="rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center"><ClipboardList size={22} className="mx-auto text-muted"/><p className="mt-2 text-[13px] font-semibold">No reports filed yet</p><p className="mt-1 text-[12px] text-muted">Use “Report concern” from My Clubs if an issue needs administrator attention.</p></div>:<div className="space-y-3">{reports.map(report=><div key={report.id} className="card p-4"><div className="flex flex-wrap items-center gap-2"><Link to={`/clubs/${report.clubId}`} className="text-[14px] font-bold hover:underline">{report.clubName}</Link><Badge tone={report.status==='resolved'?'lime':report.status==='open'?'warn':'muted'}>{report.status}</Badge></div><p className="mt-1 text-[12px] text-muted">{report.reason} · {relativeTime(report.createdAt)}</p>{report.details&&<p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">{report.details}</p>}</div>)}</div>}
+    {loadingData?<Spinner label="Loading your reports"/>:reports.length===0?<div className="rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center"><ClipboardList size={22} className="mx-auto text-muted"/><p className="mt-2 text-[13px] font-semibold">No reports filed yet</p><p className="mt-1 text-[12px] text-muted">Open the relevant club page and choose “Report a concern” to alert platform administrators.</p></div>:<div className="space-y-3">{reports.map(report=><div key={report.id} className="card p-4"><div className="flex flex-wrap items-center gap-2"><Link to={`/clubs/${report.clubId}`} className="text-[14px] font-bold hover:underline">{report.clubName}</Link><Badge tone={report.status==='resolved'?'lime':report.status==='open'?'warn':'muted'}>{report.status}</Badge></div><p className="mt-1 text-[12px] text-muted">{report.reason} · {relativeTime(report.createdAt)}</p>{report.details&&<p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">{report.details}</p>}</div>)}</div>}
   </div>
 
   return <div className="fade-in"><PageHeader eyebrow={isAdmin?'Administration':'Teacher workspace'} title="Nothing here yet." description="Use the navigation to open a workspace page." /><Link to={isAdmin?'/admin':'/teacher'} className={buttonStyles('secondary','sm')}>Go to home</Link></div>
