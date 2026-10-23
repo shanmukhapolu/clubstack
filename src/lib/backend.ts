@@ -6,6 +6,8 @@ import type {
   ClubInput,
   ClubStatus,
   ClubSponsorRequest,
+  OfficerInvitation,
+  OfficerInvitationStatus,
   SponsorRequestStatus,
   ModerationReport,
   ReportStatus,
@@ -28,13 +30,14 @@ export interface ClubsApi {
   list(): Promise<Club[]>
   get(id: string): Promise<Club | null>
   create(input: ClubInput, leader: AppUser): Promise<string>
-  update(id: string, patch: Partial<ClubInput>): Promise<void>
+  update(id: string, patch: Partial<Club>): Promise<void>
   setStatus(id: string, status: ClubStatus): Promise<void>
   delete(id: string): Promise<void>
 }
 
 export interface MembershipsApi {
   listMine(uid: string): Promise<string[]>
+  listMembers(clubId: string): Promise<string[]>
   join(clubId: string): Promise<void>
   leave(clubId: string): Promise<void>
 }
@@ -58,6 +61,7 @@ export interface EventsApi {
 
 export interface ModerationApi {
   list(): Promise<ModerationReport[]>
+  listMine(uid: string): Promise<ModerationReport[]>
   create(input: { clubId: string; clubName: string; reason: string; details: string }, reporter: AppUser): Promise<void>
   setStatus(id: string, status: ReportStatus): Promise<void>
 }
@@ -71,7 +75,15 @@ export interface SponsorRequestsApi {
 export interface UsersApi {
   list(): Promise<AppUser[]>
   listDirectory(): Promise<AppUser[]>
+  searchDirectory(prefix: string, role: Role): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
+}
+
+export interface OfficerInvitationsApi {
+  listForUser(uid: string): Promise<OfficerInvitation[]>
+  listForClub(clubId: string): Promise<OfficerInvitation[]>
+  create(clubId: string, clubName: string, officer: { uid: string; displayName: string; email: string; title: string }, inviter: AppUser): Promise<void>
+  respond(invitationId: string, status: Extract<OfficerInvitationStatus, 'accepted' | 'declined'>): Promise<void>
 }
 
 export interface DemoApi {
@@ -89,6 +101,7 @@ export interface ClubStackApi {
   users: UsersApi
   moderation: ModerationApi
   sponsorRequests: SponsorRequestsApi
+  officerInvitations: OfficerInvitationsApi
   demo?: DemoApi
 }
 
