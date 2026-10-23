@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { api } from '../lib/backend'
 import { friendlyError } from '../lib/helpers'
 import { CATEGORIES, MEETING_DAYS } from '../lib/types'
-import type { AppUser, Club, ClubCategory, ClubInvitationStatus, ClubOfficer, OfficerInvitationStatus, OfficerInvitation } from '../lib/types'
+import type { AppUser, Club, ClubCategory, ClubOfficer, OfficerInvitation } from '../lib/types'
 import { PageHeader } from '../components/PageHeader'
 import { Badge, Button, Spinner } from '../components/ui'
 
