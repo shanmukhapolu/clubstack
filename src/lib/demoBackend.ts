@@ -449,9 +449,21 @@ export const demoApi: ClubStackApi = {
         if (!current) return
         current.status = status
         if (status === 'accepted') {
+          const club = draft.clubs.find((item) => item.id === current.clubId)
+          if (!club) throw new Error('The club no longer exists.')
+          const alreadyMember = draft.memberships.some(item => item.uid === current.invitedUserId && item.clubId === current.clubId)
+          if (!alreadyMember) {
+            draft.memberships.push({
+              id: `${current.invitedUserId}_${current.clubId}`,
+              uid: current.invitedUserId,
+              clubId: current.clubId,
+              joinedAt: Date.now(),
+            })
+          }
           updateClub(draft, current.clubId, {
-            officers: [...(draft.clubs.find((club) => club.id === current.clubId)?.officers ?? []).filter((item) => item.uid !== current.invitedUserId), { uid: current.invitedUserId, displayName: current.invitedUserName, email: '', title: current.title }],
-            officerIds: [...new Set([...(draft.clubs.find((club) => club.id === current.clubId)?.officerIds ?? []), current.invitedUserId])],
+            officers: [...(club.officers ?? []).filter((item) => item.uid !== current.invitedUserId), { uid: current.invitedUserId, displayName: current.invitedUserName, email: '', title: current.title }],
+            officerIds: [...new Set([...(club.officerIds ?? []), current.invitedUserId])],
+            memberCount: club.memberCount + (alreadyMember ? 0 : 1),
           })
         }
       })
