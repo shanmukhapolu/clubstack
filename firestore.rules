@@ -32,6 +32,10 @@ service cloud.firestore {
         && clubDoc(clubId).sponsorStatus == 'accepted';
     }
 
+    function isClubManager(clubId) {
+      return isAdmin() || isClubLeader(clubId) || isClubSponsor(clubId);
+    }
+
     function onlyChanged(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
@@ -177,7 +181,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.clubId is string
-        && (isAdmin() || isClubLeader(request.resource.data.clubId))
+        && isClubManager(request.resource.data.clubId)
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.body is string
@@ -185,9 +189,9 @@ service cloud.firestore {
         && request.resource.data.createdAt is number;
 
       allow update: if isAdmin()
-        || (isClubLeader(resource.data.clubId) && onlyChanged(['title', 'body']));
+        || (isClubManager(resource.data.clubId) && onlyChanged(['title', 'body']));
 
-      allow delete: if isAdmin() || isClubLeader(resource.data.clubId);
+      allow delete: if isClubManager(resource.data.clubId);
     }
 
     // ── Meetings & events ──────────────────────────────────────────────────
@@ -204,7 +208,7 @@ service cloud.firestore {
         && request.resource.data.createdAt is number;
 
       allow update: if isAdmin()
-        || (isClubLeader(resource.data.clubId)
+        || (isClubManager(resource.data.clubId)
             && onlyChanged(['title', 'description', 'location', 'startAt', 'endAt']));
 
       allow delete: if isAdmin() || isClubLeader(resource.data.clubId);
