@@ -351,7 +351,7 @@ async function renderCalendar() {
     });
   } catch (error) {
     console.error(error);
-    root.innerHTML = '<section class="panel">' + renderEmpty('Could not load events', 'Check Firestore rules and publish the events collection-group index.') + '</section>';
+    root.innerHTML = '<section class="panel">' + renderEmpty('Could not load events', 'Check Firestore rules and deploy the calendar event index.') + '</section>';
     return;
   }
   root.innerHTML = '<section class="panel"><div class="panel-heading"><h3>Upcoming events</h3><span>' + events.length + '</span></div>' +
