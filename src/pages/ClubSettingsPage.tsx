@@ -59,7 +59,7 @@ export function ClubSettingsPage() {
     const prefix = memberSearch.trim()
     if (prefix.length < 4 || !canManage) { setMemberResults([]); return }
     let active = true
-    void api.users.searchDirectory(prefix, 'student').then(results => {
+    void api.users.searchDirectory(prefix, 'student', 100).then(results => {
       if (active) setMemberResults(results.filter(person => memberIds.includes(person.id) && !(club?.officerIds ?? []).includes(person.id) && person.id !== club?.leaderId))
     }).catch(caught => {
       if (active) { setMemberResults([]); notify(friendlyError(caught), 'error') }
