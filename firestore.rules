@@ -73,18 +73,23 @@ service cloud.firestore {
       }
     }
 
-    // Enables one indexed calendar query across all clubs' events subcollections.
-    match /{path=**}/events/{eventId} {
+    // Public event index keeps the calendar to one indexed query at school scale.
+    match /calendarEvents/{eventId} {
       allow read: if resource.data.status == 'published' ||
-        (activeUser() && resource.data.get('clubId', '') is string && canManageClub(resource.data.clubId));
+        (activeUser() && canManageClub(resource.data.clubId));
       allow create: if activeUser() &&
         request.resource.data.status == 'published' &&
         request.resource.data.clubId is string &&
         request.resource.data.createdBy == request.auth.uid &&
         get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.status == 'approved' &&
         canManageClub(request.resource.data.clubId);
-      allow update, delete: if isAdmin() ||
-        (resource.data.get('clubId', '') is string && canManageClub(resource.data.clubId));
+      allow update: if isAdmin() ||
+        (canManageClub(resource.data.clubId) &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.clubId == resource.data.clubId &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'date', 'location', 'updatedAt']));
+      allow delete: if isAdmin() || canManageClub(resource.data.clubId);
     }
 
     match /memberships/{membershipId} {
