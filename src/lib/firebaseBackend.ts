@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
   onSnapshot,
   query,
   runTransaction,
@@ -39,6 +40,8 @@ import type {
   SponsorRequestStatus,
   Membership,
   ModerationReport,
+  OfficerInvitation,
+  OfficerInvitationStatus,
   ReportStatus,
   Role,
 } from './types'
@@ -204,6 +207,7 @@ export const firebaseApi: ClubStackApi = {
               displayName: profile.displayName,
               role: profile.role,
               createdAt: profile.createdAt,
+              nameLower: profile.displayName.toLocaleLowerCase(),
             }, { merge: true }).catch((error) => console.error('Could not sync the user directory.', error))
             callback(profile)
           })
@@ -234,6 +238,7 @@ export const firebaseApi: ClubStackApi = {
         })
         await setDoc(doc(db, 'userDirectory', credential.user.uid), {
           displayName: name, role, createdAt,
+          nameLower: name.toLocaleLowerCase(),
         })
       } finally {
         accountCreationInProgress = false
@@ -272,8 +277,8 @@ export const firebaseApi: ClubStackApi = {
         leaderId: leader.id,
         leaderName: leader.displayName,
         leaderTitle: input.leaderTitle || 'President',
-        officers: input.officers ?? [],
-        officerIds: (input.officers ?? []).map((officer) => officer.uid),
+        officers: [],
+        officerIds: [],
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
@@ -307,7 +312,7 @@ export const firebaseApi: ClubStackApi = {
       return clubRef.id
     },
 
-    async update(id, patch) {
+    async update(id, patch: Partial<Club>) {
       await updateDoc(doc(requireDb(), 'clubs', id), { ...patch })
     },
 
@@ -337,6 +342,11 @@ export const firebaseApi: ClubStackApi = {
         query(collection(requireDb(), 'memberships'), where('uid', '==', uid)),
       )
       return snapshot.docs.map((item) => (item.data() as Membership).clubId)
+    },
+
+    async listMembers(clubId) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'memberships'), where('clubId', '==', clubId)))
+      return snapshot.docs.map((item) => stringOr(item.data().uid, '')).filter(Boolean)
     },
 
     async join(clubId) {
@@ -456,6 +466,11 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => toModerationReport(item.id, item.data())).sort(byNewest)
     },
 
+    async listMine(uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'moderationReports'), where('reporterId', '==', uid)))
+      return snapshot.docs.map((item) => toModerationReport(item.id, item.data())).sort(byNewest)
+    },
+
     async create(input, reporter) {
       await addDoc(collection(requireDb(), 'moderationReports'), {
         ...input,
@@ -508,6 +523,54 @@ export const firebaseApi: ClubStackApi = {
     },
   },
 
+  officerInvitations: {
+    async listForUser(uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'officerInvitations'), where('invitedUserId', '==', uid)))
+      return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as OfficerInvitation)).sort(byNewest)
+    },
+
+    async listForClub(clubId) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'officerInvitations'), where('clubId', '==', clubId)))
+      return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as OfficerInvitation)).sort(byNewest)
+    },
+
+    async create(clubId, clubName, officer, inviter) {
+      const id = `${clubId}_${officer.uid}`
+      await setDoc(doc(requireDb(), 'officerInvitations', id), {
+        clubId, clubName, invitedUserId: officer.uid, invitedUserName: officer.displayName,
+        invitedById: inviter.id, invitedByName: inviter.displayName, title: officer.title,
+        status: 'pending' satisfies OfficerInvitationStatus, createdAt: Date.now(),
+      })
+    },
+
+    async respond(invitationId, status) {
+      const db = requireDb()
+      const auth = requireAuth()
+      const invitationRef = doc(db, 'officerInvitations', invitationId)
+      const invitationSnapshot = await getDoc(invitationRef)
+      if (!invitationSnapshot.exists()) throw new Error('This officer invitation no longer exists.')
+      const invitation = { id: invitationSnapshot.id, ...invitationSnapshot.data() } as OfficerInvitation
+      if (invitation.invitedUserId !== auth.currentUser?.uid) throw new Error('This invitation belongs to another account.')
+      if (invitation.status !== 'pending') throw new Error('This invitation has already been answered.')
+      if (status === 'declined') {
+        await updateDoc(invitationRef, { status })
+        return
+      }
+      const clubRef = doc(db, 'clubs', invitation.clubId)
+      const clubSnapshot = await getDoc(clubRef)
+      if (!clubSnapshot.exists()) throw new Error('The club no longer exists.')
+      const clubData = clubSnapshot.data()
+      const officers = Array.isArray(clubData.officers) ? clubData.officers as Club['officers'] : []
+      const officer = { uid: invitation.invitedUserId, displayName: invitation.invitedUserName, email: '', title: invitation.title }
+      const nextOfficers = [...officers.filter((item) => item.uid !== officer.uid), officer]
+      const nextIds = [...new Set([...(Array.isArray(clubData.officerIds) ? clubData.officerIds as string[] : []), officer.uid])]
+      const batch = writeBatch(db)
+      batch.update(invitationRef, { status })
+      batch.update(clubRef, { officers: nextOfficers, officerIds: nextIds })
+      await batch.commit()
+    },
+  },
+
   users: {
     async list() {
       const snapshot = await getDocs(collection(requireDb(), 'users'))
@@ -519,6 +582,23 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => toUser(item.id, item.data())).sort((a, b) => a.displayName.localeCompare(b.displayName))
     },
 
+    async searchDirectory(prefix, role) {
+      const needle = prefix.trim().toLocaleLowerCase()
+      if (needle.length < 2) return []
+      const db = requireDb()
+      const lowerQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('nameLower', '>=', needle), where('nameLower', '<=', needle + '\\uf8ff'), limit(15))
+      const legacyPrefix = needle.charAt(0).toLocaleUpperCase() + needle.slice(1)
+      const legacyQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('displayName', '>=', legacyPrefix), where('displayName', '<=', legacyPrefix + '\\uf8ff'), limit(15))
+      const [lower, legacy] = await Promise.all([getDocs(lowerQuery), getDocs(legacyQuery)])
+      const byId = new Map<string, AppUser>()
+      for (const item of [...lower.docs, ...legacy.docs]) {
+        const data = item.data()
+        const person = toUser(item.id, data)
+        if (person.role === role && person.displayName.toLocaleLowerCase().includes(needle)) byId.set(person.id, person)
+      }
+      return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, 15)
+    },
+
     async setRole(uid, role) {
       const db = requireDb()
       await updateDoc(doc(db, 'users', uid), { role })
@@ -526,6 +606,7 @@ export const firebaseApi: ClubStackApi = {
       if (profile.exists()) await setDoc(doc(db, 'userDirectory', uid), {
         displayName: stringOr(profile.data().displayName, 'Student'), role,
         createdAt: numberOr(profile.data().createdAt),
+        nameLower: stringOr(profile.data().displayName, 'Student').toLocaleLowerCase(),
       }, { merge: true })
     },
   },
