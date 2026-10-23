@@ -595,6 +595,7 @@ export function createDemoStore(): DemoStore {
     contactEmail: `${club.name.toLowerCase().replace(/[^a-z]+/g, '.')}@northgate.edu`,
     leaderTitle: 'President',
     officers: [],
+    officerIds: [],
     sponsorId: '',
     sponsorName: '',
     sponsorStatus: 'none',
