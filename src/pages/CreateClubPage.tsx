@@ -139,6 +139,7 @@ export function CreateClubPage() {
     leaderName: currentUser.displayName,
     leaderTitle: form.leaderTitle,
     officers: form.officers,
+    officerIds: form.officers.map((officer) => officer.uid),
     sponsorId: form.sponsorId,
     sponsorName: form.sponsorName,
     sponsorStatus: form.sponsorId ? 'pending' : 'none',
