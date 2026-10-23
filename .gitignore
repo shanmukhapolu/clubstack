@@ -1,0 +1,31 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment files (keep the example)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+firebase-debug.log
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Firebase
+.firebase/
+firebase-debug.log
+/freebuff-sites-build/

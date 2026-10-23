@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-ink: #14151a;
+  --color-ink-soft: #3c3d45;
+  --color-muted: #71727e;
+  --color-line: #e7e7e1;
+  --color-canvas: #f6f6f2;
+  --color-surface: #ffffff;
+
+  --color-brand-50: #f2f0ff;
+  --color-brand-100: #e7e3ff;
+  --color-brand-200: #d1c9ff;
+  --color-brand-300: #b0a1ff;
+  --color-brand-400: #8b7cff;
+  --color-brand-500: #6c5ce7;
+  --color-brand-600: #5546d6;
+  --color-brand-700: #4335b4;
+  --color-brand-800: #322780;
+  --color-brand-900: #241c5a;
+
+  --color-lime: #c8f169;
+  --color-lime-deep: #9dc93a;
+  --color-blush: #ffd9d0;
+  --color-sky: #d7e9ff;
+  --color-sand: #f6e6c9;
+
+  --radius-4xl: 2rem;
+  --shadow-card: 0 1px 2px rgb(20 21 26 / 0.04), 0 8px 24px -12px rgb(20 21 26 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(20 21 26 / 0.05), 0 18px 40px -20px rgb(20 21 26 / 0.24);
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-feature-settings: 'ss01' on, 'cv11' on;
+  }
+
+  button,
+  [role='button'],
+  a {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-line bg-surface;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted/70 transition-colors;
+  }
+
+  .field:focus {
+    @apply border-brand-300 outline-none ring-4 ring-brand-100;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[13px] font-semibold text-ink-soft;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fade-in {
+    animation: fade-in 0.35s ease both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

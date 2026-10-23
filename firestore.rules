@@ -1,0 +1,145 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function clubDoc(clubId) {
+      return get(/databases/$(database)/documents/clubs/$(clubId)).data;
+    }
+
+    function isClubLeader(clubId) {
+      return isSignedIn() && clubDoc(clubId).leaderId == request.auth.uid;
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // ── User profiles ──────────────────────────────────────────────────────
+    // A profile is created with role "student" on first sign-in. Only an
+    // existing admin can promote or demote someone.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'student'
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 2
+        && request.resource.data.email is string;
+
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && request.auth.uid == userId
+            && onlyChanged(['displayName', 'grade'])
+            && request.resource.data.displayName is string
+            && request.resource.data.displayName.size() >= 2);
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Clubs ──────────────────────────────────────────────────────────────
+    // New pages are always created as "pending" with the creator as leader.
+    // Admins approve or reject them; leaders may edit their own content but
+    // cannot change the leader, status, or creation date.
+    match /clubs/{clubId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.leaderId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 20
+        && request.resource.data.category is string
+        && request.resource.data.emoji is string
+        && request.resource.data.contactEmail is string
+        && request.resource.data.memberCount == 0
+        && request.resource.data.createdAt is number;
+
+      allow update: if isAdmin()
+        || (isClubLeader(clubId)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+                 ['leaderId', 'status', 'createdAt', 'memberCount']))
+        || (isSignedIn()
+            && onlyChanged(['memberCount'])
+            && request.resource.data.memberCount is number
+            && request.resource.data.memberCount >= 0
+            && (request.resource.data.memberCount == resource.data.memberCount + 1
+                || request.resource.data.memberCount == resource.data.memberCount - 1));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Memberships ────────────────────────────────────────────────────────
+    // Students join approved clubs. A leader may join their own pending club
+    // (the 1 member counted at creation).
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.clubId is string
+        && request.resource.data.joinedAt is number
+        && (clubDoc(request.resource.data.clubId).status == 'approved'
+            || clubDoc(request.resource.data.clubId).leaderId == request.auth.uid);
+
+      allow delete: if isSignedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow update: if false;
+    }
+
+    // ── Announcements ──────────────────────────────────────────────────────
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.clubId is string
+        && (isAdmin() || isClubLeader(request.resource.data.clubId))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.createdAt is number;
+
+      allow update: if isAdmin()
+        || (isClubLeader(resource.data.clubId) && onlyChanged(['title', 'body']));
+
+      allow delete: if isAdmin() || isClubLeader(resource.data.clubId);
+    }
+
+    // ── Meetings & events ──────────────────────────────────────────────────
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.clubId is string
+        && (isAdmin() || isClubLeader(request.resource.data.clubId))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.startAt is number
+        && request.resource.data.createdAt is number;
+
+      allow update: if isAdmin()
+        || (isClubLeader(resource.data.clubId)
+            && onlyChanged(['title', 'description', 'location', 'startAt', 'endAt']));
+
+      allow delete: if isAdmin() || isClubLeader(resource.data.clubId);
+    }
+  }
+}

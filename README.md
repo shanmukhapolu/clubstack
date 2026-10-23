@@ -1,0 +1,305 @@
+# ClubStack
+
+One place for every school club. ClubStack replaces the tangle of Remind, Discord, Slack,
+GroupMe, and Band links with a searchable club directory, club pages, announcements, and a shared
+calendar — backed by Firebase Authentication and Cloud Firestore.
+
+> **Previewing right now?** With no Firebase configuration present, ClubStack automatically runs in
+> **demo mode**: the full app is usable, with sample clubs and local browser storage. Add your
+> Firebase values to `.env.local` to switch to the real backend.
+
+## What's included
+
+**Students**
+- Searchable directory of clubs with category filters and meeting information
+- Club pages with descriptions, leader contact, announcements, and upcoming meetings
+- One-tap join/leave, with a dashboard of joined clubs and their latest updates
+- Shared calendar showing your clubs or every club at school
+
+**Club leaders**
+- Create a club page (submitted to admins for approval)
+- Post and delete announcements
+- Add and remove meetings/events that appear on the school calendar
+- Manage the club page while it waits for approval
+
+**Admins**
+- Approve or reject club pages, with pending and all-club queues
+- Search/review pending submissions with leader and description details
+- View all users and promote/demote admins
+- Pending approval counts surfaced on the dashboard and admin console
+
+**Platform**
+- Firebase Authentication (email/password + Google)
+- Firestore Security Rules enforcing every permission server-side
+- Responsive layout: desktop sidebar, mobile header and bottom tabs
+- Accessible forms, empty states, loading states, and toast feedback
+
+Out of scope for this MVP (intentionally): direct messaging, external platform integrations,
+push notifications, image uploads, and club editing/deletion beyond status management.
+
+---
+
+## Quick start
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. Without Firebase environment variables the app starts in **demo mode**.
+
+### Demo accounts
+
+Click any account on the sign-in screen, or use the demo role switcher in the sidebar.
+
+| Role | Name | Email | Password |
+| --- | --- | --- | --- |
+| Student | Ava Chen | `ava@student.northgate.edu` | `clubstack` |
+| Club leader | Marcus Reed | `marcus@student.northgate.edu` | `clubstack` |
+| Admin | Dr. Elena Diaz | `ediaz@northgate.edu` | `clubstack` |
+
+Demo data is stored in `localStorage` under `clubstack.demo.v1`. It is created with meetings dated
+relative to today and reseeded automatically after two weeks. Clear the key (or site data) to reset.
+Sign-ups in demo mode create a local student account.
+
+### Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server on `0.0.0.0:3000` |
+| `npm run build` | Typecheck and produce a production build in `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run typecheck` | TypeScript project build without emitting |
+| `npm test` | Vitest unit tests (filtering, date helpers) |
+
+---
+
+## Firebase setup
+
+### 1. Create the project and enable services
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Authentication → Get started → Sign-in method**
+   - Enable **Email/Password** (required).
+   - Enable **Google** if you want the “Continue with Google” button. Set a support email.
+3. **Firestore Database → Create database**
+   - Choose **Production mode** (rules are provided below) and a region near your school.
+4. **Project settings → General → Your apps → Web (`</>`)**
+   - Register the app, then copy the `firebaseConfig` values.
+
+### 2. Add the credentials
+
+Copy `.env.example` to `.env.local` and fill in the values. This file is git-ignored.
+
+| `.env.local` variable | Firebase config field |
+| --- | --- |
+| `VITE_FIREBASE_API_KEY` | `apiKey` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `authDomain` |
+| `VITE_FIREBASE_PROJECT_ID` | `projectId` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `storageBucket` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` |
+| `VITE_FIREBASE_APP_ID` | `appId` |
+
+These identifiers are public client configuration, not secrets. Access is controlled by Firebase
+Security Rules, so never add a service account key or admin SDK credential to this app.
+
+Restart the dev server after editing `.env.local`. To force demo mode while keys are configured, set
+`VITE_DEMO_MODE=true`.
+
+### 3. Deploy the security rules
+
+Either paste [`firestore.rules`](firestore.rules) into **Firestore → Rules** in the console and
+publish, or use the Firebase CLI:
+
+```bash
+npx firebase-tools login
+npx firebase-tools use --add          # select your project, give it an alias
+npx firebase-tools deploy --only firestore:rules
+```
+
+[`firestore.indexes.json`](firestore.indexes.json) contains no composite indexes: every query uses
+single-field filters and sorts client-side, so no index prompts appear. If the directory grows well
+past a few hundred clubs, add pagination and composite indexes for server-side sorting.
+
+### 4. Make yourself an admin
+
+1. Start the app with your Firebase config and create an account (or sign in with Google).
+2. In **Authentication → Users**, copy your user UID.
+3. In **Firestore → Data → `users` → your UID**, set `role` to `"admin"` and publish the change.
+
+The profile document is created automatically on first sign-in with `role: "student"`, so the
+`users/{uid}` document will already exist. Reload the app; the Admin tab appears. All role checks are
+enforced by security rules, not just hidden UI.
+
+### 5. Optional: deploy hosting
+
+```bash
+npm run build
+npx firebase-tools deploy --only hosting
+```
+
+`firebase.json` serves `dist/` and rewrites all paths to `index.html` for client-side routing.
+Firebase Hosting domains are authorized for sign-in automatically; add any custom domain under
+**Authentication → Settings → Authorized domains**.
+
+---
+
+## Data model
+
+All timestamps are stored as millisecond numbers. Collections are top-level to keep queries simple
+and avoid collections-group indexes.
+
+### `users/{uid}`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `displayName` | string | From sign-up or Google profile |
+| `email` | string | Account email |
+| `role` | `"student"` \| `"admin"` | Never self-assigned; admins are set in the console |
+| `grade` | string (optional) | Reserved for a future profile screen |
+| `createdAt` | number | |
+
+### `clubs/{clubId}`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `name`, `description` | string | |
+| `category` | string | One of the categories in `src/lib/types.ts` |
+| `meetingDay`, `meetingTime`, `location` | string | Free-form display fields |
+| `emoji`, `color` | string | Visual identity, no image uploads in the MVP |
+| `leaderId`, `leaderName` | string | Creator is the leader; leadership is derived from this |
+| `contactEmail` | string | |
+| `status` | `"pending"` \| `"approved"` \| `"rejected"` | New clubs always start pending |
+| `memberCount` | number | Kept in sync with memberships via transactions; the leader is auto-joined at creation |
+| `createdAt` | number | |
+
+### `memberships/{uid_clubId}`
+
+| Field | Type |
+| --- | --- |
+| `uid`, `clubId` | string |
+| `joinedAt` | number |
+
+### `announcements/{announcementId}`
+
+| Field | Type |
+| --- | --- |
+| `clubId` | string |
+| `title`, `body` | string |
+| `authorId`, `authorName` | string |
+| `createdAt` | number |
+
+### `events/{eventId}`
+
+| Field | Type |
+| --- | --- |
+| `clubId` | string |
+| `title`, `description`, `location` | string |
+| `startAt` | number |
+| `endAt` | number \| null |
+| `createdBy` | string (uid) |
+| `createdAt` | number |
+
+### Importing your existing clubs
+
+The MVP has no bulk-import UI. To bring over 200 clubs, write documents into `clubs` with
+`status: "approved"`, a valid `leaderId` (a real user UID, or a placeholder until that leader signs
+up), and `memberCount: 0`. Or point the directory at existing data with a one-off script using the
+Firebase Admin SDK — kept outside this client app.
+
+---
+
+## Roles and permissions
+
+| Action | Student | Club leader | Admin |
+| --- | --- | --- | --- |
+| Browse directory and approved clubs | ✅ | ✅ | ✅ |
+| Join/leave an approved club | ✅ | ✅ | ✅ |
+| Read announcements and events | ✅ | ✅ | ✅ |
+| Create a club page (pending) | ✅ | ✅ | ✅ |
+| Post announcements / add meetings | ❌ | ✅ own club | ✅ any club |
+| Delete own club's announcements/events | ❌ | ✅ own club | ✅ any club |
+| See pending club pages | ❌ | ✅ own | ✅ all |
+| Approve/reject clubs | ❌ | ❌ | ✅ |
+| Promote/demote users | ❌ | ❌ | ✅ |
+
+Key rules in [`firestore.rules`](firestore.rules):
+
+- Profiles can only be created by their owner and only with `role: "student"`.
+- Clubs can only be created as `pending` with the creator as leader and `memberCount: 0`;
+  the creator is then added as the first member. Leaders cannot change `leaderId`, `status`, or
+  `createdAt`; only admins change status.
+- Memberships can only be created for yourself, and only for an approved club (or your own pending
+  club at creation). `memberCount` may only move by exactly ±1 and never below zero.
+- Announcement/event creation requires your uid as author and leadership of that club.
+- Admins are recognized by the `users/{uid}.role` document read inside the rules, so changing role UI
+  alone grants nothing.
+
+### Suggested Firestore dashboard habits
+
+- Keep `users` and `clubs` collections as the source of truth; don't edit `memberCount` by hand.
+- When approving a club in the console, set `status` to `"approved"`; this is equivalent to the
+  admin console action.
+- Deleting a club document does not cascade to its announcements/events. Use the admin UI (or a
+  future cleanup job) rather than deleting documents manually.
+
+---
+
+## Project structure
+
+```
+src/
+  App.tsx                  Routes and auth/admin guards
+  components/              App shell, cards, event rows, UI primitives
+  context/                 Auth, clubs/memberships, toasts
+  hooks/useClubFeed.ts     Announcements + events for a set of clubs
+  lib/
+    backend.ts             Backend interface + mode selection
+    firebase.ts            Firebase initialization from Vite env vars
+    firebaseBackend.ts     Auth + Firestore implementation
+    demoBackend.ts         localStorage demo implementation
+    demoSeed.ts            Sample clubs, users, announcements, events
+    types.ts               Domain types, categories, palette
+    dates.ts / helpers.ts  Date, search, and error helpers
+  pages/                   Login, Dashboard, Discover, Club, Calendar, Admin, Create, 404
+firestore.rules            Server-side security rules
+firestore.indexes.json     Composite indexes (none required for the MVP)
+firebase.json              Rules + Hosting + emulator configuration
+```
+
+The UI talks only to the `ClubStackApi` interface in `src/lib/backend.ts`. The Firebase and demo
+implementations share that contract, which keeps pages backend-agnostic and makes it straightforward
+to swap or extend the data layer later.
+
+### Adding a feature
+
+1. Add domain types and any fields to `src/lib/types.ts`.
+2. Add methods to `ClubStackApi` and implement them in both backends (or remove demo support if it is
+   no longer needed).
+3. Update `firestore.rules` to enforce the corresponding permission.
+4. Build the UI against the interface; refetch after mutations (`refresh()` from `useClubs` or
+   `useClubFeed`).
+
+---
+
+## Testing and known limitations
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+Unit tests cover club search/filtering, email/initial helpers, friendly error mapping, calendar grid
+math, timezone-safe datetime inputs, and event ordering.
+
+Known limitations for the MVP:
+
+- Announcements/events are loaded per club set and sorted in the browser; add pagination before
+  scaling to very large announcement histories.
+- No image/logo uploads; clubs use an emoji + accent color instead of Firebase Storage.
+- No password reset screen (Firebase supports it; add `sendPasswordResetEmail` when needed).
+- No club editing screen beyond status changes; leaders can manage announcements and events.
+- Google sign-in requires enabling the provider and an authorized domain.
+- Firestore rules allow any signed-in user to read all club, announcement, and event documents;
+  content is not sensitive, but tighten reads to memberships if that changes.
