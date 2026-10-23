@@ -26,6 +26,13 @@ function FullScreenLoader() {
   )
 }
 
+function RoleHome() {
+  const { user } = useAuth()
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />
+  if (user?.role === 'teacher') return <Navigate to="/teacher" replace />
+  return <DashboardPage />
+}
+
 function RequireAuth() {
   const { user, loading } = useAuth()
   const location = useLocation()
@@ -37,8 +44,9 @@ function RequireAuth() {
   return <Outlet />
 }
 
-function RequireStudentOrAdmin() {
+function RequireStudent() {
   const { user } = useAuth()
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />
   if (user?.role === 'teacher') return <Navigate to="/teacher" replace />
   return <Outlet />
 }
@@ -66,13 +74,13 @@ export default function App() {
 
               <Route element={<RequireAuth />}>
                 <Route element={<AppShell />}>
-                  <Route index element={<DashboardPage />} />
-                  <Route path="discover" element={<DiscoverPage />} />
-                  <Route element={<RequireStudentOrAdmin />}>
+                  <Route index element={<RoleHome />} />
+                  <Route element={<RequireStudent />}>
+                    <Route path="discover" element={<DiscoverPage />} />
                     <Route path="clubs/new" element={<CreateClubPage />} />
+                    <Route path="calendar" element={<CalendarPage />} />
                   </Route>
                   <Route path="clubs/:clubId" element={<ClubPage />} />
-                  <Route path="calendar" element={<CalendarPage />} />
                   <Route element={<RequireTeacher />}>
                     <Route path="teacher" element={<TeacherPage />} />
                   </Route>
