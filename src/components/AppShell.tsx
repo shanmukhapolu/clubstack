@@ -204,15 +204,17 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
-          <NavLink
-            to="/clubs/new"
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-semibold text-muted"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ink text-white">
-              <Plus size={13} strokeWidth={3} />
-            </span>
-            Create
-          </NavLink>
+          {user.role !== 'teacher' && (
+            <NavLink
+              to="/clubs/new"
+              className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-semibold text-muted"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ink text-white">
+                <Plus size={13} strokeWidth={3} />
+              </span>
+              Create
+            </NavLink>
+          )}
         </div>
       </nav>
     </div>
