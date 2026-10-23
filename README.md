@@ -38,13 +38,11 @@ The Firebase web config is intended to be included in a client app. Firestore Se
 
 ## First admin and club leaders
 
-New accounts are created with the `student` role. Roles must not be self-assigned.
+**Temporary testing mode:** the signup form currently lets you select `student`, `leader`, or `admin`. The current Firestore rules also allow a user to assign themselves one of these roles so you can test all interfaces. This is intentionally insecure and must not be used with real students or public signups. Before launch, restore the user-create rule to `request.resource.data.role == 'student'` and remove the signup role selector from `index.html`/`app.js`.
 
-1. Create your own account through the app.
-2. In Firebase Console → Authentication, copy your account's **User UID**.
-3. In Firestore, open the `users` collection and the document whose ID is your UID. Change its `role` field from `student` to `admin` (string value `admin`). If the document does not exist yet, create it with `role: "admin"`, your `name`, and `email` fields.
-4. Sign out and sign back in so the app refreshes your role.
-5. To authorize a club leader, change that user's `users/{uid}.role` to `leader` and add their UID to the club document's `leaderIds` array. Club creators are also stored in `createdBy`.
+1. Create an account and select the role needed for your test.
+2. To test leader features, create or approve a club and ensure the test leader UID appears in its `leaderIds` array. Club creators are also stored in `createdBy`.
+3. To test admin features, select `admin` at signup. This works only while the temporary testing rules are deployed.
 
 **Important:** Restrict Firebase Console access to trusted administrators. The first admin must be assigned manually in the console; there is no public admin signup flow.
 
