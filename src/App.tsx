@@ -8,8 +8,10 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { ClubPage } from './pages/ClubPage'
 import { CalendarPage } from './pages/CalendarPage'
-import { AdminPage } from './pages/AdminPage'
-import { TeacherPage } from './pages/TeacherPage'
+import { RoleWorkspacePage } from './pages/RoleWorkspacePage'
+import { ClubSettingsPage } from './pages/ClubSettingsPage'
+import { ClubMeetingsPage } from './pages/ClubMeetingsPage'
+import { OfficerInvitationsPage } from './pages/OfficerInvitationsPage'
 import { CreateClubPage } from './pages/CreateClubPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -79,13 +81,23 @@ export default function App() {
                     <Route path="discover" element={<DiscoverPage />} />
                     <Route path="clubs/new" element={<CreateClubPage />} />
                     <Route path="calendar" element={<CalendarPage />} />
+                    <Route path="invitations" element={<OfficerInvitationsPage />} />
                   </Route>
+                  <Route path="clubs/:clubId/meetings" element={<ClubMeetingsPage />} />
+                  <Route path="clubs/:clubId/settings" element={<ClubSettingsPage />} />
                   <Route path="clubs/:clubId" element={<ClubPage />} />
                   <Route element={<RequireTeacher />}>
-                    <Route path="teacher" element={<TeacherPage />} />
+                    <Route path="teacher" element={<RoleWorkspacePage />} />
+                    <Route path="teacher/calendar" element={<RoleWorkspacePage />} />
+                    <Route path="teacher/clubs" element={<RoleWorkspacePage />} />
+                    <Route path="teacher/reports" element={<RoleWorkspacePage />} />
                   </Route>
                   <Route element={<RequireAdmin />}>
-                    <Route path="admin" element={<AdminPage />} />
+                    <Route path="admin" element={<RoleWorkspacePage />} />
+                    <Route path="admin/users" element={<RoleWorkspacePage />} />
+                    <Route path="admin/clubs" element={<RoleWorkspacePage />} />
+                    <Route path="admin/calendar" element={<RoleWorkspacePage />} />
+                    <Route path="admin/security" element={<RoleWorkspacePage />} />
                   </Route>
                 </Route>
               </Route>
