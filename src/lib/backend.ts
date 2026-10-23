@@ -75,7 +75,7 @@ export interface SponsorRequestsApi {
 export interface UsersApi {
   list(): Promise<AppUser[]>
   listDirectory(): Promise<AppUser[]>
-  searchDirectory(prefix: string, role: Role): Promise<AppUser[]>
+  searchDirectory(prefix: string, role: Role, maxResults?: number): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
 }
 
