@@ -519,6 +519,18 @@ export function ClubPage() {
                   <dd className="text-muted">{club.leaderName}</dd>
                 </div>
               </div>
+              {club.sponsorName && (
+                <div className="flex gap-2.5">
+                  <ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted" />
+                  <div><dt className="font-semibold">Teacher sponsor</dt><dd className="text-muted">{club.sponsorName}{club.sponsorStatus === 'pending' ? ' · request pending' : club.sponsorStatus === 'accepted' ? ' · accepted' : ''}</dd></div>
+                </div>
+              )}
+              {(club.officers ?? []).length > 0 && (
+                <div className="flex gap-2.5">
+                  <Users size={15} className="mt-0.5 shrink-0 text-muted" />
+                  <div><dt className="font-semibold">Student officers</dt><dd className="text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div>
+                </div>
+              )}
               {club.contactEmail && (
                 <div className="flex gap-2.5">
                   <Mail size={15} className="mt-0.5 shrink-0 text-muted" />
