@@ -53,27 +53,57 @@ export function CreateClubPage() {
     sponsorId: '',
     sponsorName: '',
   })
-  const [users, setUsers] = useState<AppUser[]>([])
   const [sponsorSearch, setSponsorSearch] = useState('')
-  const [selectedOfficerId, setSelectedOfficerId] = useState('')
+  const [teacherResults, setTeacherResults] = useState<AppUser[]>([])
+  const [teacherSearching, setTeacherSearching] = useState(false)
+  const [officerSearch, setOfficerSearch] = useState('')
+  const [studentResults, setStudentResults] = useState<AppUser[]>([])
+  const [studentSearching, setStudentSearching] = useState(false)
+  const [selectedOfficer, setSelectedOfficer] = useState<AppUser | null>(null)
   const [selectedOfficerTitle, setSelectedOfficerTitle] = useState('Vice President')
 
   useEffect(() => {
+    const prefix = sponsorSearch.trim()
+    if (prefix.length < 2 || form.sponsorName === prefix) {
+      setTeacherResults([])
+      setTeacherSearching(false)
+      return
+    }
     let active = true
-    void api.users.listDirectory().then((items) => {
-      if (active) setUsers(items)
+    setTeacherSearching(true)
+    void api.users.searchDirectory(prefix, 'teacher').then(items => {
+      if (active) setTeacherResults(items)
     }).catch(() => {
-      if (active) setUsers([])
+      if (active) setTeacherResults([])
+    }).finally(() => {
+      if (active) setTeacherSearching(false)
     })
     return () => { active = false }
-  }, [])
+  }, [sponsorSearch, form.sponsorName])
+
+  useEffect(() => {
+    const prefix = officerSearch.trim()
+    if (prefix.length < 4) {
+      setStudentResults([])
+      setStudentSearching(false)
+      return
+    }
+    let active = true
+    setStudentSearching(true)
+    void api.users.searchDirectory(prefix, 'student').then(items => {
+      if (active) setStudentResults(items.filter(person => person.id !== user?.id && !form.officers.some(officer => officer.uid === person.id)))
+    }).catch(() => {
+      if (active) setStudentResults([])
+    }).finally(() => {
+      if (active) setStudentSearching(false)
+    })
+    return () => { active = false }
+  }, [officerSearch, form.officers, user?.id])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (!user) return null
   const currentUser = user
-  const teachers = users.filter((person) => person.role === 'teacher')
-  const students = users.filter((person) => person.role === 'student' && person.id !== currentUser.id)
 
   function update<K extends keyof ClubInput>(key: K, value: ClubInput[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -99,7 +129,7 @@ export function CreateClubPage() {
       setError('Choose your role in the club.')
       return
     }
-    if (!form.sponsorId || !teachers.some((teacher) => teacher.id === form.sponsorId)) {
+    if (!form.sponsorId || !form.sponsorName) {
       setError('Select a teacher sponsor from the list.')
       return
     }
@@ -121,8 +151,14 @@ export function CreateClubPage() {
         },
         currentUser,
       )
+      const invitations = await Promise.allSettled(form.officers.map(officer =>
+        api.officerInvitations.create(id, form.name.trim(), officer, currentUser),
+      ))
       await refresh()
-      notify('Club page submitted. Your teacher sponsor has been notified in ClubStack.')
+      const failedInvitations = invitations.filter(result => result.status === 'rejected').length
+      notify(failedInvitations === 0
+        ? 'Club page submitted. Your teacher sponsor was notified, and officer invitations were sent.'
+        : `Club page submitted, but ${failedInvitations} officer invitation(s) could not be sent. You can retry from club settings.`)
       navigate(`/clubs/${id}`)
     } catch (caught) {
       setError(friendlyError(caught))
@@ -303,7 +339,7 @@ export function CreateClubPage() {
           <div className="mt-4">
             <label htmlFor="club-leader-title" className="label">Your role in the club</label>
             <select id="club-leader-title" className="field" value={form.leaderTitle} onChange={(event) => update('leaderTitle', event.target.value)}>
-              {['President', 'Founder', 'Vice President', 'Officer', 'Treasurer', 'Secretary', 'Other'].map((title) => <option key={title}>{title}</option>)}
+              {['President', 'Vice President', 'Officer', 'Treasurer', 'Secretary', 'Other'].map((title) => <option key={title}>{title}</option>)}
             </select>
           </div>
 
@@ -312,44 +348,51 @@ export function CreateClubPage() {
             <input
               id="club-sponsor"
               className="field"
-              list="club-teacher-options"
               value={sponsorSearch}
               onChange={(event) => {
                 const value = event.target.value
                 setSponsorSearch(value)
-                const match = teachers.find((teacher) => value === teacher.displayName)
+                const match = teacherResults.find((teacher) => value === teacher.displayName)
                 update('sponsorId', match?.id ?? '')
                 update('sponsorName', match?.displayName ?? '')
               }}
-              placeholder="Type a teacher name to search"
+              placeholder="Type at least 2 letters to search teachers"
               autoComplete="off"
               required
             />
-            <datalist id="club-teacher-options">
-              {teachers.map((teacher) => <option key={teacher.id} value={teacher.displayName} />)}
-            </datalist>
-            <p className="mt-1 text-[11px] text-muted">The selected teacher will receive a sponsor request and can edit the club after accepting.</p>
-            {teachers.length === 0 && <p className="mt-1 text-[11px] text-muted">No teacher accounts are registered yet. A teacher must create an account with the Teacher / Advisor role first.</p>}
+            {form.sponsorId && <p className="mt-1 text-[11.5px] font-semibold text-brand-700">Selected: {form.sponsorName}</p>}
+            {!form.sponsorId && sponsorSearch.trim().length >= 2 && (
+              <div className="mt-2 space-y-1 rounded-xl border border-line bg-surface p-1.5">
+                {teacherSearching ? <p className="px-2.5 py-2 text-[12px] text-muted">Searching teachers…</p> : teacherResults.length === 0 ? <p className="px-2.5 py-2 text-[12px] text-muted">No matching teacher accounts found.</p> : teacherResults.map(teacher => <button key={teacher.id} type="button" onClick={() => { setSponsorSearch(teacher.displayName); update('sponsorId', teacher.id); update('sponsorName', teacher.displayName); setTeacherResults([]) }} className="block w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold hover:bg-canvas">{teacher.displayName}</button>)}
+              </div>
+            )}
+            <p className="mt-1 text-[11px] text-muted">The selected teacher receives a sponsor request and can edit the club after accepting.</p>
           </div>
 
           <div className="mt-4">
             <label className="label">Other student officers (optional)</label>
-            <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
-              <select className="field" value={selectedOfficerId} onChange={(event) => setSelectedOfficerId(event.target.value)} aria-label="Select student officer">
-                <option value="">Select a student</option>
-                {students.filter((student) => !form.officers.some((officer) => officer.uid === student.id)).map((student) => <option key={student.id} value={student.id}>{student.displayName}</option>)}
-              </select>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
+              <div className="min-w-0">
+                <input className="field" value={officerSearch} autoComplete="off" placeholder="Type at least 4 letters…" onChange={event => { setOfficerSearch(event.target.value); setSelectedOfficer(null) }} aria-label="Search student officers" />
+                {officerSearch.trim().length < 4 ? <p className="px-1 pt-1.5 text-[11px] text-muted">Search starts after 4 characters to keep the directory fast.</p> : (
+                  <div className="mt-1.5 max-h-52 overflow-y-auto rounded-xl border border-line bg-surface p-1.5">
+                    {studentSearching ? <p className="px-2.5 py-2 text-[12px] text-muted">Searching students…</p> : studentResults.length === 0 ? <p className="px-2.5 py-2 text-[12px] text-muted">No matching students found.</p> : studentResults.map(student => <button key={student.id} type="button" onClick={() => { setSelectedOfficer(student); setOfficerSearch(student.displayName); setStudentResults([]) }} className={`block w-full rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold hover:bg-canvas ${selectedOfficer?.id === student.id ? 'bg-brand-50' : ''}`}>{student.displayName}</button>)}
+                  </div>
+                )}
+              </div>
               <select className="field" value={selectedOfficerTitle} onChange={(event) => setSelectedOfficerTitle(event.target.value)} aria-label="Officer title">
                 {['Vice President', 'Officer', 'Treasurer', 'Secretary', 'Event Coordinator', 'Other'].map((title) => <option key={title}>{title}</option>)}
               </select>
-              <Button type="button" variant="secondary" disabled={!selectedOfficerId} onClick={() => {
-                const student = students.find((item) => item.id === selectedOfficerId)
-                if (!student) return
-                const officer: ClubOfficer = { uid: student.id, displayName: student.displayName, email: student.email, title: selectedOfficerTitle }
+              <Button type="button" variant="secondary" disabled={!selectedOfficer} onClick={() => {
+                if (!selectedOfficer) return
+                const officer: ClubOfficer = { uid: selectedOfficer.id, displayName: selectedOfficer.displayName, email: selectedOfficer.email, title: selectedOfficerTitle }
                 update('officers', [...form.officers, officer])
-                setSelectedOfficerId('')
+                setSelectedOfficer(null)
+                setOfficerSearch('')
+                setStudentResults([])
               }}>Add</Button>
             </div>
+            {selectedOfficer && <p className="mt-1 text-[11.5px] font-semibold text-brand-700">Selected: {selectedOfficer.displayName}</p>}
             {form.officers.length > 0 && (
               <div className="mt-2 space-y-2">
                 {form.officers.map((officer) => (
@@ -360,7 +403,7 @@ export function CreateClubPage() {
                 ))}
               </div>
             )}
-            <p className="mt-1 text-[11px] text-muted">Officers are listed on the club record. Fine-grained officer permissions can be added later.</p>
+            <p className="mt-1 text-[11px] text-muted">Each selected student receives an invitation and becomes an officer only after accepting.</p>
           </div>
 
           <div className="mt-3">
