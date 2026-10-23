@@ -70,6 +70,7 @@ export interface SponsorRequestsApi {
 
 export interface UsersApi {
   list(): Promise<AppUser[]>
+  listDirectory(): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
 }
 
