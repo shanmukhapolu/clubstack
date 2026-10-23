@@ -5,6 +5,8 @@ import type {
   ClubEvent,
   ClubInput,
   ClubStatus,
+  ClubSponsorRequest,
+  SponsorRequestStatus,
   ModerationReport,
   ReportStatus,
   Role,
@@ -28,6 +30,7 @@ export interface ClubsApi {
   create(input: ClubInput, leader: AppUser): Promise<string>
   update(id: string, patch: Partial<ClubInput>): Promise<void>
   setStatus(id: string, status: ClubStatus): Promise<void>
+  delete(id: string): Promise<void>
 }
 
 export interface MembershipsApi {
@@ -59,6 +62,12 @@ export interface ModerationApi {
   setStatus(id: string, status: ReportStatus): Promise<void>
 }
 
+export interface SponsorRequestsApi {
+  listForTeacher(teacherId: string): Promise<ClubSponsorRequest[]>
+  create(club: Club, teacher: AppUser, requester: AppUser): Promise<void>
+  respond(requestId: string, status: Extract<SponsorRequestStatus, 'accepted' | 'declined'>): Promise<void>
+}
+
 export interface UsersApi {
   list(): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
@@ -78,6 +87,7 @@ export interface ClubStackApi {
   events: EventsApi
   users: UsersApi
   moderation: ModerationApi
+  sponsorRequests: SponsorRequestsApi
   demo?: DemoApi
 }
 
