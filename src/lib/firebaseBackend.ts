@@ -591,12 +591,20 @@ export const firebaseApi: ClubStackApi = {
       const lowerQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('nameLower', '>=', needle), where('nameLower', '<=', needle + '\uf8ff'), limit(resultLimit))
       const legacyPrefix = needle.charAt(0).toLocaleUpperCase() + needle.slice(1)
       const legacyQuery = query(collection(db, 'userDirectory'), where('role', '==', role), where('displayName', '>=', legacyPrefix), where('displayName', '<=', legacyPrefix + '\uf8ff'), limit(resultLimit))
-      const [lower, legacy] = await Promise.all([getDocs(lowerQuery), getDocs(legacyQuery)])
+      const [lowerResult, legacyResult] = await Promise.allSettled([getDocs(lowerQuery), getDocs(legacyQuery)])
+      if (lowerResult.status === 'rejected' && legacyResult.status === 'rejected') {
+        throw lowerResult.reason
+      }
       const byId = new Map<string, AppUser>()
-      for (const item of [...lower.docs, ...legacy.docs]) {
-        const data = item.data()
-        const person = toUser(item.id, data)
-        if (person.role === role && person.displayName.toLocaleLowerCase().includes(needle)) byId.set(person.id, person)
+      const snapshots = [
+        ...(lowerResult.status === 'fulfilled' ? [lowerResult.value] : []),
+        ...(legacyResult.status === 'fulfilled' ? [legacyResult.value] : []),
+      ]
+      for (const snapshot of snapshots) {
+        for (const item of snapshot.docs) {
+          const person = toUser(item.id, item.data())
+          if (person.role === role && person.displayName.toLocaleLowerCase().startsWith(needle)) byId.set(person.id, person)
+        }
       }
       return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)).slice(0, resultLimit)
     },
