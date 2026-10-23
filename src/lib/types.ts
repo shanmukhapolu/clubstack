@@ -61,6 +61,7 @@ export interface Club {
   leaderName: string
   leaderTitle: string
   officers: ClubOfficer[]
+  officerIds: string[]
   sponsorId: string
   sponsorName: string
   sponsorStatus: SponsorRequestStatus | 'none'
