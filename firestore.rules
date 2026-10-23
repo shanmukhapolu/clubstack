@@ -26,6 +26,10 @@ service cloud.firestore {
       return isSignedIn() && clubDoc(clubId).leaderId == request.auth.uid;
     }
 
+    function isClubOfficer(clubId) {
+      return isSignedIn() && clubDoc(clubId).officerIds.hasAny([request.auth.uid]);
+    }
+
     function isClubSponsor(clubId) {
       return isSignedIn()
         && clubDoc(clubId).sponsorId == request.auth.uid
@@ -33,7 +37,7 @@ service cloud.firestore {
     }
 
     function isClubManager(clubId) {
-      return isAdmin() || isClubLeader(clubId) || isClubSponsor(clubId);
+      return isAdmin() || isClubLeader(clubId) || isClubSponsor(clubId) || isClubOfficer(clubId);
     }
 
     function onlyChanged(keys) {
@@ -106,6 +110,7 @@ service cloud.firestore {
         && request.resource.data.createdAt is number
         && request.resource.data.leaderTitle is string
         && request.resource.data.officers is list
+        && request.resource.data.officerIds is list
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
@@ -114,7 +119,7 @@ service cloud.firestore {
         || (isClubLeader(clubId)
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
                  ['leaderId', 'status', 'createdAt', 'memberCount']))
-        || (isClubSponsor(clubId)
+        || ((isClubSponsor(clubId) || isClubOfficer(clubId))
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
                  ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle', 'officers']))
         || (isTeacher()
