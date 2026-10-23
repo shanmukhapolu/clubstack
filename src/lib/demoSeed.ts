@@ -62,6 +62,13 @@ export const DEMO_USERS: AppUser[] = [
     role: 'admin',
     createdAt: Date.now() - 400 * DAY,
   },
+  {
+    id: 'u-teacher',
+    displayName: 'Jordan Taylor',
+    email: 'jtaylor@northgate.edu',
+    role: 'teacher',
+    createdAt: Date.now() - 90 * DAY,
+  },
 ]
 
 interface SeedClub {
@@ -620,6 +627,7 @@ export function createDemoStore(): DemoStore {
     memberships: [...seedMemberships],
     announcements,
     events,
+    reports: [],
     currentUid: null,
   }
 }
