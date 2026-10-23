@@ -47,6 +47,9 @@ export function ClubPage() {
   const [missing, setMissing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [reporting, setReporting] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('Safety concern')
+  const [reportDetails, setReportDetails] = useState('')
   const { announcements, events, loading: feedLoading, refresh: refreshFeed } = useClubFeed(
     clubId ? [clubId] : [],
   )
@@ -122,19 +125,20 @@ export function ClubPage() {
   const isOfficer = (club.officerIds ?? []).includes(user.id)
   const canManage = isLeader || isAdmin || isAcceptedSponsor || isOfficer
 
-  async function handleReportConcern() {
-    if (!club || !user) return
-    const reason = window.prompt(`What concern are you reporting about ${club.name}? (Safety, policy, inaccurate information, or other)`)
-    if (!reason?.trim()) return
-    const details = window.prompt('Add details for the platform administrators (optional).') ?? ''
+  async function handleReportConcern(event: FormEvent) {
+    event.preventDefault()
+    if (!club || !user || !reportReason.trim()) return
     setReporting(true)
     try {
       await api.moderation.create({
         clubId: club.id,
         clubName: club.name,
-        reason: reason.trim().slice(0, 120),
-        details: details.trim().slice(0, 2000),
+        reason: reportReason.trim().slice(0, 120),
+        details: reportDetails.trim().slice(0, 2000),
       }, user)
+      setReportReason('Safety concern')
+      setReportDetails('')
+      setReportOpen(false)
       notify('Your report was sent to platform administrators.')
     } catch (caught) {
       notify(friendlyError(caught), 'error')
@@ -410,7 +414,7 @@ export function ClubPage() {
       )}
 
       <div className="mt-3 flex justify-end">
-        <Button variant="ghost" size="sm" loading={reporting} onClick={() => void handleReportConcern()}>
+        <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}>
           <Flag size={14} /> Report a concern
         </Button>
       </div>
@@ -708,6 +712,30 @@ export function ClubPage() {
             <Button type="submit" loading={saving}>
               Add meeting
             </Button>
+          </div>
+        </form>
+      </Modal>
+      <Modal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        title="Report a concern"
+        description={`Send a private report about ${club.name} to the ClubStack administrators.`}
+      >
+        <form onSubmit={(event) => void handleReportConcern(event)} className="space-y-4">
+          <div>
+            <label htmlFor="report-reason" className="label">Reason</label>
+            <select id="report-reason" className="field" value={reportReason} onChange={(event) => setReportReason(event.target.value)} required>
+              {['Safety concern', 'Policy violation', 'Inaccurate club information', 'Inappropriate content', 'Other'].map(reason => <option key={reason}>{reason}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="report-details" className="label">Details <span className="font-normal text-muted">(optional)</span></label>
+            <textarea id="report-details" className="field min-h-28 resize-y" value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} maxLength={2000} placeholder="Describe what happened and any context the administrators should know." />
+            <p className="mt-1 text-right text-[11px] text-muted">{reportDetails.length}/2000</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={reporting}><Flag size={14}/> Submit report</Button>
           </div>
         </form>
       </Modal>
