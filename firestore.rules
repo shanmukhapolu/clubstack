@@ -59,7 +59,8 @@ service cloud.firestore {
 
       match /announcements/{announcementId} {
         allow read: if get(/databases/$(database)/documents/clubs/$(clubId)).data.status == 'approved' || canManageClub(clubId);
-        allow create: if canManageClub(clubId) && request.resource.data.createdBy == request.auth.uid;
+        allow create: if canManageClub(clubId) && request.resource.data.createdBy == request.auth.uid &&
+          get(/databases/$(database)/documents/clubs/$(clubId)).data.status == 'approved';
         allow update, delete: if canManageClub(clubId);
       }
       match /events/{eventId} {
