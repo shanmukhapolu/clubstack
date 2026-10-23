@@ -1,10 +1,11 @@
-// Replace these placeholder values with your Firebase project's web app config.
-// Firebase Console → Project settings → General → Your apps → Web app.
+// Firebase web app configuration for the ClubStack project.
+// These values identify the client app; Firestore Security Rules protect the data.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB39IFNpTCdFTtg7HU07Y1zg8Ccw9TteU4",
+  authDomain: "clubstackapp2.firebaseapp.com",
+  projectId: "clubstackapp2",
+  storageBucket: "clubstackapp2.firebasestorage.app",
+  messagingSenderId: "598109793981",
+  appId: "1:598109793981:web:b05c88a0021a1c6e5691d4",
+  measurementId: "G-XY2L5DFQ9J"
 };
