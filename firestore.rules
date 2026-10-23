@@ -145,7 +145,9 @@ service cloud.firestore {
             && !(resource.data.officerIds is list && resource.data.officerIds.hasAny([request.auth.uid]))
             && request.resource.data.officerIds is list
             && request.resource.data.officerIds.hasAny([request.auth.uid])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds', 'memberCount'])
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount'])
+                || request.resource.data.memberCount == resource.data.memberCount + 1)
             && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
             && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student')
@@ -230,7 +232,10 @@ service cloud.firestore {
         && request.resource.data.clubId is string
         && request.resource.data.joinedAt is number
         && (clubDoc(request.resource.data.clubId).status == 'approved'
-            || clubDoc(request.resource.data.clubId).leaderId == request.auth.uid);
+            || clubDoc(request.resource.data.clubId).leaderId == request.auth.uid
+            || (getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.status == 'accepted'
+                && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
+                && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'));
 
       allow delete: if isSignedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
