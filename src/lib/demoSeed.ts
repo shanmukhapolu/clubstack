@@ -5,6 +5,7 @@ import type {
   ClubEvent,
   ClubCategory,
   Membership,
+  ModerationReport,
 } from './types'
 
 export interface DemoStore {
@@ -14,6 +15,7 @@ export interface DemoStore {
   memberships: Membership[]
   announcements: Announcement[]
   events: ClubEvent[]
+  reports: ModerationReport[]
   currentUid: string | null
 }
 
