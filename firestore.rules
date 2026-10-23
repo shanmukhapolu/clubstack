@@ -73,11 +73,12 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update: if isAdmin() || (isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['displayName', 'role', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['displayName', 'role', 'createdAt', 'nameLower'])
         && request.resource.data.displayName is string
         && request.resource.data.role in ['student', 'teacher', 'admin']
         && request.resource.data.displayName == get(/databases/$(database)/documents/users/$(userId)).data.displayName
-        && request.resource.data.role == get(/databases/$(database)/documents/users/$(userId)).data.role);
+        && request.resource.data.role == get(/databases/$(database)/documents/users/$(userId)).data.role
+        && request.resource.data.nameLower is string);
       allow delete: if isAdmin();
     }
 
@@ -85,7 +86,7 @@ service cloud.firestore {
     // Public account registration currently allows teacher/admin roles for testing.
     // Reports are visible to platform admins and to their original reporter.
     match /moderationReports/{reportId} {
-      allow create: if isTeacher()
+      allow create: if isSignedIn()
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.reporterName is string
         && request.resource.data.clubId is string
@@ -134,12 +135,19 @@ service cloud.firestore {
                  ['leaderId', 'status', 'createdAt', 'memberCount']))
         || ((isClubSponsor(clubId) || isClubOfficer(clubId))
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle', 'officers']))
+                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle', 'officers', 'officerIds']))
         || (isTeacher()
             && resource.data.sponsorId == request.auth.uid
             && resource.data.sponsorStatus == 'pending'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorStatus'])
             && request.resource.data.sponsorStatus in ['accepted', 'declined'])
+        || (isSignedIn()
+            && !(resource.data.officerIds is list && resource.data.officerIds.hasAny([request.auth.uid]))
+            && request.resource.data.officerIds is list
+            && request.resource.data.officerIds.hasAny([request.auth.uid])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds'])
+            && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid)
         || (isSignedIn()
             && onlyChanged(['memberCount'])
             && request.resource.data.memberCount is number
@@ -176,12 +184,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Student officer invitations ───────────────────────────────────────
+    // A deterministic ID (clubId_userId) permits safe acceptance in one batch.
+    match /officerInvitations/{invitationId} {
+      allow create: if isSignedIn()
+        && request.resource.data.clubId is string
+        && request.resource.data.invitedUserId is string
+        && request.resource.data.invitedById == request.auth.uid
+        && isClubManager(request.resource.data.clubId)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['clubId', 'clubName', 'invitedUserId', 'invitedUserName', 'invitedById', 'invitedByName', 'title', 'status', 'createdAt']);
+
+      allow read: if isAdmin()
+        || (isSignedIn() && (resource.data.invitedUserId == request.auth.uid || isClubManager(resource.data.clubId)));
+
+      allow update: if isAdmin()
+        || (isSignedIn() && isClubManager(resource.data.clubId)
+            && request.resource.data.status == 'pending'
+            && request.resource.data.invitedUserId == resource.data.invitedUserId)
+        || (isSignedIn()
+            && resource.data.invitedUserId == request.auth.uid
+            && resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status in ['accepted', 'declined']);
+
+      allow delete: if isAdmin() || isClubManager(resource.data.clubId);
+    }
+
     // ── Memberships ────────────────────────────────────────────────────────
     // Students join approved clubs. A leader may join their own pending club
     // (the 1 member counted at creation).
     match /memberships/{membershipId} {
       allow read: if isSignedIn()
-        && (resource.data.uid == request.auth.uid || isAdmin());
+        && (resource.data.uid == request.auth.uid || isAdmin() || isClubManager(resource.data.clubId));
 
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
