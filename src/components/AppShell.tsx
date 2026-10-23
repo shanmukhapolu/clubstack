@@ -6,8 +6,10 @@ import {
   House,
   LogOut,
   ShieldCheck,
-  BookOpen,
-  Sparkles,
+  Bell,
+  Users,
+  Building2,
+  Flag,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -18,6 +20,7 @@ const navItems = [
   { to: '/', label: 'Home', icon: House, end: true },
   { to: '/discover', label: 'Discover', icon: Compass },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { to: '/invitations', label: 'Invitations', icon: Bell },
 ]
 
 function Logo() {
@@ -65,14 +68,28 @@ export function AppShell() {
 
   if (!user) return null
 
-  const myClubs = clubs
-    .filter((club) => joinedIds.has(club.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
   const isAdmin = user.role === 'admin'
+  const isTeacher = user.role === 'teacher'
+  const myClubs = clubs
+    .filter((club) => isTeacher
+      ? club.sponsorId === user.id && club.sponsorStatus === 'accepted'
+      : joinedIds.has(club.id) || club.leaderId === user.id || (club.officerIds ?? []).includes(user.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
   const links = isAdmin
-    ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }]
-    : user.role === 'teacher'
-      ? [...navItems, { to: '/teacher', label: 'Advisor', icon: BookOpen }]
+    ? [
+        { to: '/admin', label: 'Home', icon: House, end: true },
+        { to: '/admin/users', label: 'Users', icon: Users },
+        { to: '/admin/clubs', label: 'Clubs', icon: Building2 },
+        { to: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
+        { to: '/admin/security', label: 'Safety', icon: ShieldCheck },
+      ]
+    : isTeacher
+      ? [
+          { to: '/teacher', label: 'Home', icon: House, end: true },
+          { to: '/teacher/calendar', label: 'Calendar', icon: CalendarDays },
+          { to: '/teacher/clubs', label: 'My clubs', icon: Building2 },
+          { to: '/teacher/reports', label: 'Reports', icon: Flag },
+        ]
       : navItems
 
   return (
@@ -103,7 +120,7 @@ export function AppShell() {
         {!isAdmin && <div className="mt-8 flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">My clubs</p>
-            <span className="text-[11px] font-semibold text-muted">{joinedIds.size}</span>
+            <span className="text-[11px] font-semibold text-muted">{myClubs.length}</span>
           </div>
           <div className="mt-2 flex-1 space-y-0.5 overflow-y-auto scrollbar-none">
             {myClubs.slice(0, 6).map((club) => (
@@ -116,13 +133,16 @@ export function AppShell() {
                 <span className="truncate">{club.name}</span>
               </NavLink>
             ))}
-            {myClubs.length === 0 && (
+            {myClubs.length === 0 && user.role === 'student' && (
               <NavLink
                 to="/discover"
                 className="mx-3 mt-2 flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2.5 text-[12.5px] font-semibold text-brand-700"
               >
-                <Sparkles size={15} /> Find your first club
+                <Compass size={15} /> Find your first club
               </NavLink>
+            )}
+            {myClubs.length === 0 && user.role === 'teacher' && (
+              <p className="mx-3 mt-2 rounded-xl bg-canvas px-3 py-2.5 text-[12px] leading-relaxed text-muted">Accepted advisor clubs appear here.</p>
             )}
             {myClubs.length > 6 && (
               <p className="px-3 pt-1 text-[12px] text-muted">+{myClubs.length - 6} more</p>
