@@ -37,6 +37,12 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function RequireStudentOrAdmin() {
+  const { user } = useAuth()
+  if (user?.role === 'teacher') return <Navigate to="/teacher" replace />
+  return <Outlet />
+}
+
 function RequireTeacher() {
   const { user } = useAuth()
   if (user?.role !== 'teacher') return <Navigate to="/" replace />
@@ -62,7 +68,9 @@ export default function App() {
                 <Route element={<AppShell />}>
                   <Route index element={<DashboardPage />} />
                   <Route path="discover" element={<DiscoverPage />} />
-                  <Route path="clubs/new" element={<CreateClubPage />} />
+                  <Route element={<RequireStudentOrAdmin />}>
+                    <Route path="clubs/new" element={<CreateClubPage />} />
+                  </Route>
                   <Route path="clubs/:clubId" element={<ClubPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route element={<RequireTeacher />}>
