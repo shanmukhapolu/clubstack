@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import { getFirestore, collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -232,10 +232,20 @@ async function openClub(id) {
   }
   const joined = joinedIds.has(id);
   const manageable = canManage(club);
+  let members = [];
+  if (manageable && configured && db && !club.demo) {
+    try {
+      const memberSnap = await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id), limit(100)));
+      members = memberSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
+    } catch (error) { console.warn(error); }
+  }
   const postMarkup = posts.length ? posts.map((post) =>
     '<article class="feed-item"><h4>' + escapeHTML(post.title || 'Club update') + '</h4><p>' + escapeHTML(post.body || '') + '</p><span class="feed-date">' + escapeHTML(dateLabel(post.createdAt)) + '</span></article>'
   ).join('') : renderEmpty('No announcements yet', 'Updates from club leaders will appear here.');
   const eventMarkup = events.length ? events.map((item) => eventRow(item, club.name)).join('') : renderEmpty('No upcoming events', 'New meetings and events will appear here.');
+  const memberMarkup = members.length ? members.map((member) =>
+    '<div class="member-row"><div class="avatar">' + escapeHTML(initials(member.memberName || 'Student')) + '</div><div class="member-copy"><strong>' + escapeHTML(member.memberName || 'Student') + '</strong><span>Joined ' + escapeHTML(dateLabel(member.joinedAt, { month: 'short', day: 'numeric' })) + '</span></div><button class="button button-secondary button-small" data-remove-member="' + escapeHTML(member.id) + '" data-member-club="' + escapeHTML(id) + '">Remove</button></div>'
+  ).join('') : renderEmpty('No members yet', 'Students who join will appear here.');
   $('#club-detail').innerHTML =
     '<div class="club-detail-header"><div class="club-glyph club-glyph-large">' + escapeHTML(initials(club.name).slice(0, 2)) + '</div>' +
     '<div class="club-detail-copy"><span class="category-label">' + escapeHTML(categoryName(club.category)) + (club.status === 'pending' ? ' · Pending approval' : '') + '</span><h2>' + escapeHTML(club.name) + '</h2><p>' + escapeHTML(club.description || 'Club details coming soon.') + '</p></div>' +
@@ -245,6 +255,7 @@ async function openClub(id) {
     '</div></div>' +
     '<div class="club-detail-meta"><div><i data-lucide="calendar-clock"></i><span>' + escapeHTML(club.meetingInfo || 'Meeting details not set') + '</span></div>' +
     '<div><i data-lucide="users"></i><span>' + (joinedIds.has(id) ? 'You are a member' : 'Open to students') + '</span></div></div>' +
+    (manageable ? '<section class="detail-section members-section"><div class="section-title"><h3>Members</h3><span>' + members.length + '</span></div>' + memberMarkup + '</section>' : '') +
     (manageable ? '<div class="detail-toolbar"><button class="button button-secondary button-small" data-new-post="' + escapeHTML(id) + '"><i data-lucide="megaphone"></i> Post update</button><button class="button button-secondary button-small" data-edit-club="' + escapeHTML(id) + '"><i data-lucide="pencil"></i> Edit page</button></div>' : '') +
     '<section class="detail-section"><div class="section-title"><h3>Announcements</h3></div>' + postMarkup + '</section>' +
     '<section class="detail-section"><div class="section-title"><h3>Upcoming events</h3></div>' + eventMarkup + '</section>';
@@ -275,7 +286,7 @@ async function joinClub(id) {
       joinedIds.delete(id);
       toast('Left ' + club.name + '.');
     } else {
-      await setDoc(membershipRef, { clubId: id, userId: user.uid, joinedAt: serverTimestamp() });
+      await setDoc(membershipRef, { clubId: id, userId: user.uid, memberName: userProfile?.name || user.displayName || user.email || 'Student', joinedAt: serverTimestamp() });
       joinedIds.add(id);
       toast('Joined ' + club.name + '.');
     }
@@ -556,6 +567,23 @@ async function moderateClub(id, action) {
     toast('Could not update the club. Check admin permissions.');
   }
 }
+async function removeMember(membershipId, clubId) {
+  const club = getClub(clubId);
+  if (!club || !canManage(club) || !configured) {
+    toast('You do not have permission to manage this membership.');
+    return;
+  }
+  if (!confirm('Remove this member from ' + club.name + '?')) return;
+  try {
+    await deleteDoc(doc(db, 'memberships', membershipId));
+    toast('Member removed.');
+    await openClub(clubId);
+    if (activeView === 'my-clubs') renderMyClubs();
+  } catch (error) {
+    console.error(error);
+    toast('Could not remove member. Check your permissions.');
+  }
+}
 async function saveUserRole(row) {
   if (!isAdmin()) return;
   const targetId = row.dataset.userId;
@@ -728,6 +756,11 @@ document.addEventListener('click', (event) => {
   if (edit) { openCreateClub(edit.dataset.editClub); return; }
   const post = event.target.closest('[data-new-post]');
   if (post) { openPost(post.dataset.newPost); return; }
+  const removeMemberButton = event.target.closest('[data-remove-member]');
+  if (removeMemberButton) {
+    removeMember(removeMemberButton.dataset.removeMember, removeMemberButton.dataset.memberClub);
+    return;
+  }
   const approve = event.target.closest('[data-approve]');
   if (approve) { moderateClub(approve.dataset.approve, 'approve'); return; }
   const reject = event.target.closest('[data-reject]');
