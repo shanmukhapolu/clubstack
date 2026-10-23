@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Info } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { api } from '../lib/backend'
 import { friendlyError, isEmail } from '../lib/helpers'
 import { CATEGORIES, CLUB_COLORS, MEETING_DAYS } from '../lib/types'
-import type { Club, ClubCategory, ClubInput } from '../lib/types'
+import type { AppUser, Club, ClubCategory, ClubInput, ClubOfficer } from '../lib/types'
 import { ClubCard } from '../components/ClubCard'
 import { Button, buttonStyles } from '../components/ui'
 
@@ -48,12 +48,32 @@ export function CreateClubPage() {
     emoji: '🎒',
     color: CLUB_COLORS[0],
     contactEmail: user?.email ?? '',
+    leaderTitle: 'President',
+    officers: [],
+    sponsorId: '',
+    sponsorName: '',
   })
+  const [users, setUsers] = useState<AppUser[]>([])
+  const [sponsorSearch, setSponsorSearch] = useState('')
+  const [selectedOfficerId, setSelectedOfficerId] = useState('')
+  const [selectedOfficerTitle, setSelectedOfficerTitle] = useState('Vice President')
+
+  useEffect(() => {
+    let active = true
+    void api.users.list().then((items) => {
+      if (active) setUsers(items)
+    }).catch(() => {
+      if (active) setUsers([])
+    })
+    return () => { active = false }
+  }, [])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (!user) return null
   const currentUser = user
+  const teachers = users.filter((person) => person.role === 'teacher')
+  const students = users.filter((person) => person.role === 'student' && person.id !== currentUser.id)
 
   function update<K extends keyof ClubInput>(key: K, value: ClubInput[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -75,6 +95,14 @@ export function CreateClubPage() {
       setError('Add a meeting time, or write “Flexible” if it changes week to week.')
       return
     }
+    if (!form.leaderTitle.trim()) {
+      setError('Choose your role in the club.')
+      return
+    }
+    if (!form.sponsorId || !teachers.some((teacher) => teacher.id === form.sponsorId)) {
+      setError('Select a teacher sponsor from the list.')
+      return
+    }
     if (!isEmail(form.contactEmail)) {
       setError('Add a contact email students can reach you at.')
       return
@@ -94,7 +122,7 @@ export function CreateClubPage() {
         currentUser,
       )
       await refresh()
-      notify('Club page submitted for approval.')
+      notify('Club page submitted. Your teacher sponsor has been notified in ClubStack.')
       navigate(`/clubs/${id}`)
     } catch (caught) {
       setError(friendlyError(caught))
@@ -109,6 +137,11 @@ export function CreateClubPage() {
     status: 'pending',
     leaderId: currentUser.id,
     leaderName: currentUser.displayName,
+    leaderTitle: form.leaderTitle,
+    officers: form.officers,
+    sponsorId: form.sponsorId,
+    sponsorName: form.sponsorName,
+    sponsorStatus: form.sponsorId ? 'pending' : 'none',
     memberCount: 1,
     createdAt: Date.now(),
   }
@@ -266,9 +299,72 @@ export function CreateClubPage() {
             />
           </div>
 
+          <div className="mt-4">
+            <label htmlFor="club-leader-title" className="label">Your role in the club</label>
+            <select id="club-leader-title" className="field" value={form.leaderTitle} onChange={(event) => update('leaderTitle', event.target.value)}>
+              {['President', 'Founder', 'Vice President', 'Officer', 'Treasurer', 'Secretary', 'Other'].map((title) => <option key={title}>{title}</option>)}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label htmlFor="club-sponsor" className="label">Teacher sponsor (required)</label>
+            <input
+              id="club-sponsor"
+              className="field"
+              list="club-teacher-options"
+              value={sponsorSearch}
+              onChange={(event) => {
+                const value = event.target.value
+                setSponsorSearch(value)
+                const match = teachers.find((teacher) => value === `${teacher.displayName} · ${teacher.email}`)
+                update('sponsorId', match?.id ?? '')
+                update('sponsorName', match?.displayName ?? '')
+              }}
+              placeholder="Type a teacher name to search"
+              autoComplete="off"
+              required
+            />
+            <datalist id="club-teacher-options">
+              {teachers.map((teacher) => <option key={teacher.id} value={`${teacher.displayName} · ${teacher.email}`} />)}
+            </datalist>
+            <p className="mt-1 text-[11px] text-muted">The selected teacher will receive a sponsor request and can edit the club after accepting.</p>
+            {teachers.length === 0 && <p className="mt-1 text-[11px] text-muted">No teacher accounts are registered yet. A teacher must create an account with the Teacher / Advisor role first.</p>}
+          </div>
+
+          <div className="mt-4">
+            <label className="label">Other student officers (optional)</label>
+            <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
+              <select className="field" value={selectedOfficerId} onChange={(event) => setSelectedOfficerId(event.target.value)} aria-label="Select student officer">
+                <option value="">Select a student</option>
+                {students.filter((student) => !form.officers.some((officer) => officer.uid === student.id)).map((student) => <option key={student.id} value={student.id}>{student.displayName} · {student.email}</option>)}
+              </select>
+              <select className="field" value={selectedOfficerTitle} onChange={(event) => setSelectedOfficerTitle(event.target.value)} aria-label="Officer title">
+                {['Vice President', 'Officer', 'Treasurer', 'Secretary', 'Event Coordinator', 'Other'].map((title) => <option key={title}>{title}</option>)}
+              </select>
+              <Button type="button" variant="secondary" disabled={!selectedOfficerId} onClick={() => {
+                const student = students.find((item) => item.id === selectedOfficerId)
+                if (!student) return
+                const officer: ClubOfficer = { uid: student.id, displayName: student.displayName, email: student.email, title: selectedOfficerTitle }
+                update('officers', [...form.officers, officer])
+                setSelectedOfficerId('')
+              }}>Add</Button>
+            </div>
+            {form.officers.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {form.officers.map((officer) => (
+                  <div key={officer.uid} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-[12px]">
+                    <span className="min-w-0 flex-1"><strong>{officer.displayName}</strong><span className="text-muted"> · {officer.title}</span></span>
+                    <button type="button" className="text-muted hover:text-ink" onClick={() => update('officers', form.officers.filter((item) => item.uid !== officer.uid))} aria-label={`Remove ${officer.displayName}`}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-[11px] text-muted">Officers are listed on the club record. Fine-grained officer permissions can be added later.</p>
+          </div>
+
           <div className="mt-3">
             <label htmlFor="club-email" className="label">
-              Contact email
+              Club contact email
             </label>
             <input
               id="club-email"
@@ -356,8 +452,7 @@ export function CreateClubPage() {
           <div className="flex items-start gap-2.5 rounded-2xl bg-[#eef6dd] px-4 py-3 text-[12px] leading-relaxed text-[#47600f]">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
             <p>
-              You’ll be the club leader for this page and can edit it, post updates, and schedule
-              meetings.
+              You’ll be listed as the club owner. Your selected teacher can edit the club after accepting the sponsor request.
             </p>
           </div>
         </aside>
