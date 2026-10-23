@@ -199,7 +199,13 @@ export const firebaseApi: ClubStackApi = {
           if (cancelled) return
           unsubscribeProfile = onSnapshot(profileRef, (snapshot) => {
             if (!snapshot.exists()) return
-            callback(toUser(snapshot.id, snapshot.data()))
+            const profile = toUser(snapshot.id, snapshot.data())
+            void setDoc(doc(db, 'userDirectory', snapshot.id), {
+              displayName: profile.displayName,
+              role: profile.role,
+              createdAt: profile.createdAt,
+            }, { merge: true }).catch((error) => console.error('Could not sync the user directory.', error))
+            callback(profile)
           })
         })()
       })
@@ -222,11 +228,12 @@ export const firebaseApi: ClubStackApi = {
       try {
         const credential = await createUserWithEmailAndPassword(auth, email, password)
         await firebaseUpdateProfile(credential.user, { displayName: name })
+        const createdAt = Date.now()
         await setDoc(doc(db, 'users', credential.user.uid), {
-          displayName: name,
-          email,
-          role,
-          createdAt: Date.now(),
+          displayName: name, email, role, createdAt,
+        })
+        await setDoc(doc(db, 'userDirectory', credential.user.uid), {
+          displayName: name, role, createdAt,
         })
       } finally {
         accountCreationInProgress = false
@@ -506,8 +513,19 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => toUser(item.id, item.data()))
     },
 
+    async listDirectory() {
+      const snapshot = await getDocs(collection(requireDb(), 'userDirectory'))
+      return snapshot.docs.map((item) => toUser(item.id, item.data())).sort((a, b) => a.displayName.localeCompare(b.displayName))
+    },
+
     async setRole(uid, role) {
-      await updateDoc(doc(requireDb(), 'users', uid), { role })
+      const db = requireDb()
+      await updateDoc(doc(db, 'users', uid), { role })
+      const profile = await getDoc(doc(db, 'users', uid))
+      if (profile.exists()) await setDoc(doc(db, 'userDirectory', uid), {
+        displayName: stringOr(profile.data().displayName, 'Student'), role,
+        createdAt: numberOr(profile.data().createdAt),
+      }, { merge: true })
     },
   },
 }
