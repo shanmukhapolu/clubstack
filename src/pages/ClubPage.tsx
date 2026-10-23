@@ -96,7 +96,7 @@ export function ClubPage() {
   if (!user) return null
 
   const canView =
-    club && (club.status === 'approved' || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted'))
+    club && (club.status === 'approved' || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id))
 
   if (!club || !canView) {
     return (
@@ -120,7 +120,8 @@ export function ClubPage() {
   const isLeader = club.leaderId === user.id
   const isAdmin = user.role === 'admin'
   const isAcceptedSponsor = club.sponsorId === user.id && club.sponsorStatus === 'accepted'
-  const canManage = isLeader || isAdmin || isAcceptedSponsor
+  const isOfficer = (club.officerIds ?? []).includes(user.id)
+  const canManage = isLeader || isAdmin || isAcceptedSponsor || isOfficer
 
   async function handleMembership() {
     if (!club) return
@@ -336,7 +337,7 @@ export function ClubPage() {
             <div className="flex items-center gap-2 pb-1">
               {canManage ? (
                 <Badge tone="brand">
-                  <ShieldCheck size={12} /> {isAdmin && !isLeader ? 'Admin access' : 'You lead this club'}
+                  <ShieldCheck size={12} /> {isAdmin ? 'Admin access' : isLeader ? 'You lead this club' : isAcceptedSponsor ? 'Teacher sponsor access' : 'Officer access'}
                 </Badge>
               ) : (
                 <Button
