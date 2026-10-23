@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isClubOfficer(clubId) {
-      return isSignedIn() && clubDoc(clubId).officerIds.hasAny([request.auth.uid]);
+      return isSignedIn() && clubDoc(clubId).get('officerIds', []).hasAny([request.auth.uid]);
     }
 
     function isClubSponsor(clubId) {
