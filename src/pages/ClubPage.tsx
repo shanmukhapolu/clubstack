@@ -13,6 +13,7 @@ import {
   Users,
   Pencil,
   Trash2,
+  Flag,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -45,6 +46,7 @@ export function ClubPage() {
   const [club, setClub] = useState<Club | null>(() => clubs.find((item) => item.id === clubId) ?? null)
   const [missing, setMissing] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const { announcements, events, loading: feedLoading, refresh: refreshFeed } = useClubFeed(
     clubId ? [clubId] : [],
   )
@@ -119,6 +121,27 @@ export function ClubPage() {
   const isAcceptedSponsor = club.sponsorId === user.id && club.sponsorStatus === 'accepted'
   const isOfficer = (club.officerIds ?? []).includes(user.id)
   const canManage = isLeader || isAdmin || isAcceptedSponsor || isOfficer
+
+  async function handleReportConcern() {
+    if (!club || !user) return
+    const reason = window.prompt(`What concern are you reporting about ${club.name}? (Safety, policy, inaccurate information, or other)`)
+    if (!reason?.trim()) return
+    const details = window.prompt('Add details for the platform administrators (optional).') ?? ''
+    setReporting(true)
+    try {
+      await api.moderation.create({
+        clubId: club.id,
+        clubName: club.name,
+        reason: reason.trim().slice(0, 120),
+        details: details.trim().slice(0, 2000),
+      }, user)
+      notify('Your report was sent to platform administrators.')
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setReporting(false)
+    }
+  }
 
   async function handleMembership() {
     if (!club) return
@@ -385,6 +408,12 @@ export function ClubPage() {
           )}
         </div>
       )}
+
+      <div className="mt-3 flex justify-end">
+        <Button variant="ghost" size="sm" loading={reporting} onClick={() => void handleReportConcern()}>
+          <Flag size={14} /> Report a concern
+        </Button>
+      </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.55fr_1fr] lg:gap-6">
         <section>
