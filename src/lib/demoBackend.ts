@@ -25,6 +25,7 @@ function load(): DemoStore {
       ) {
         if (!Array.isArray(parsed.reports)) parsed.reports = []
         if (!Array.isArray(parsed.sponsorRequests)) parsed.sponsorRequests = []
+        if (!Array.isArray(parsed.officerInvitations)) parsed.officerInvitations = []
         return parsed
       }
     }
