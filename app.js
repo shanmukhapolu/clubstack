@@ -11,6 +11,7 @@ let db = null;
 let user = null;
 let userProfile = null;
 let isSignup = false;
+let pendingSignupProfile = null;
 let clubs = [];
 let joinedIds = new Set();
 let selectedCategory = 'All';
@@ -52,6 +53,7 @@ function categoryName(category) {
   return ({ Arts: 'Arts & culture', Recreation: 'Recreation', Other: 'Other' })[category] || category || 'Other';
 }
 function asDate(value) {
+  if (value === null || value === undefined || value === '') return null;
   const date = value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -169,7 +171,7 @@ async function syncData() {
     } else {
       const approved = await getDocs(query(collection(db, 'clubs'), where('status', '==', 'approved')));
       loaded = approved.docs.map((item) => ({ id: item.id, ...item.data() }));
-      if (user && (isLeader() || userProfile?.role === 'admin')) {
+      if (user && !isAdmin() && isLeader()) {
         const [owned, assigned] = await Promise.all([
           getDocs(query(collection(db, 'clubs'), where('createdBy', '==', user.uid))),
           getDocs(query(collection(db, 'clubs'), where('leaderIds', 'array-contains', user.uid)))
@@ -300,11 +302,14 @@ async function renderMyClubs() {
     '<section class="panel"><div class="panel-heading"><h3>Recent updates</h3></div><div id="my-feed"><div class="loading-state">Loading updates…</div></div></section></div>';
   refreshIcons(root);
   const feed = [];
-  for (const club of joined.slice(0, 15)) {
-    try {
-      const snap = await getDocs(query(collection(db, 'clubs', club.id, 'announcements'), orderBy('createdAt', 'desc'), limit(3)));
-      snap.docs.forEach((item) => feed.push({ clubName: club.name, ...item.data() }));
-    } catch (error) { console.warn(error); }
+  if (configured && db) {
+    const recent = await Promise.all(joined.slice(0, 15).map(async (club) => {
+      try {
+        const snap = await getDocs(query(collection(db, 'clubs', club.id, 'announcements'), orderBy('createdAt', 'desc'), limit(3)));
+        return snap.docs.map((item) => ({ clubName: club.name, ...item.data() }));
+      } catch (error) { console.warn(error); return []; }
+    }));
+    recent.flat().forEach((post) => feed.push(post));
   }
   feed.sort((a, b) => ((b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
   $('#my-feed').innerHTML = feed.length ? feed.slice(0, 10).map((post) =>
@@ -320,13 +325,13 @@ async function renderCalendar() {
   }
   root.innerHTML = '<section class="panel"><div class="panel-heading"><h3>Upcoming events</h3></div><div class="loading-state">Loading events…</div></section>';
   let events = [];
-  // Keep reads bounded for a large directory; the first 50 approved clubs are checked.
-  for (const club of approved.slice(0, 50)) {
+  const eventResults = await Promise.all(approved.map(async (club) => {
     try {
       const snap = await getDocs(query(collection(db, 'clubs', club.id, 'events'), orderBy('date', 'asc'), limit(8)));
-      snap.docs.forEach((item) => events.push({ id: item.id, clubId: club.id, clubName: club.name, ...item.data() }));
-    } catch (error) { console.warn(error); }
-  }
+      return snap.docs.map((item) => ({ id: item.id, clubId: club.id, clubName: club.name, ...item.data() }));
+    } catch (error) { console.warn(error); return []; }
+  }));
+  eventResults.flat().forEach((item) => events.push(item));
   events = events.filter((item) => {
     const date = asDate(item.date);
     return date && date >= new Date(Date.now() - 86400000);
@@ -600,8 +605,10 @@ async function handleAuthSubmit(event) {
     if (isSignup) {
       const name = $('#auth-name').value.trim();
       const credential = await createUserWithEmailAndPassword(auth, email, password);
+      pendingSignupProfile = { uid: credential.user.uid, name, email };
       await updateProfile(credential.user, { displayName: name });
       await setDoc(doc(db, 'users', credential.user.uid), { name, email, role: 'student', suspended: false, createdAt: serverTimestamp() });
+      pendingSignupProfile = null;
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
@@ -631,9 +638,10 @@ async function initializeAccount(currentUser) {
       const reference = doc(db, 'users', user.uid);
       let profile = await getDoc(reference);
       if (!profile.exists()) {
+        const pendingProfile = pendingSignupProfile && pendingSignupProfile.uid === user.uid ? pendingSignupProfile : null;
         await setDoc(reference, {
-          name: user.displayName || user.email || 'Student',
-          email: user.email || '',
+          name: (pendingProfile && pendingProfile.name) || user.displayName || user.email || 'Student',
+          email: (pendingProfile && pendingProfile.email) || user.email || '',
           role: 'student',
           suspended: false,
           createdAt: serverTimestamp()
@@ -710,7 +718,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   const open = event.target.closest('[data-open-club]');
-  if (open && !event.target.closest('button')) {
+  if (open) {
     openClub(open.dataset.openClub);
     return;
   }
