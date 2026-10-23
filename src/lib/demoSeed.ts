@@ -6,6 +6,7 @@ import type {
   ClubCategory,
   Membership,
   ModerationReport,
+  OfficerInvitation,
 } from './types'
 
 export interface DemoStore {
@@ -17,6 +18,7 @@ export interface DemoStore {
   events: ClubEvent[]
   reports: ModerationReport[]
   sponsorRequests: import('./types').ClubSponsorRequest[]
+  officerInvitations: OfficerInvitation[]
   currentUid: string | null
 }
 
@@ -636,6 +638,7 @@ export function createDemoStore(): DemoStore {
     events,
     reports: [],
     sponsorRequests: [],
+    officerInvitations: [],
     currentUid: null,
   }
 }
