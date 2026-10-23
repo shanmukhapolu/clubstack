@@ -232,17 +232,17 @@ Firebase Admin SDK — kept outside this client app.
 
 ## Roles and permissions
 
-| Action | Student | Club leader | Admin |
-| --- | --- | --- | --- |
-| Browse directory and approved clubs | ✅ | ✅ | ✅ |
-| Join/leave an approved club | ✅ | ✅ | ✅ |
-| Read announcements and events | ✅ | ✅ | ✅ |
-| Create a club page (pending) | ✅ | ✅ | ✅ |
-| Post announcements / add meetings | ❌ | ✅ own club | ✅ any club |
-| Delete own club's announcements/events | ❌ | ✅ own club | ✅ any club |
-| See pending club pages | ❌ | ✅ own | ✅ all |
-| Approve/reject clubs | ❌ | ❌ | ✅ |
-| Promote/demote users | ❌ | ❌ | ✅ |
+| Action | Student | Leader / officer | Accepted advisor | Admin |
+| --- | --- | --- | --- | --- |
+| Browse approved clubs and meetings | ✅ | ✅ | ✅ | ✅ |
+| Join/leave an approved club | ✅ | ✅ | ✅ | ✅ |
+| Propose a club | ✅ | ✅ | ✅ | ✅ |
+| Edit club details | ❌ | ✅ own club | ✅ advised club | ✅ any club |
+| Invite members to officer roles | ❌ | ✅ managed club | ✅ advised club | ✅ any club |
+| Post announcements / manage meetings | ❌ | ✅ managed club | ✅ advised club | ✅ any club |
+| Submit concern reports | ✅ | ✅ | ✅ | ✅ |
+| Approve/reject club proposals | ❌ | ❌ | ❌ | ✅ |
+| Manage account roles | ❌ | ❌ | ❌ | ✅ |
 
 Key rules in [`firestore.rules`](firestore.rules):
 
