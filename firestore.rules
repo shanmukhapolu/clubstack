@@ -64,9 +64,27 @@ service cloud.firestore {
       }
       match /events/{eventId} {
         allow read: if get(/databases/$(database)/documents/clubs/$(clubId)).data.status == 'approved' || canManageClub(clubId);
-        allow create: if canManageClub(clubId) && request.resource.data.createdBy == request.auth.uid;
+        allow create: if canManageClub(clubId) &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.clubId == clubId &&
+          request.resource.data.status == 'published' &&
+          get(/databases/$(database)/documents/clubs/$(clubId)).data.status == 'approved';
         allow update, delete: if canManageClub(clubId);
       }
+    }
+
+    // Enables one indexed calendar query across all clubs' events subcollections.
+    match /{path=**}/events/{eventId} {
+      allow read: if resource.data.status == 'published' ||
+        (activeUser() && resource.data.get('clubId', '') is string && canManageClub(resource.data.clubId));
+      allow create: if activeUser() &&
+        request.resource.data.status == 'published' &&
+        request.resource.data.clubId is string &&
+        request.resource.data.createdBy == request.auth.uid &&
+        get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.status == 'approved' &&
+        canManageClub(request.resource.data.clubId);
+      allow update, delete: if isAdmin() ||
+        (resource.data.get('clubId', '') is string && canManageClub(resource.data.clubId));
     }
 
     match /memberships/{membershipId} {
