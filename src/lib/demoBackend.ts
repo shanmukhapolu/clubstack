@@ -1,6 +1,6 @@
 import type { ClubStackApi } from './backend'
 import { createDemoStore, DEMO_PASSWORD, DEMO_USERS, type DemoStore } from './demoSeed'
-import type { AppUser, Club, ModerationReport, ReportStatus, Role } from './types'
+import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus } from './types'
 
 const STORAGE_KEY = 'clubstack.demo.v1'
 const RESEED_AFTER_MS = 1000 * 60 * 60 * 24 * 14
@@ -24,6 +24,7 @@ function load(): DemoStore {
         Date.now() - parsed.seededAt < RESEED_AFTER_MS
       ) {
         if (!Array.isArray(parsed.reports)) parsed.reports = []
+        if (!Array.isArray(parsed.sponsorRequests)) parsed.sponsorRequests = []
         return parsed
       }
     }
@@ -168,11 +169,24 @@ export const demoApi: ClubStackApi = {
         status: 'pending',
         leaderId: leader.id,
         leaderName: leader.displayName,
+        leaderTitle: input.leaderTitle || 'President',
+        officers: input.officers ?? [],
+        sponsorId: input.sponsorId ?? '',
+        sponsorName: input.sponsorName ?? '',
+        sponsorStatus: input.sponsorId ? 'pending' : 'none',
         memberCount: 1,
         createdAt: Date.now(),
       }
       mutate((store) => {
         store.clubs.unshift(club)
+        if (input.sponsorId) {
+          store.sponsorRequests.unshift({
+            id: `sr-${Math.random().toString(36).slice(2, 10)}`,
+            clubId: id, clubName: club.name, teacherId: input.sponsorId,
+            teacherName: input.sponsorName, requestedById: leader.id,
+            requestedByName: leader.displayName, status: 'pending', createdAt: Date.now(),
+          })
+        }
         store.memberships.push({
           id: `${leader.id}_${id}`,
           uid: leader.id,
@@ -191,6 +205,17 @@ export const demoApi: ClubStackApi = {
     async setStatus(id, status) {
       await wait()
       mutate((store) => updateClub(store, id, { status }))
+    },
+
+    async delete(id) {
+      await wait()
+      mutate((store) => {
+        store.clubs = store.clubs.filter((club) => club.id !== id)
+        store.memberships = store.memberships.filter((item) => item.clubId !== id)
+        store.announcements = store.announcements.filter((item) => item.clubId !== id)
+        store.events = store.events.filter((item) => item.clubId !== id)
+        store.sponsorRequests = store.sponsorRequests.filter((item) => item.clubId !== id)
+      })
     },
   },
 
@@ -343,6 +368,41 @@ export const demoApi: ClubStackApi = {
       await wait()
       mutate((store) => {
         store.reports = store.reports.map((report) => report.id === id ? { ...report, status } : report)
+      })
+    },
+  },
+
+  sponsorRequests: {
+    async listForTeacher(teacherId) {
+      await wait()
+      return read().sponsorRequests.filter((request) => request.teacherId === teacherId).sort((a, b) => b.createdAt - a.createdAt)
+    },
+
+    async create(club, teacher, requester) {
+      await wait()
+      const request: ClubSponsorRequest = {
+        id: `sr-${Math.random().toString(36).slice(2, 10)}`,
+        clubId: club.id, clubName: club.name, teacherId: teacher.id,
+        teacherName: teacher.displayName, requestedById: requester.id,
+        requestedByName: requester.displayName, status: 'pending', createdAt: Date.now(),
+      }
+      mutate((store) => {
+        store.sponsorRequests.unshift(request)
+        updateClub(store, club.id, { sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending' })
+      })
+    },
+
+    async respond(requestId, status: Extract<SponsorRequestStatus, 'accepted' | 'declined'>) {
+      await wait()
+      mutate((store) => {
+        const request = store.sponsorRequests.find((item) => item.id === requestId)
+        if (!request) throw new Error('This sponsor request no longer exists.')
+        request.status = status
+        updateClub(store, request.clubId, {
+          sponsorId: status === 'accepted' ? request.teacherId : '',
+          sponsorName: status === 'accepted' ? request.teacherName : '',
+          sponsorStatus: status,
+        })
       })
     },
   },
