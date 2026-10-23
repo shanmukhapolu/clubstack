@@ -1,6 +1,20 @@
-export type Role = 'student' | 'admin'
+export type Role = 'student' | 'teacher' | 'admin'
 
 export type ClubStatus = 'pending' | 'approved' | 'rejected'
+
+export type ReportStatus = 'open' | 'reviewed' | 'resolved'
+
+export interface ModerationReport {
+  id: string
+  reporterId: string
+  reporterName: string
+  clubId: string
+  clubName: string
+  reason: string
+  details: string
+  status: ReportStatus
+  createdAt: number
+}
 
 export interface AppUser {
   id: string
