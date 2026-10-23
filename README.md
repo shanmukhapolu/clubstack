@@ -246,13 +246,13 @@ Firebase Admin SDK — kept outside this client app.
 
 Key rules in [`firestore.rules`](firestore.rules):
 
-- Profiles can only be created by their owner and only with `role: "student"`.
+- Profiles are created by their owner. Role selection is currently open for testing and must be restricted before production.
 - Clubs can only be created as `pending` with the creator as leader and `memberCount: 0`;
   the creator is then added as the first member. Leaders cannot change `leaderId`, `status`, or
   `createdAt`; only admins change status.
 - Memberships can only be created for yourself, and only for an approved club (or your own pending
   club at creation). `memberCount` may only move by exactly ±1 and never below zero.
-- Announcement/event creation requires your uid as author and leadership of that club.
+- Announcement/event creation requires your uid as author and club-management permission.\n- Officer invitations are only for student accounts; permissions are granted when the invitee accepts.
 - Admins are recognized by the `users/{uid}.role` document read inside the rules, so changing role UI
   alone grants nothing.
 
@@ -283,7 +283,7 @@ src/
     demoSeed.ts            Sample clubs, users, announcements, events
     types.ts               Domain types, categories, palette
     dates.ts / helpers.ts  Date, search, and error helpers
-  pages/                   Login, Dashboard, Discover, Club, Calendar, Admin, Create, 404
+  pages/                   Login, Dashboard, Discover, Club overview/settings/meetings, invitations, role workspaces, Calendar, Create, 404
 firestore.rules            Server-side security rules
 firestore.indexes.json     Composite indexes (none required for the MVP)
 firebase.json              Rules + Hosting + emulator configuration
