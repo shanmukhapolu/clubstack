@@ -19,8 +19,8 @@ export function EventRow({
   const past = event.startAt < Date.now()
 
   return (
-    <div className={`flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5 ${past ? 'opacity-55' : ''}`}>
-      <div className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-brand-50 py-2 text-brand-700">
+    <div className={`flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5 ${past ? 'opacity-55' : ''}`} style={club ? { borderLeft: `4px solid ${club.color}` } : undefined}>
+      <div className="flex w-12 shrink-0 flex-col items-center rounded-xl py-2" style={club ? { backgroundColor: `${club.color}30`, color: "#293044" } : { backgroundColor: "#e7e3ff", color: "#5b4ec7" }}>
         <span className="text-[10px] font-bold uppercase tracking-wide">
           {date.toLocaleDateString(undefined, { month: 'short' })}
         </span>
