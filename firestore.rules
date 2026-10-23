@@ -205,10 +205,12 @@ service cloud.firestore {
             && request.resource.data.status == 'pending'
             && request.resource.data.clubId == resource.data.clubId
             && request.resource.data.invitedUserId == resource.data.invitedUserId
+            && request.resource.data.invitedById == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
                  ['clubName', 'invitedUserName', 'invitedById', 'invitedByName', 'title', 'status', 'createdAt']))
         || (isSignedIn()
             && resource.data.invitedUserId == request.auth.uid
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
             && resource.data.status == 'pending'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
             && request.resource.data.status in ['accepted', 'declined']);
