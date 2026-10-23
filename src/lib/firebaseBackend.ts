@@ -35,6 +35,8 @@ import type {
   ClubEvent,
   ClubInput,
   ClubStatus,
+  ClubSponsorRequest,
+  SponsorRequestStatus,
   Membership,
   ModerationReport,
   ReportStatus,
@@ -80,6 +82,11 @@ function toClub(id: string, data: Record<string, unknown>): Club {
       : 'pending') as ClubStatus,
     leaderId: stringOr(data.leaderId, ''),
     leaderName: stringOr(data.leaderName, ''),
+    leaderTitle: stringOr(data.leaderTitle, 'President'),
+    officers: Array.isArray(data.officers) ? data.officers as Club['officers'] : [],
+    sponsorId: stringOr(data.sponsorId, ''),
+    sponsorName: stringOr(data.sponsorName, ''),
+    sponsorStatus: (['pending', 'accepted', 'declined', 'none'].includes(String(data.sponsorStatus)) ? data.sponsorStatus : 'none') as Club['sponsorStatus'],
     contactEmail: stringOr(data.contactEmail, ''),
     memberCount: numberOr(data.memberCount),
     createdAt: numberOr(data.createdAt),
@@ -108,6 +115,20 @@ function toModerationReport(id: string, data: Record<string, unknown>): Moderati
     reason: stringOr(data.reason, 'Other'),
     details: stringOr(data.details, ''),
     status: (['open', 'reviewed', 'resolved'].includes(String(data.status)) ? data.status : 'open') as ReportStatus,
+    createdAt: numberOr(data.createdAt),
+  }
+}
+
+function toSponsorRequest(id: string, data: Record<string, unknown>): ClubSponsorRequest {
+  return {
+    id,
+    clubId: stringOr(data.clubId, ''),
+    clubName: stringOr(data.clubName, ''),
+    teacherId: stringOr(data.teacherId, ''),
+    teacherName: stringOr(data.teacherName, ''),
+    requestedById: stringOr(data.requestedById, ''),
+    requestedByName: stringOr(data.requestedByName, ''),
+    status: (['pending', 'accepted', 'declined'].includes(String(data.status)) ? data.status : 'pending') as SponsorRequestStatus,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -256,6 +277,19 @@ export const firebaseApi: ClubStackApi = {
       batch.update(clubRef, { memberCount: 1 })
       await batch.commit()
 
+      if (input.sponsorId) {
+        await addDoc(collection(db, 'clubSponsorRequests'), {
+          clubId: clubRef.id,
+          clubName: input.name,
+          teacherId: input.sponsorId,
+          teacherName: input.sponsorName,
+          requestedById: leader.id,
+          requestedByName: leader.displayName,
+          status: 'pending' satisfies SponsorRequestStatus,
+          createdAt,
+        })
+      }
+
       return clubRef.id
     },
 
@@ -265,6 +299,20 @@ export const firebaseApi: ClubStackApi = {
 
     async setStatus(id, status) {
       await updateDoc(doc(requireDb(), 'clubs', id), { status })
+    },
+
+    async delete(id) {
+      const db = requireDb()
+      const related = await Promise.all([
+        getDocs(query(collection(db, 'memberships'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'announcements'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'events'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('clubId', '==', id))),
+      ])
+      const batch = writeBatch(db)
+      related.flatMap((snapshot) => snapshot.docs).forEach((item) => batch.delete(item.ref))
+      batch.delete(doc(db, 'clubs', id))
+      await batch.commit()
     },
   },
 
@@ -405,6 +453,43 @@ export const firebaseApi: ClubStackApi = {
 
     async setStatus(id, status) {
       await updateDoc(doc(requireDb(), 'moderationReports', id), { status })
+    },
+  },
+
+  sponsorRequests: {
+    async listForTeacher(teacherId) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'clubSponsorRequests'), where('teacherId', '==', teacherId)))
+      return snapshot.docs.map((item) => toSponsorRequest(item.id, item.data())).sort(byNewest)
+    },
+
+    async create(club, teacher, requester) {
+      await addDoc(collection(requireDb(), 'clubSponsorRequests'), {
+        clubId: club.id,
+        clubName: club.name,
+        teacherId: teacher.id,
+        teacherName: teacher.displayName,
+        requestedById: requester.id,
+        requestedByName: requester.displayName,
+        status: 'pending' satisfies SponsorRequestStatus,
+        createdAt: Date.now(),
+      })
+      await updateDoc(doc(requireDb(), 'clubs', club.id), {
+        sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending',
+      })
+    },
+
+    async respond(requestId, status) {
+      const db = requireDb()
+      const requestRef = doc(db, 'clubSponsorRequests', requestId)
+      const requestSnapshot = await getDoc(requestRef)
+      if (!requestSnapshot.exists()) throw new Error('This sponsor request no longer exists.')
+      const request = toSponsorRequest(requestSnapshot.id, requestSnapshot.data())
+      await updateDoc(requestRef, { status })
+      await updateDoc(doc(db, 'clubs', request.clubId), {
+        sponsorId: status === 'accepted' ? request.teacherId : '',
+        sponsorName: status === 'accepted' ? request.teacherName : '',
+        sponsorStatus: status,
+      })
     },
   },
 
