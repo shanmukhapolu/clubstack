@@ -318,7 +318,8 @@ try {
       status: 'pending',
       createdAt: 10,
     }))
-    await assertSucceeds(updateDoc(requestRef, {
+    const advisorRequestRef = doc(acceptedAdvisor, 'clubDeletionRequests', 'club-accepted-sponsor-one')
+    await assertSucceeds(updateDoc(advisorRequestRef, {
       status: 'approved',
       reviewedAt: 11,
       reviewedById: 'teacher-accepted',
