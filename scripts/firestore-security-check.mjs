@@ -30,7 +30,7 @@ const profile = (role, displayName) => ({
   createdAt: 1,
 })
 
-const clubData = ({ id, leaderId = 'leader', sponsorId = '', sponsorStatus = 'none' }) => ({
+const clubData = ({ id, leaderId = 'leader', sponsorId = '', sponsorStatus = 'none', status = 'approved' }) => ({
   name: id.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
   description: 'A student club with enough detail for the public directory preview.',
   category: 'Academic',
@@ -48,17 +48,17 @@ const clubData = ({ id, leaderId = 'leader', sponsorId = '', sponsorStatus = 'no
   sponsorId,
   sponsorName: sponsorId ? 'Club Advisor' : '',
   sponsorStatus,
-  status: 'approved',
+  status,
   createdAt: 1,
 })
 
-const directoryData = ({ id, requiresApproval = false, membersVisible = true }) => ({
+const directoryData = ({ id, requiresApproval = false, membersVisible = true, status = 'approved' }) => ({
   name: id.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
   description: 'A student club with enough detail for the public directory preview.',
   category: 'Academic',
   emoji: '🎒',
   color: '#4567ab',
-  status: 'approved',
+  status,
   leaderName: 'Club Leader',
   requiresApproval,
   membersVisible,
@@ -102,6 +102,7 @@ async function seed() {
       { id: 'club-hidden', requiresApproval: false, membersVisible: false, sponsorId: '', sponsorStatus: 'none' },
       { id: 'club-approval', requiresApproval: true, membersVisible: true, sponsorId: '', sponsorStatus: 'none' },
       { id: 'club-pending-sponsor', requiresApproval: false, membersVisible: true, sponsorId: 'teacher-pending', sponsorStatus: 'pending' },
+      { id: 'club-pending-invite', requiresApproval: false, membersVisible: true, sponsorId: '', sponsorStatus: 'none', status: 'pending' },
       { id: 'club-accepted-sponsor-one', requiresApproval: false, membersVisible: true, sponsorId: 'teacher-accepted', sponsorStatus: 'accepted' },
       { id: 'club-accepted-sponsor-two', requiresApproval: false, membersVisible: true, sponsorId: 'teacher-accepted', sponsorStatus: 'accepted' },
     ]
@@ -117,6 +118,12 @@ async function seed() {
     })
     await setDoc(doc(db, 'memberships', 'member-hidden_club-hidden'), {
       uid: 'member-hidden', clubId: 'club-hidden', joinedAt: 2,
+    })
+    await setDoc(doc(db, 'officerInvitations', 'club-pending-invite_student-applying'), {
+      clubId: 'club-pending-invite', clubName: 'Club Pending Invite',
+      invitedUserId: 'student-applying', invitedUserName: 'Applicant Student',
+      invitedById: 'leader', invitedByName: 'Club Leader', title: 'Officer',
+      status: 'pending', createdAt: 2,
     })
     await setDoc(doc(db, 'clubJoinRequests', 'club-approval_student-applying'), {
       clubId: 'club-approval',
@@ -165,6 +172,10 @@ try {
     assertSucceeds(getDoc(doc(member, 'clubs', 'club-visible'))))
   await check('pending advisors cannot read private club documents', () =>
     assertFails(getDoc(doc(pendingAdvisor, 'clubs', 'club-pending-sponsor'))))
+  await check('pending officer invitees can view only the safe pending-club preview', async () => {
+    await assertSucceeds(getDoc(doc(applicant, 'clubDirectory', 'club-pending-invite')))
+    await assertFails(getDoc(doc(applicant, 'clubs', 'club-pending-invite')))
+  })
   await check('accepted advisors can sponsor multiple clubs', async () => {
     await assertSucceeds(getDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one')))
     await assertSucceeds(getDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-two')))

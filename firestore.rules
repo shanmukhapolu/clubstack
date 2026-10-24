@@ -35,6 +35,12 @@ service cloud.firestore {
       return signedIn() && privateClubExists(clubId)
         && privateClub(clubId).sponsorId == request.auth.uid;
     }
+    function isPendingOfficerInvite(clubId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'pending'
+        && get(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid;
+    }
     function isManager(clubId) {
       return isAdmin() || isLeader(clubId) || isOfficer(clubId) || isSponsor(clubId);
     }
@@ -100,7 +106,7 @@ service cloud.firestore {
     // Public directory summaries intentionally contain no location, contact email, officer list, sponsor identifiers, or meeting schedule.
     match /clubDirectory/{clubId} {
       allow read: if signedIn() && (
-        resource.data.status == 'approved' || isAdmin() || isManager(clubId) || isMember(clubId) || isSponsorCandidate(clubId)
+        resource.data.status == 'approved' || isAdmin() || isManager(clubId) || isMember(clubId) || isSponsorCandidate(clubId) || isPendingOfficerInvite(clubId)
       );
       allow create: if signedIn()
         && directoryFieldsValid(request.resource.data)
