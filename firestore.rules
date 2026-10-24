@@ -84,12 +84,12 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.color == request.resource.data.color
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.status == request.resource.data.status
         && (!('hidden' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.hidden == request.resource.data.hidden)
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName == request.resource.data.leaderName
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName == request.resource.data.sponsorName
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingDay == request.resource.data.meetingDay
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingTime == request.resource.data.meetingTime
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.location == request.resource.data.location
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.contactEmail == request.resource.data.contactEmail
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('leaderName', '') == request.resource.data.leaderName
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('sponsorName', '') == request.resource.data.sponsorName
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('meetingDay', 'Flexible') == request.resource.data.meetingDay
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('meetingTime', '') == request.resource.data.meetingTime
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('location', '') == request.resource.data.location
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('contactEmail', '') == request.resource.data.contactEmail
         && (!('meetingFrequency' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingFrequency == request.resource.data.meetingFrequency)
         && (!('meetingOrdinal' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingOrdinal == request.resource.data.meetingOrdinal)
         && (!('customMeetingSchedule' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.customMeetingSchedule == request.resource.data.customMeetingSchedule)
