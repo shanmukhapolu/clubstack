@@ -479,10 +479,7 @@ export const firebaseApi: ClubStackApi = {
       if (!snapshot.exists()) throw new Error('That club no longer exists.')
       const data = snapshot.data()
       const actorId = requireAuth().currentUser?.uid
-      if (!actorId || !(data.leaderId === actorId || data.get?.('') || false)) {
-        // Firestore rules remain the source of truth for manager/admin authorization.
-        if (!actorId) throw new Error('You must be signed in to manage officers.')
-      }
+      if (!actorId) throw new Error('You must be signed in to manage officers.')
       const officers = Array.isArray(data.officers) ? data.officers.filter((item) => (item as Record<string, unknown>).uid !== officerId) : []
       const officerIds = Array.isArray(data.officerIds) ? data.officerIds.filter((uid) => uid !== officerId) : []
       await updateDoc(clubRef, { officers, officerIds })
