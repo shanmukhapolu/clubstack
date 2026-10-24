@@ -45,7 +45,11 @@ export function NotificationsPage() {
     }
   }, [user, clubs, joinedIds, notify])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    const interval = window.setInterval(() => { void load() }, 30000)
+    return () => window.clearInterval(interval)
+  }, [load])
 
   function markAsRead(id: string) {
     if (!user) return
@@ -154,7 +158,7 @@ export function NotificationsPage() {
                           <Link to={`/clubs/${item.clubId}`} className="inline-flex items-center px-2 text-[12px] font-semibold text-ink-soft hover:underline">View club</Link>
                         </div>
                       </div>
-                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Already read' : 'Mark as read'} title={readIds.has(id) ? 'Already read' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} disabled={readIds.has(id)} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
