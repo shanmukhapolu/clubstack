@@ -638,7 +638,7 @@ export const demoApi: ClubStackApi = {
   sponsorRequests: {
     async listForTeacher(teacherId) {
       await wait()
-      return read().sponsorRequests.filter((request) => request.teacherId === teacherId).sort((a, b) => b.createdAt - a.createdAt)
+      return read().sponsorRequests.filter((request) => request.teacherId === teacherId || request.previousSponsorId === teacherId).sort((a, b) => b.createdAt - a.createdAt)
     },
 
     async create(club, teacher, requester) {
