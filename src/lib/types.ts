@@ -64,6 +64,15 @@ export interface ReactionSummary {
 
 export type EventRsvpStatus = 'going' | 'maybe' | 'notGoing'
 
+export interface EventRsvp {
+  id: string
+  eventId: string
+  clubId: string
+  uid: string
+  status: EventRsvpStatus
+  updatedAt: number
+}
+
 export interface RsvpSummary {
   going: number
   maybe: number

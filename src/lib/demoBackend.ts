@@ -1,6 +1,6 @@
 import type { ClubStackApi } from './backend'
 import { createDemoStore, DEMO_PASSWORD, DEMO_USERS, type DemoStore } from './demoSeed'
-import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus, ClubJoinRequest, JoinRequestStatus, ReactionSummary, EventRsvpStatus, RsvpSummary } from './types'
+import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus, RsvpSummary } from './types'
 
 const STORAGE_KEY = 'clubstack.demo.v1'
 const RESEED_AFTER_MS = 1000 * 60 * 60 * 24 * 14
@@ -29,7 +29,7 @@ function load(): DemoStore {
         if (!Array.isArray(parsed.joinRequests)) parsed.joinRequests = []
         if (!Array.isArray(parsed.announcementReactions)) parsed.announcementReactions = []
         if (!Array.isArray(parsed.eventRsvps)) parsed.eventRsvps = []
-        parsed.clubs = parsed.clubs.map((club) => ({ requiresApproval: false, membersVisible: true, ...club }))
+        for (const club of parsed.clubs) { if (typeof club.requiresApproval !== 'boolean') club.requiresApproval = false; if (typeof club.membersVisible !== 'boolean') club.membersVisible = true }
         return parsed
       }
     }
@@ -181,8 +181,8 @@ export const demoApi: ClubStackApi = {
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
         memberCount: 1,
-        requiresApproval: input.requiresApproval ?? false,
-        membersVisible: input.membersVisible ?? true,
+        requiresApproval: false,
+        membersVisible: true,
         createdAt: Date.now(),
       }
       mutate((store) => {

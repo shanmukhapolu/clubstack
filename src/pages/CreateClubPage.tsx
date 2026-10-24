@@ -180,6 +180,8 @@ export function CreateClubPage() {
     sponsorName: form.sponsorName,
     sponsorStatus: form.sponsorId ? 'pending' : 'none',
     memberCount: 1,
+    requiresApproval: false,
+    membersVisible: true,
     createdAt: Date.now(),
   }
 
