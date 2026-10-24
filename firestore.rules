@@ -159,6 +159,7 @@ service cloud.firestore {
         // A teacher who was invited to sponsor this club must be able to read the
         // pending club document so the accept/decline transaction can complete.
         || (resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus == 'accepted')
+        || (resource.data.get('previousSponsorId', '') == request.auth.uid && resource.data.status == 'pending')
       );
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
@@ -235,7 +236,14 @@ service cloud.firestore {
         || (isTeacher() && resource.data.sponsorId == request.auth.uid
           && resource.data.sponsorStatus == 'pending'
           && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
-          && request.resource.data.sponsorStatus in ['accepted','declined']);
+          && request.resource.data.sponsorStatus in ['accepted','declined'])
+        || (isTeacher()
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.teacherId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
+          && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
+          && request.resource.data.sponsorId == request.auth.uid
+          && request.resource.data.sponsorStatus == 'accepted');
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
@@ -343,21 +351,48 @@ service cloud.firestore {
         && request.resource.data.teacherId is string
         && get(/databases/$(database)/documents/users/$(request.resource.data.teacherId)).data.role == 'teacher'
         && request.resource.data.clubId is string
-        // Sponsor requests are created in the same batch that assigns the pending
-        // sponsor to the club, so validate the post-batch club state.
-        && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid
-        && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorId == request.resource.data.teacherId
-        && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'pending'
         && request.resource.data.status == 'pending'
-        && request.resource.data.createdAt is number;
+        && request.resource.data.createdAt is number
+        && (
+          (request.resource.data.stage == 'currentSponsorApproval'
+            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid
+            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorId == request.resource.data.previousSponsorId
+            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'accepted')
+          || (!('stage' in request.resource.data.keys())
+            && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorId == request.resource.data.teacherId
+            && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'pending')
+        );
       allow read: if isAdmin() || (signedIn() && (
-        resource.data.teacherId == request.auth.uid || resource.data.requestedById == request.auth.uid || isManager(resource.data.clubId)
+        resource.data.teacherId == request.auth.uid || resource.data.previousSponsorId == request.auth.uid
+        || resource.data.requestedById == request.auth.uid || isManager(resource.data.clubId)
       ));
-      allow update: if isAdmin() || (isTeacher()
-        && resource.data.teacherId == request.auth.uid
-        && resource.data.status == 'pending'
-        && onlyChanged(['status'])
-        && request.resource.data.status in ['accepted','declined']);
+      allow update: if isAdmin()
+        || (isLeader(resource.data.clubId)
+          && resource.data.stage == 'currentSponsorApproval'
+          && resource.data.status == 'declined'
+          && request.resource.data.stage == 'currentSponsorApproval'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.requestedById == request.auth.uid
+          && onlyChanged(['clubId','clubName','teacherId','teacherName','requestedById','requestedByName','previousSponsorId','previousSponsorName','stage','status','createdAt']))
+        || (isTeacher()
+          && resource.data.previousSponsorId == request.auth.uid
+          && resource.data.stage == 'currentSponsorApproval'
+          && resource.data.status == 'pending'
+          && onlyChanged(['stage'])
+          && request.resource.data.stage == 'newSponsorApproval')
+        || (isTeacher()
+          && resource.data.teacherId == request.auth.uid
+          && resource.data.stage == 'newSponsorApproval'
+          && resource.data.status == 'pending'
+          && onlyChanged(['status'])
+          && request.resource.data.status in ['accepted','declined'])
+        || (isTeacher()
+          && !('stage' in resource.data.keys())
+          && resource.data.teacherId == request.auth.uid
+          && resource.data.status == 'pending'
+          && onlyChanged(['status'])
+          && request.resource.data.status in ['accepted','declined']);
       allow delete: if isAdmin() || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
     }
 
@@ -410,7 +445,7 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() > 0
         && request.resource.data.body is string && request.resource.data.body.size() > 0
         && request.resource.data.createdAt is number;
-      allow update: if isAdmin() || (isManager(resource.data.clubId) && onlyChanged(['title','body']));
+      allow update: if isAdmin() || (isManager(resource.data.clubId) && onlyChanged(['title','body','pinned','updatedAt']));
       allow delete: if isAdmin() || isManager(resource.data.clubId);
     }
 
@@ -444,7 +479,7 @@ service cloud.firestore {
         && request.resource.data.startAt is number
         && request.resource.data.createdAt is number;
       allow update: if isAdmin() || (isManager(resource.data.clubId)
-        && onlyChanged(['title','description','location','startAt','endAt']));
+        && onlyChanged(['title','description','location','startAt','endAt','type','attendance','updatedAt','deletedAt']));
       allow delete: if isAdmin() || isManager(resource.data.clubId);
     }
 
