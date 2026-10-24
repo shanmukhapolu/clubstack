@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   Check,
@@ -32,9 +32,14 @@ type Tab = 'clubs' | 'people' | 'reports'
 
 export function AdminPage() {
   const { user } = useAuth()
+  const { pathname } = useLocation()
   const { clubs, loading: clubsLoading, refresh } = useClubs()
   const { notify } = useToast()
-  const [tab, setTab] = useState<Tab>('clubs')
+  const [tab, setTab] = useState<Tab>(pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs')
+
+  useEffect(() => {
+    setTab(pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs')
+  }, [pathname])
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
   const [reports, setReports] = useState<ModerationReport[]>([])
