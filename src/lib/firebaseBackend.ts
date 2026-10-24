@@ -283,7 +283,13 @@ export const firebaseApi: ClubStackApi = {
           }
           if (cancelled) return
           unsubscribeProfile = onSnapshot(profileRef, (snapshot) => {
-            if (!snapshot.exists()) return
+            if (!snapshot.exists()) {
+              void getDoc(disabledRef).then(async disabled => {
+                if (disabled.exists()) await firebaseSignOut(auth)
+                if (!cancelled) callback(null)
+              }).catch(error => console.error('Could not verify account status.', error))
+              return
+            }
             const profile = toUser(snapshot.id, snapshot.data())
             void setDoc(doc(db, 'userDirectory', snapshot.id), {
               displayName: profile.displayName,
