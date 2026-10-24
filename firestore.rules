@@ -146,6 +146,13 @@ service cloud.firestore {
           && privateClub(clubId).sponsorStatus == 'pending'
           && onlyChanged(['sponsorName'])
           && request.resource.data.sponsorName is string
+          && directoryMirrorMatchesPrivate(clubId))
+        || (isTeacher()
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.teacherId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
+          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
+          && onlyChanged(['sponsorName'])
+          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName
           && directoryMirrorMatchesPrivate(clubId));
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
@@ -367,7 +374,7 @@ service cloud.firestore {
         );
       allow read: if isAdmin() || (signedIn() && (
         resource.data.teacherId == request.auth.uid || resource.data.get('previousSponsorId', '') == request.auth.uid
-        || resource.data.requestedById == request.auth.uid || isManager(resource.data.clubId)
+        || resource.data.requestedById == request.auth.uid || isMember(resource.data.clubId) || isManager(resource.data.clubId)
       ));
       allow update: if isAdmin()
         || (signedIn()
