@@ -192,6 +192,7 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
         || ((isSponsor(clubId) || isOfficer(clubId))
           && onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle']))
+        || (isAdmin() && onlyChanged(['officers','officerIds']))
         || (isManager(clubId)
           && onlyChanged(['officers','officerIds'])
           && resource.data.get('officerIds', []) is list
