@@ -2,6 +2,7 @@ import type {
   Announcement,
   AppUser,
   Club,
+  ClubDeletionRequest,
   ClubEvent,
   ClubJoinRequest,
   ClubSponsorRequest,
@@ -15,6 +16,7 @@ export interface InboxState {
   ownJoinRequests: ClubJoinRequest[]
   joinRequests: ClubJoinRequest[]
   sponsorRequests: ClubSponsorRequest[]
+  deletionRequests: ClubDeletionRequest[]
   announcements: Announcement[]
   events: ClubEvent[]
   pendingClubs: Club[]
@@ -26,6 +28,7 @@ export const emptyInbox: InboxState = {
   ownJoinRequests: [],
   joinRequests: [],
   sponsorRequests: [],
+  deletionRequests: [],
   announcements: [],
   events: [],
   pendingClubs: [],
@@ -100,6 +103,7 @@ export function notificationIds(items: InboxState): string[] {
     ...items.invitations.filter((item) => item.status === 'pending').map((item) => `invitation:${item.id}`),
     ...items.ownJoinRequests.map((item) => `own-join:${item.id}:${item.status}`),
     ...items.sponsorRequests.filter((item) => item.status === 'pending').map((item) => `sponsor:${item.id}`),
+    ...items.deletionRequests.filter((item) => item.status === 'pending').map((item) => `deletion:${item.id}`),
     ...items.joinRequests.filter((item) => item.status === 'pending').map((item) => `join:${item.id}`),
     ...items.announcements.map((item) => `announcement:${item.id}`),
     ...items.events.map((item) => `event:${item.id}`),
@@ -119,16 +123,17 @@ export async function fetchInboxItems(user: AppUser, clubs: Club[], joinedIds: S
     || (club.sponsorId === user.id && club.sponsorStatus === 'accepted'))
   const feedIds = [...new Set(readableClubs.map((club) => club.id))]
 
-  const [invitations, ownJoinRequests, sponsorRequests, nestedRequests, feed, reports] = await Promise.all([
+  const [invitations, ownJoinRequests, sponsorRequests, deletionRequestGroups, nestedRequests, feed, reports] = await Promise.all([
     user.role === 'student' ? api.officerInvitations.listForUser(user.id) : Promise.resolve([]),
     user.role === 'student' ? api.memberships.listRequestsForUser(user.id) : Promise.resolve([]),
     user.role === 'teacher' ? api.sponsorRequests.listForTeacher(user.id) : Promise.resolve([]),
+    Promise.all(managerClubs.filter((club) => isAdmin || (club.sponsorId === user.id && club.sponsorStatus === 'accepted')).map((club) => api.clubs.getDeletionRequest(club.id))),
     Promise.all(managerClubs.map((club) => api.memberships.listRequestsForClub(club.id))),
     Promise.all(feedIds.length
       ? [api.announcements.listForClubs(feedIds), api.events.listForClubs(feedIds)]
       : [Promise.resolve([]), Promise.resolve([])]),
     isAdmin ? api.moderation.list() : Promise.resolve([]),
-  ]) as [OfficerInvitation[], ClubJoinRequest[], ClubSponsorRequest[], ClubJoinRequest[][], [Announcement[], ClubEvent[]], ModerationReport[]]
+  ]) as [OfficerInvitation[], ClubJoinRequest[], ClubSponsorRequest[], (ClubDeletionRequest | null)[], ClubJoinRequest[][], [Announcement[], ClubEvent[]], ModerationReport[]]
 
   const now = Date.now()
   const month = 30 * 24 * 60 * 60 * 1000
@@ -136,6 +141,7 @@ export async function fetchInboxItems(user: AppUser, clubs: Club[], joinedIds: S
     invitations,
     ownJoinRequests,
     sponsorRequests: sponsorRequests.filter((item) => item.status === 'pending'),
+    deletionRequests: deletionRequestGroups.filter((item): item is ClubDeletionRequest => !!item && item.status === 'pending'),
     joinRequests: nestedRequests.flat().filter((item) => item.status === 'pending'),
     announcements: feed[0].filter((item) => now - item.createdAt < month),
     events: feed[1].filter((item) => item.startAt >= now && item.startAt - now < month),
