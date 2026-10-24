@@ -21,6 +21,7 @@ export interface InboxState {
   events: ClubEvent[]
   pendingClubs: Club[]
   reports: ModerationReport[]
+  ownershipTransfers: Club[]
 }
 
 export const emptyInbox: InboxState = {
@@ -33,6 +34,7 @@ export const emptyInbox: InboxState = {
   events: [],
   pendingClubs: [],
   reports: [],
+  ownershipTransfers: [],
 }
 
 const READ_PREFIX = 'clubstack.notifications.read.v1.'
@@ -109,6 +111,7 @@ export function notificationIds(items: InboxState): string[] {
     ...items.events.map((item) => `event:${item.id}`),
     ...items.pendingClubs.map((item) => `pending-club:${item.id}`),
     ...items.reports.map((item) => `report:${item.id}`),
+    ...items.ownershipTransfers.map((item) => `ownership-transfer:${item.id}`),
   ]
 }
 
@@ -147,6 +150,7 @@ export async function fetchInboxItems(user: AppUser, clubs: Club[], joinedIds: S
     events: feed[1].filter((item) => item.startAt >= now && item.startAt - now < month),
     pendingClubs: isAdmin ? clubs.filter((club) => club.status === 'pending') : [],
     reports: reports.filter((report) => report.status === 'open'),
+    ownershipTransfers: user.role === 'student' ? clubs.filter((club) => club.pendingLeaderTransfer?.toId === user.id) : [],
   }
 }
 
