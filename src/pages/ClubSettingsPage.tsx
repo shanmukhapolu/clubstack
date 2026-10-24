@@ -20,6 +20,8 @@ export function ClubSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [memberIds, setMemberIds] = useState<string[]>([])
+  const [requiresApproval, setRequiresApproval] = useState(false)
+  const [membersVisible, setMembersVisible] = useState(true)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberResults, setMemberResults] = useState<AppUser[]>([])
   const [selectedMember, setSelectedMember] = useState<AppUser | null>(null)
@@ -34,7 +36,7 @@ export function ClubSettingsPage() {
     void api.clubs.get(clubId).then(async found => {
       if (!active) return
       setClub(found)
-      if (found) setForm({ name:found.name, description:found.description, category:found.category, meetingDay:found.meetingDay, meetingTime:found.meetingTime, location:found.location, contactEmail:found.contactEmail, leaderTitle:found.leaderTitle || 'President' })
+      if (found) { setForm({ name:found.name, description:found.description, category:found.category, meetingDay:found.meetingDay, meetingTime:found.meetingTime, location:found.location, contactEmail:found.contactEmail, leaderTitle:found.leaderTitle || 'President' }); setRequiresApproval(found.requiresApproval); setMembersVisible(found.membersVisible) }
       setLoading(false)
     }).catch(caught => {
       if (active) { notify(friendlyError(caught), 'error'); setLoading(false) }
@@ -60,7 +62,7 @@ export function ClubSettingsPage() {
     if (prefix.length < 4 || !canManage) { setMemberResults([]); return }
     let active = true
     void api.users.searchDirectory(prefix, 'student', 100).then(results => {
-      if (active) setMemberResults(results.filter(person => memberIds.includes(person.id) && !(club?.officerIds ?? []).includes(person.id) && person.id !== club?.leaderId))
+      if (active) setMemberResults(results.filter(person => !(club?.officerIds ?? []).includes(person.id) && person.id !== club?.leaderId))
     }).catch(caught => {
       if (active) { setMemberResults([]); notify(friendlyError(caught), 'error') }
     })
@@ -76,8 +78,8 @@ export function ClubSettingsPage() {
     }
     setSaving(true)
     try {
-      await api.clubs.update(club.id, { name:form.name.trim(), description:form.description.trim(), category:form.category, meetingDay:form.meetingDay, meetingTime:form.meetingTime.trim(), location:form.location.trim(), contactEmail:form.contactEmail.trim(), leaderTitle:form.leaderTitle })
-      setClub(current => current ? { ...current, ...form, name:form.name.trim(), description:form.description.trim(), meetingTime:form.meetingTime.trim(), location:form.location.trim(), contactEmail:form.contactEmail.trim() } : current)
+      await api.clubs.update(club.id, { name:form.name.trim(), description:form.description.trim(), category:form.category, meetingDay:form.meetingDay, meetingTime:form.meetingTime.trim(), location:form.location.trim(), contactEmail:form.contactEmail.trim(), leaderTitle:form.leaderTitle, requiresApproval, membersVisible })
+      setClub(current => current ? { ...current, ...form, name:form.name.trim(), description:form.description.trim(), meetingTime:form.meetingTime.trim(), location:form.location.trim(), contactEmail:form.contactEmail.trim(), requiresApproval, membersVisible } : current)
       await refresh()
       notify('Club settings saved.')
     } catch (caught) { notify(friendlyError(caught), 'error') }
@@ -120,9 +122,10 @@ export function ClubSettingsPage() {
     <nav aria-label="Club pages" className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
       <Link to={`/clubs/${club.id}`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Overview</Link>
       <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
+      <Link to={`/clubs/${club.id}/members`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Members</Link>
       <span aria-current="page" className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
     </nav>
-    <PageHeader eyebrow="Club settings" title="Club information." description="Update the details shown to students and manage student officer invitations. Officers added later must already be club members." />
+    <PageHeader eyebrow="Club settings" title="Club information." description="Update club details, membership privacy, and officer invitations. Students can hold officer roles in multiple clubs." />
     <div className="grid items-start gap-5 xl:grid-cols-[1fr_0.9fr]">
       <form onSubmit={saveDetails} className="card space-y-4 p-4 sm:p-6">
         <h2 className="text-[15px] font-extrabold">Public club details</h2>
@@ -135,11 +138,12 @@ export function ClubSettingsPage() {
         <div className="flex justify-end"><Button type="submit" loading={saving}><Save size={15}/> Save changes</Button></div>
       </form>
       <div className="space-y-5">
+        <section className="card space-y-4 p-4 sm:p-5"><div><h2 className="text-[15px] font-extrabold">Membership & privacy</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">These controls are enforced by database rules, not just the page design.</p></div><label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3"><input type="checkbox" className="mt-1 h-4 w-4 accent-brand-600" checked={requiresApproval} onChange={event=>setRequiresApproval(event.target.checked)}/><span><span className="block text-[13px] font-bold">Approve new members</span><span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">When enabled, students send a request and cannot access private club details until approved.</span></span></label><label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3"><input type="checkbox" className="mt-1 h-4 w-4 accent-brand-600" checked={membersVisible} onChange={event=>setMembersVisible(event.target.checked)}/><span><span className="block text-[13px] font-bold">Let members see the member list</span><span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">Managers can always see the list. Members cannot read it while this is off.</span></span></label><p className="text-[11.5px] text-muted">Save changes in the club details panel to apply these settings.</p></section>
         <section className="card p-4 sm:p-5"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-extrabold">Student officers</h2><Badge>{(club.officers ?? []).length}</Badge></div>
           {(club.officers ?? []).length===0?<p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p>:<div className="space-y-2">{(club.officers ?? []).map(officer=><div key={officer.uid} className="flex items-center gap-3 rounded-xl border border-line p-3"><div className="min-w-0 flex-1"><p className="text-[13px] font-bold">{officer.displayName}</p><p className="mt-0.5 text-[11.5px] text-muted">{officer.title}</p></div><button type="button" onClick={()=>void removeOfficer(officer)} className="rounded-lg p-2 text-muted hover:bg-[#fff0eb] hover:text-[#9c2f18]" aria-label={`Remove ${officer.displayName} as officer`} title="Remove officer"><UserMinus size={16}/></button></div>)}</div>}
         </section>
-        <section className="card p-4 sm:p-5"><h2 className="text-[15px] font-extrabold">Invite a club member</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Search at least four letters. Only existing student members appear. They must accept before being added as an officer.</p>
-          <div className="mt-3"><label className="label" htmlFor="member-search">Member name</label><input id="member-search" className="field" value={memberSearch} autoComplete="off" placeholder="Type at least 4 letters…" onChange={e=>{setMemberSearch(e.target.value);setSelectedMember(null)}}/><div aria-live="polite" className="mt-2 space-y-1">{memberSearch.trim().length<4?<p className="px-1 py-2 text-[11.5px] text-muted">Search starts after 4 characters.</p>:memberResults.length===0?<p className="px-1 py-2 text-[11.5px] text-muted">No matching club members found.</p>:memberResults.map(person=><button key={person.id} type="button" onClick={()=>{setSelectedMember(person);setMemberSearch(person.displayName);setMemberResults([])}} className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12.5px] ${selectedMember?.id===person.id?'border-brand-300 bg-brand-50':'border-line hover:bg-canvas'}`}><span className="min-w-0 flex-1 font-semibold">{person.displayName}</span><span className="text-[11px] text-muted">Member</span></button>)}</div></div>
+        <section className="card p-4 sm:p-5"><h2 className="text-[15px] font-extrabold">Invite a club member</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Search at least four letters. Any student may be invited, even if they are an officer in another club. Accepting adds them as a member here.</p>
+          <div className="mt-3"><label className="label" htmlFor="member-search">Member name</label><input id="member-search" className="field" value={memberSearch} autoComplete="off" placeholder="Type at least 4 letters…" onChange={e=>{setMemberSearch(e.target.value);setSelectedMember(null)}}/><div aria-live="polite" className="mt-2 space-y-1">{memberSearch.trim().length<4?<p className="px-1 py-2 text-[11.5px] text-muted">Search starts after 4 characters.</p>:memberResults.length===0?<p className="px-1 py-2 text-[11.5px] text-muted">No matching club members found.</p>:memberResults.map(person=><button key={person.id} type="button" onClick={()=>{setSelectedMember(person);setMemberSearch(person.displayName);setMemberResults([])}} className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12.5px] ${selectedMember?.id===person.id?'border-brand-300 bg-brand-50':'border-line hover:bg-canvas'}`}><span className="min-w-0 flex-1 font-semibold">{person.displayName}</span><span className="text-[11px] text-muted">{memberIds.includes(person.id) ? 'Member' : 'Joins on acceptance'}</span></button>)}</div></div>
           <div className="mt-3"><label className="label" htmlFor="officer-title">Officer title</label><select id="officer-title" className="field" value={officerTitle} onChange={e=>setOfficerTitle(e.target.value)}>{['Vice President','Officer','Treasurer','Secretary','Event Coordinator','Other'].map(title=><option key={title}>{title}</option>)}</select></div>
           <Button className="mt-3 w-full" disabled={!selectedMember} loading={inviting} onClick={()=>void sendInvitation()}><UserPlus size={15}/> Send officer invitation</Button>
           {invitations.filter(item=>item.status==='pending').length>0&&<div className="mt-4 border-t border-line pt-3"><p className="mb-2 text-[12px] font-bold">Pending invitations</p><div className="space-y-2">{invitations.filter(item=>item.status==='pending').map(item=><div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-canvas px-3 py-2"><span className="min-w-0 truncate text-[12px]">{item.invitedUserName} <span className="text-muted">· {item.title}</span></span><Badge tone="warn">Pending</Badge></div>)}</div></div>}
