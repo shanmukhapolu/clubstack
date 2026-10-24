@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Bell, CalendarDays, Compass, ShieldCheck, Users, Check, Search, Megaphone } from 'lucide-react'
+import { ArrowRight, Bell, CalendarDays, Compass, ShieldCheck, Users, Search, Megaphone } from 'lucide-react'
 
 const features = [
   { icon: Compass, title: 'Discover clubs', body: 'Browse school groups by interest and get the details you need before joining.' },
