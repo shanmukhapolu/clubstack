@@ -15,7 +15,7 @@ import {
   Pencil,
   Trash2,
   Flag,
-  Instagram,
+  Link2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -39,7 +39,7 @@ import {
   buttonStyles,
 } from '../components/ui'
 
-const ordinalLabels: Record<Club['meetingOrdinal'], string> = {
+const ordinalLabels: Record<NonNullable<Club['meetingOrdinal']>, string> = {
   first: 'First',
   second: 'Second',
   third: 'Third',
@@ -49,10 +49,11 @@ const ordinalLabels: Record<Club['meetingOrdinal'], string> = {
 
 function describeClubSchedule(club: Club): string {
   const frequency = club.meetingFrequency ?? (club.meetingDay === 'Flexible' ? 'custom' : 'weekly')
+  const ordinal = club.meetingOrdinal ?? 'first'
   let schedule: string
   if (frequency === 'custom') schedule = club.customMeetingSchedule || 'Flexible schedule'
   else if (frequency === 'everyOtherWeek') schedule = `Every other ${club.meetingDay}`
-  else if (frequency === 'monthly') schedule = `${ordinalLabels[club.meetingOrdinal] ?? 'First'} ${club.meetingDay} of every month`
+  else if (frequency === 'monthly') schedule = `${ordinalLabels[ordinal]} ${club.meetingDay} of every month`
   else schedule = `Every ${club.meetingDay}`
   return club.meetingTime ? `${schedule} · ${club.meetingTime}` : schedule
 }
@@ -573,7 +574,7 @@ export function ClubPage() {
           {club.dues && <div className="flex gap-2.5 sm:col-span-2"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club dues</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.dues}</dd></div></div>}
           {hasPrivateAccess && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club leader</dt><dd className="mt-0.5 text-muted">{club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</dd></div></div>}
           {hasPrivateAccess && (club.officers ?? []).length > 0 && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Student officers</dt><dd className="mt-0.5 text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div></div>}
-          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Instagram size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
+          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Link2 size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
         </dl>
       </section>
 
