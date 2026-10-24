@@ -53,7 +53,7 @@ export interface MembershipsApi {
 export interface AnnouncementsApi {
   listForClubs(clubIds: string[]): Promise<Announcement[]>
   create(clubId: string, input: { title: string; body: string }, author: AppUser): Promise<void>
-  getReactionSummary(announcementId: string, uid: string): Promise<ReactionSummary>
+  getReactionSummary(announcementId: string, clubId: string, uid: string): Promise<ReactionSummary>
   setReaction(announcementId: string, clubId: string, uid: string, emoji: string | null): Promise<void>
   remove(id: string): Promise<void>
 }
@@ -66,7 +66,7 @@ export interface EventsApi {
     input: { title: string; description: string; location: string; startAt: number; endAt: number | null },
     author: AppUser,
   ): Promise<void>
-  getRsvpSummary(eventId: string, uid: string): Promise<RsvpSummary>
+  getRsvpSummary(eventId: string, clubId: string, uid: string): Promise<RsvpSummary>
   setRsvp(eventId: string, clubId: string, uid: string, status: EventRsvpStatus): Promise<void>
   remove(id: string): Promise<void>
 }

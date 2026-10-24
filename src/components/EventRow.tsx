@@ -30,14 +30,14 @@ export function EventRow({
   useEffect(() => {
     if (!user) return
     let active = true
-    void api.events.getRsvpSummary(event.id, user.id).then(summary => { if (active) setRsvp(summary) }).catch(() => undefined)
+    void api.events.getRsvpSummary(event.id, event.clubId, user.id).then(summary => { if (active) setRsvp(summary) }).catch(() => undefined)
     return () => { active = false }
   }, [event.id, user?.id])
 
   async function updateRsvp(status: EventRsvpStatus) {
     if (!user || rsvpBusy) return
     setRsvpBusy(true)
-    try { await api.events.setRsvp(event.id, event.clubId, user.id, status); setRsvp(await api.events.getRsvpSummary(event.id, user.id)) }
+    try { await api.events.setRsvp(event.id, event.clubId, user.id, status); setRsvp(await api.events.getRsvpSummary(event.id, event.clubId, user.id)) }
     finally { setRsvpBusy(false) }
   }
 

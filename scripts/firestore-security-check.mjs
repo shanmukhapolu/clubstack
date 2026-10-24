@@ -231,6 +231,7 @@ try {
 
   const maliciousClub = {
     ...clubData({ id: 'fraud-club', leaderId: 'student-outsider' }),
+    status: 'pending',
     officers: [],
     officerIds: ['teacher-accepted'],
   }

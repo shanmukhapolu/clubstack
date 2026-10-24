@@ -26,7 +26,7 @@ export function AnnouncementCard({
   useEffect(() => {
     if (!user) return
     let active = true
-    void api.announcements.getReactionSummary(announcement.id, user.id).then(summary => {
+    void api.announcements.getReactionSummary(announcement.id, announcement.clubId, user.id).then(summary => {
       if (active) { setReactionCounts(summary.counts); setMyReaction(summary.mine) }
     }).catch(() => undefined)
     return () => { active = false }
@@ -39,7 +39,7 @@ export function AnnouncementCard({
       const next = myReaction === emoji ? null : emoji
       await api.announcements.setReaction(announcement.id, announcement.clubId, user.id, next)
       setMyReaction(next)
-      const summary = await api.announcements.getReactionSummary(announcement.id, user.id)
+      const summary = await api.announcements.getReactionSummary(announcement.id, announcement.clubId, user.id)
       setReactionCounts(summary.counts)
     } finally { setReacting(false) }
   }

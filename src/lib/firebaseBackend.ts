@@ -586,8 +586,8 @@ export const firebaseApi: ClubStackApi = {
       })
     },
 
-    async getReactionSummary(announcementId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'announcementReactions'), where('announcementId', '==', announcementId)))
+    async getReactionSummary(announcementId, clubId, uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
       const counts: Record<string, number> = {}
       let mine: string | null = null
       for (const item of snapshot.docs) {
@@ -645,8 +645,8 @@ export const firebaseApi: ClubStackApi = {
       })
     },
 
-    async getRsvpSummary(eventId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'eventRsvps'), where('eventId', '==', eventId)))
+    async getRsvpSummary(eventId, clubId, uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
       const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
       for (const item of snapshot.docs) {
         const data = item.data()

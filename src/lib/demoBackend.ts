@@ -348,9 +348,9 @@ export const demoApi: ClubStackApi = {
       })
     },
 
-    async getReactionSummary(announcementId, uid) {
+    async getReactionSummary(announcementId, clubId, uid) {
       await wait()
-      const reactions = read().announcementReactions.filter((item) => item.announcementId === announcementId)
+      const reactions = read().announcementReactions.filter((item) => item.announcementId === announcementId && item.clubId === clubId)
       const counts: Record<string, number> = {}
       let mine: string | null = null
       for (const reaction of reactions) { counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1; if (reaction.uid === uid) mine = reaction.emoji }
@@ -413,9 +413,9 @@ export const demoApi: ClubStackApi = {
       })
     },
 
-    async getRsvpSummary(eventId, uid) {
+    async getRsvpSummary(eventId, clubId, uid) {
       await wait()
-      const rsvps = read().eventRsvps.filter((item) => item.eventId === eventId)
+      const rsvps = read().eventRsvps.filter((item) => item.eventId === eventId && item.clubId === clubId)
       const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
       for (const item of rsvps) { if (item.status === 'going') summary.going++; else if (item.status === 'maybe') summary.maybe++; else summary.notGoing++; if (item.uid === uid) summary.mine = item.status }
       return summary
