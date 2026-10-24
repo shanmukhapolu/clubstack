@@ -148,10 +148,11 @@ service cloud.firestore {
           && resource.data.get('officerIds', []) is list
           && request.resource.data.officerIds is list
           && resource.data.get('officerIds', []).hasAll(request.resource.data.officerIds))
-        || (signedIn() && isManager(clubId)
+        || (signedIn()
           && !(resource.data.get('officerIds', []) is list && resource.data.get('officerIds', []).hasAny([request.auth.uid]))
           && request.resource.data.officerIds is list
           && request.resource.data.officerIds.hasAny([request.auth.uid])
+          && request.resource.data.officerIds.hasAll(resource.data.get('officerIds', []))
           && onlyChanged(['officers','officerIds'])
           && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
           && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
@@ -215,12 +216,18 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && (
         resource.data.uid == request.auth.uid || isManager(resource.data.clubId)
       ));
-      allow update: if signedIn() && isManager(resource.data.clubId)
+      allow update: if (signedIn() && isManager(resource.data.clubId)
         && resource.data.status == 'pending'
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.clubId == resource.data.clubId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['approved','declined'];
+        && request.resource.data.status in ['approved','declined'])
+        || (signedIn() && userRole() == 'student'
+          && resource.data.uid == request.auth.uid
+          && resource.data.status == 'declined'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','createdAt'])
+          && request.resource.data.createdAt is number);
       allow delete: if isAdmin() || isManager(resource.data.clubId);
     }
 

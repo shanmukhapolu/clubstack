@@ -529,6 +529,10 @@ export const firebaseApi: ClubStackApi = {
         const requestRef = doc(db, 'clubJoinRequests', `${clubId}_${uid}`)
         const oldRequest = await getDoc(requestRef)
         if (oldRequest.exists() && oldRequest.data().status === 'pending') return
+        if (oldRequest.exists() && oldRequest.data().status === 'declined') {
+          await updateDoc(requestRef, { status: 'pending', createdAt: Date.now() })
+          return
+        }
         await setDoc(requestRef, {
           clubId, clubName: stringOr(directory.data().name, 'Club'), uid,
           displayName: stringOr(profile.data()?.displayName, 'Student'),

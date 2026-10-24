@@ -181,6 +181,8 @@ export const demoApi: ClubStackApi = {
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
         memberCount: 1,
+        requiresApproval: input.requiresApproval ?? false,
+        membersVisible: input.membersVisible ?? true,
         createdAt: Date.now(),
       }
       mutate((store) => {
