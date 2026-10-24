@@ -138,7 +138,7 @@ service cloud.firestore {
         && directoryMirrorMatchesPrivate(clubId);
       allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
-          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName', 'sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible'])
+          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName', 'sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible'])
           && directoryMirrorMatchesPrivate(clubId)
           && request.resource.data.requiresApproval is bool
           && request.resource.data.membersVisible is bool)
@@ -186,7 +186,7 @@ service cloud.firestore {
           && onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
         || ((isSponsor(clubId) || isOfficer(clubId))
-          && onlyChanged(['name','description','category','meetingDay','meetingTime','location','emoji','color','contactEmail','leaderTitle']))
+          && onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle']))
         || (isManager(clubId)
           && onlyChanged(['officers','officerIds'])
           && resource.data.get('officerIds', []) is list
