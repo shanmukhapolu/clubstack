@@ -235,20 +235,32 @@ export const demoApi: ClubStackApi = {
       await wait()
       const store = read()
       const club = store.clubs.find((item) => item.id === id)
-      if (!club || club.leaderId !== currentLeader.id) throw new Error('Only the current club leader can transfer ownership.')
+      if (!club || club.leaderId !== currentLeader.id) throw new Error('Only the current club leader can request an ownership transfer.')
       const target = club.officers.find((officer) => officer.uid === newLeaderId)
-      if (!target || store.users.find((person) => person.id === newLeaderId)?.role !== 'student') {
-        throw new Error('Choose an existing student officer to become the new leader.')
+      if (!target || store.users.find((person) => person.id === newLeaderId)?.role !== 'student') throw new Error('Choose an existing student officer to become the new leader.')
+      if (club.pendingLeaderTransfer) throw new Error('An ownership transfer is already awaiting a response.')
+      mutate((draft) => updateClub(draft, id, { pendingLeaderTransfer: { fromId: currentLeader.id, fromName: currentLeader.displayName, toId: target.uid, toName: target.displayName, createdAt: Date.now() } }))
+    },
+
+    async respondToOwnershipTransfer(id, accept, currentUser) {
+      await wait()
+      const store = read()
+      const club = store.clubs.find((item) => item.id === id)
+      const transfer = club?.pendingLeaderTransfer
+      if (!club || !transfer || transfer.toId !== currentUser.id) throw new Error('This ownership transfer is not addressed to your account.')
+      if (!accept) {
+        mutate((draft) => updateClub(draft, id, { pendingLeaderTransfer: null }))
+        return
       }
+      const target = club.officers.find((officer) => officer.uid === currentUser.id)
+      if (club.leaderId !== transfer.fromId || !target) throw new Error('The club leadership changed before this transfer could be accepted.')
       mutate((draft) => updateClub(draft, id, {
-        leaderId: target.uid,
-        leaderName: target.displayName,
+        leaderId: currentUser.id,
+        leaderName: currentUser.displayName,
         leaderTitle: 'President',
-        officers: [
-          ...club.officers.filter((officer) => officer.uid !== target.uid && officer.uid !== currentLeader.id),
-          { uid: currentLeader.id, displayName: currentLeader.displayName, email: currentLeader.email, title: 'Former President' },
-        ],
-        officerIds: [...new Set([...club.officerIds.filter((uid) => uid !== target.uid), currentLeader.id])],
+        officers: [...club.officers.filter((officer) => officer.uid !== currentUser.id && officer.uid !== transfer.fromId), { uid: transfer.fromId, displayName: transfer.fromName, email: '', title: 'Former President' }],
+        officerIds: [...new Set(club.officerIds.filter((uid) => uid !== currentUser.id).concat(transfer.fromId))],
+        pendingLeaderTransfer: null,
       }))
     },
 
