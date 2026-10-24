@@ -706,7 +706,8 @@ export const firebaseApi: ClubStackApi = {
       const db = requireDb()
       const actor = requireAuth().currentUser?.uid
       if (!actor) throw new Error('You must be signed in to manage club members.')
-      if (actor === uid) throw new Error('Use Leave club to remove yourself.')
+      const actorProfile = await getDoc(doc(db, 'users', actor))
+      if (actor === uid && actorProfile.data()?.role !== 'admin') throw new Error('Use Leave club to remove yourself.')
       await deleteDoc(doc(db, 'memberships', `${uid}_${clubId}`))
     },
 
