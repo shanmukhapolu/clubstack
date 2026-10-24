@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Search, ShieldCheck, Users, UserMinus } from 'lucide-react'
+import { Search, ShieldCheck, Users, UserMinus, Crown, GraduationCap, UserRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { useToast } from '../context/ToastContext'
@@ -78,7 +78,30 @@ export function ClubMembersPage() {
     <PageHeader eyebrow="Club directory" title="The people behind the club." description={canManage ? "View members and their school directory profiles." : "See fellow members of this club."}/>
     {!listVisible ? <section className="card p-6"><div className="flex items-start gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-muted"><Users size={18}/></div><div><h2 className="text-[14px] font-bold">Member list is hidden</h2><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Club managers turned off member-list visibility. You can still see the club overview and its member-only information.</p></div></div></section> : <section className="card overflow-hidden">
       <div className="flex flex-wrap items-center gap-3 border-b border-line p-4"><div className="relative min-w-[180px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"/><input className="field pl-9" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search members" aria-label="Search members"/></div><Badge>{members.length} members</Badge></div>
-      {filtered.length===0 ? <div className="px-4 py-9 text-center text-[12.5px] text-muted">{members.length===0?'No members are listed yet.':'No members match your search.'}</div> : <div className="divide-y divide-line">{filtered.map(member=><div key={member.id} className="flex items-center gap-3 px-4 py-3.5"><Avatar name={member.displayName} size={38}/><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold">{member.displayName}</p><p className="mt-0.5 text-[11px] text-muted">{member.role==='teacher'?'Teacher / Advisor':member.role==='admin'?'Administrator':'Student'}{member.grade? ` · ${member.grade}`:''}</p></div>{club.leaderId===member.id?<Badge tone="brand">Club leader</Badge>:(club.officerIds??[]).includes(member.id)?<Badge>Officer</Badge>:null}{canManage && member.id !== club.leaderId && member.id !== user.id && <button type="button" onClick={() => void removeMember(member)} disabled={removingId===member.id} title="Remove member" aria-label={`Remove ${member.displayName} from club`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">{removingId===member.id?<span className="text-xs">…</span>:<UserMinus size={15}/>}</button>}</div>)}</div>}
+      {(() => {
+        const query = search.trim().toLocaleLowerCase()
+        const matches = (name: string) => name.toLocaleLowerCase().includes(query)
+        const owner = filtered.find(person => person.id === club.leaderId)
+        const sponsor = club.sponsorName && matches(club.sponsorName) ? club.sponsorName : ''
+        const officers = (club.officers ?? []).filter(officer => matches(officer.displayName))
+        const officerIds = new Set((club.officers ?? []).map(officer => officer.uid))
+        const regularMembers = filtered.filter(person => person.id !== club.leaderId && person.id !== club.sponsorId && !officerIds.has(person.id) && !(club.officerIds ?? []).includes(person.id))
+        const renderMember = (member: AppUser, kind: 'owner' | 'officer' | 'member') => {
+          const officer = (club.officers ?? []).find(item => item.uid === member.id)
+          const title = kind === 'owner' ? (club.leaderTitle || 'Club Owner') : kind === 'officer' ? (officer?.title || 'Officer') : member.role === 'teacher' ? 'Teacher / Advisor' : member.role === 'admin' ? 'Administrator' : 'Student'
+          return <div key={member.id} className="flex items-center gap-3 px-4 py-3.5"><Avatar name={member.displayName} size={38}/><div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-1.5 truncate text-[13px] font-bold">{member.displayName}{kind === 'owner' && <Crown size={15} aria-label="Club owner" className="shrink-0 fill-amber-400 text-amber-600"/>}</p><p className="mt-0.5 text-[11px] text-muted">{title}{member.grade && kind === 'member' ? ` · ${member.grade}` : ''}</p></div>{kind === 'owner' && <Badge tone="brand">{club.leaderTitle || 'Club Owner'}</Badge>}{canManage && member.id !== club.leaderId && member.id !== user.id && <button type="button" onClick={() => void removeMember(member)} disabled={removingId===member.id} title="Remove member" aria-label={`Remove ${member.displayName} from club`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">{removingId===member.id?<span className="text-xs">…</span>:<UserMinus size={15}/>}</button>}</div>
+        }
+        const section = (title: string, icon: React.ReactNode, children: React.ReactNode, empty?: string) => <section className="border-b border-line last:border-b-0"><div className="flex items-center gap-2 bg-canvas/70 px-4 py-3"><span className="text-muted">{icon}</span><h2 className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-ink-soft">{title}</h2></div>{children || <p className="px-4 py-4 text-[12px] text-muted">{empty}</p>}</section>
+        return <div>
+          {section('Teacher Sponsor', <GraduationCap size={15}/>, sponsor ? <div className="flex items-center gap-3 px-4 py-4"><div className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#e8dfcf] bg-[#f4ecdf] text-[#705b3b]"><GraduationCap size={18}/></div><div><p className="text-[13px] font-bold">{club.sponsorName}</p><p className="mt-0.5 text-[11px] text-muted">Teacher Sponsor</p></div></div> : null, club.sponsorName ? 'No sponsor matches your search.' : 'No teacher sponsor listed.')}
+          {section('Club Owner', <Crown size={15} className="text-amber-600"/>, owner ? renderMember(owner, 'owner') : null, 'No club owner matches your search.')}
+          {section('Officers', <Users size={15}/>, officers.length ? officers.map(officer => {
+            const member = filtered.find(person => person.id === officer.uid)
+            return <div key={officer.uid} className="flex items-center gap-3 px-4 py-3.5"><Avatar name={officer.displayName} size={38}/><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold">{officer.displayName}</p><p className="mt-0.5 text-[11px] text-muted">{officer.title}</p></div>{canManage && member && member.id !== user.id && <button type="button" onClick={() => void removeMember(member)} disabled={removingId===member.id} title="Remove member" aria-label={`Remove ${member.displayName} from club`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">{removingId===member.id?<span className="text-xs">…</span>:<UserMinus size={15}/>}</button>}</div>
+          }) : null, 'No officers match your search.')}
+          {section('Members', <UserRound size={15}/>, regularMembers.length ? regularMembers.map(member => renderMember(member, 'member')) : null, members.length ? 'No members match your search.' : 'No members are listed yet.')}
+        </div>
+      })()}
     </section>}
   </div>
 }
