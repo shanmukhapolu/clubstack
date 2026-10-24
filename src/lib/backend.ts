@@ -49,6 +49,7 @@ export interface ClubsApi {
 export interface MembershipsApi {
   listMine(uid: string): Promise<string[]>
   listMembers(clubId: string): Promise<string[]>
+  removeMember(clubId: string, uid: string): Promise<void>
   listRequestsForClub(clubId: string): Promise<ClubJoinRequest[]>
   listRequestsForUser(uid: string): Promise<ClubJoinRequest[]>
   respondToRequest(requestId: string, status: Extract<JoinRequestStatus, 'approved' | 'declined'>): Promise<void>
