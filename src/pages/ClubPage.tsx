@@ -669,8 +669,7 @@ export function ClubPage() {
 
         </aside>
       </div>
-
-
+      )}
 
       {aboutOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
