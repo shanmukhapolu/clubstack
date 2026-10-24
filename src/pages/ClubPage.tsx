@@ -612,7 +612,66 @@ export function ClubPage() {
                 ) : undefined
               }
             />
-    
+          ) : (
+            <div className="space-y-3">
+              {[...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt).map((announcement) => (
+                <AnnouncementCard
+                  key={announcement.id}
+                  announcement={announcement}
+                  canManage={canManage}
+                  onDelete={handleDeleteAnnouncement}
+                  onEdit={handleEditAnnouncement}
+                  onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <aside className="space-y-4">
+          <section className="card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>
+              <Link
+                to={`/clubs/${club.id}/meetings`}
+                className="text-[12px] font-semibold text-brand-600 hover:underline"
+              >
+                Calendar
+              </Link>
+            </div>
+            {feedLoading ? (
+              <Spinner label="Loading meetings" />
+            ) : upcomingEvents.length === 0 ? (
+              <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] leading-relaxed text-muted">
+                No meetings scheduled yet.
+                {canManage ? ' Add one so members can plan ahead.' : ''}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingEvents.slice(0, 5).map((item) => (
+                  <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} onEdit={handleEditEvent} />
+                ))}
+              </div>
+            )}
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 w-full justify-start"
+                onClick={() => setEventOpen(true)}
+              >
+                <CalendarPlus size={15} /> Add a meeting
+              </Button>
+            )}
+          </section>
+
+
+
+        </aside>
+      </div>
+
+
+
       {aboutOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
           <button type="button" aria-label="Close edit club information" className="absolute inset-0 bg-ink/40" onClick={() => setAboutOpen(false)} />
