@@ -256,10 +256,10 @@ export function ClubSettingsPage() {
     <div className="fade-in">
       <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px]"><Link to={`/clubs/${club.id}`} className="font-semibold text-muted hover:text-ink">{club.name}</Link><span className="text-muted">/</span><span className="font-semibold text-ink">Settings</span></div>
       <nav aria-label="Club pages" className="mb-6 flex flex-wrap gap-2">
-        <Link to={`/clubs/${club.id}`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Overview</Link>
-        <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
-        <Link to={`/clubs/${club.id}/members`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
-        <span aria-current="page" className="rounded-xl border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
+        <Link to={`/clubs/${club.id}`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Overview</Link>
+        <Link to={`/clubs/${club.id}/meetings`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
+        <Link to={`/clubs/${club.id}/members`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
+        <span aria-current="page" className="rounded-full border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
       </nav>
 
       <PageHeader eyebrow="Club controls" title="Settings." description="Manage member access, student officers, ownership, and club deletion. Public club information is edited from the overview page." />
