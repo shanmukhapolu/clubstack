@@ -855,7 +855,7 @@ async function readablePrivateClubIds(): Promise<string[]> {
     getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
     getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
     getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
-    getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid))),
+    getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid), where('sponsorStatus', '==', 'accepted'))),
   ])
   const ids = new Set<string>()
   memberships.docs.forEach((item) => ids.add(stringOr(item.data().clubId, '')))

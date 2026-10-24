@@ -27,6 +27,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "clubs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sponsorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sponsorStatus",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
