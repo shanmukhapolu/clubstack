@@ -143,7 +143,7 @@ export function NotificationsPage() {
                 {items.invitations.filter((item) => item.status === 'pending').map((item) => {
                   const id = `invitation:${item.id}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Users size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.clubName}</h3>
@@ -154,7 +154,7 @@ export function NotificationsPage() {
                           <Link to={`/clubs/${item.clubId}`} className="inline-flex items-center px-2 text-[12px] font-semibold text-ink-soft hover:underline">View club</Link>
                         </div>
                       </div>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
@@ -168,11 +168,11 @@ export function NotificationsPage() {
                 {items.ownJoinRequests.map((item) => {
                   const id = `own-join:${item.id}:${item.status}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Users size={18} /></div>
                       <div className="min-w-0 flex-1"><h3 className="text-[13.5px] font-bold">{item.clubName}</h3><p className="mt-1 text-[12px] text-muted">Requested {relativeTime(item.createdAt)}</p></div>
                       <Badge tone={item.status === 'approved' ? 'lime' : item.status === 'pending' ? 'warn' : 'muted'}>{item.status === 'approved' ? 'Approved' : item.status === 'pending' ? 'Pending' : 'Declined'}</Badge>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
@@ -186,7 +186,7 @@ export function NotificationsPage() {
                 {items.sponsorRequests.map((item) => {
                   const id = `sponsor:${item.id}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><ShieldCheck size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.clubName}</h3>
@@ -196,7 +196,7 @@ export function NotificationsPage() {
                           <Button size="sm" variant="secondary" disabled={workingId === item.id} onClick={() => void respondSponsor(item, 'declined')}><X size={14} /> Decline</Button>
                         </div>
                       </div>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
@@ -210,7 +210,7 @@ export function NotificationsPage() {
                 {items.joinRequests.map((item) => {
                   const id = `join:${item.id}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Users size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.displayName} wants to join {item.clubName}</h3>
@@ -221,7 +221,7 @@ export function NotificationsPage() {
                           <Link to={`/clubs/${item.clubId}/members`} className="inline-flex items-center px-2 text-[12px] font-semibold text-ink-soft hover:underline">View members</Link>
                         </div>
                       </div>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
@@ -235,7 +235,7 @@ export function NotificationsPage() {
                 {items.announcements.map((item) => {
                   const id = `announcement:${item.id}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Megaphone size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.title}</h3>
@@ -243,20 +243,20 @@ export function NotificationsPage() {
                         <p className="mt-1 text-[11px] text-muted">{relativeTime(item.createdAt)}</p>
                         <Link to={`/clubs/${item.clubId}`} className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">Open announcement</Link>
                       </div>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
                 {items.events.map((item) => {
                   const id = `event:${item.id}`
                   return (
-                    <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><CalendarDays size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.title}</h3>
                         <p className="mt-1 text-[12px] text-muted">{new Date(item.startAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {item.location}</p>
                         <Link to={`/clubs/${item.clubId}/meetings`} className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">View meeting and RSVP</Link>
                       </div>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
@@ -270,21 +270,21 @@ export function NotificationsPage() {
                 {items.pendingClubs.map((club) => {
                   const id = `pending-club:${club.id}`
                   return (
-                    <article key={club.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
+                    <article key={club.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Building2 size={18} /></div>
                       <div className="min-w-0 flex-1"><h3 className="text-[13.5px] font-bold">Club awaiting approval: {club.name}</h3><p className="mt-1 text-[12px] text-muted">Created {relativeTime(club.createdAt)}</p><Link to="/admin/clubs" className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">Review clubs</Link></div>
                       <Badge tone="warn">Pending</Badge>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
                 {items.reports.map((report) => {
                   const id = `report:${report.id}`
                   return (
-                    <article key={report.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
+                    <article key={report.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Flag size={18} /></div>
                       <div className="min-w-0 flex-1"><h3 className="text-[13.5px] font-bold">{report.reason}: {report.clubName}</h3><p className="mt-1 text-[12px] text-muted">{relativeTime(report.createdAt)}</p><Link to="/admin/security" className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">Review safety report</Link></div>
                       <Badge tone="warn">Open</Badge>
-                    </article>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
                 })}
               </div>
