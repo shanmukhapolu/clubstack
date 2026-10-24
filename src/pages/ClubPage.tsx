@@ -100,6 +100,9 @@ export function ClubPage() {
   const [eventLocation, setEventLocation] = useState('')
   const [eventStart, setEventStart] = useState(() => toDateTimeInput(defaultEventStart()))
   const [eventEnd, setEventEnd] = useState('')
+  const [eventType, setEventType] = useState<ClubEvent['type']>('General Meeting')
+  const [eventAttendance, setEventAttendance] = useState<ClubEvent['attendance']>('optional')
+  const [editingEvent, setEditingEvent] = useState<ClubEvent | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -377,9 +380,12 @@ export function ClubPage() {
       setEventLocation('')
       setEventStart(toDateTimeInput(defaultEventStart()))
       setEventEnd('')
+      setEventType('General Meeting')
+      setEventAttendance('optional')
+      setEditingEvent(null)
       setEventOpen(false)
       refreshFeed()
-      notify('Meeting added to the calendar.')
+      notify(editingEvent ? 'Meeting updated. Members will see the update in Notifications.' : 'Meeting added to the calendar.')
     } catch (caught) {
       setFormError(friendlyError(caught))
     } finally {
@@ -398,12 +404,24 @@ export function ClubPage() {
     }
   }
 
+  function handleEditEvent(item: ClubEvent) {
+    setEditingEvent(item)
+    setEventTitle(item.title)
+    setEventDescription(item.description)
+    setEventLocation(item.location)
+    setEventStart(toDateTimeInput(new Date(item.startAt)))
+    setEventEnd(item.endAt ? toDateTimeInput(new Date(item.endAt)) : '')
+    setEventType(item.type ?? 'General Meeting')
+    setEventAttendance(item.attendance ?? 'optional')
+    setEventOpen(true)
+  }
+
   async function handleDeleteEvent(item: ClubEvent) {
     if (!window.confirm(`Delete “${item.title}”?`)) return
     try {
       await api.events.remove(item.id)
       refreshFeed()
-      notify('Meeting removed.')
+      notify('Meeting deleted. Members will see the cancellation in Notifications.')
     } catch (caught) {
       notify(friendlyError(caught), 'error')
     }
@@ -602,6 +620,7 @@ export function ClubPage() {
                   announcement={announcement}
                   canManage={canManage}
                   onDelete={handleDeleteAnnouncement}
+                  onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))}
                 />
               ))}
             </div>
@@ -629,7 +648,7 @@ export function ClubPage() {
             ) : (
               <div className="space-y-2">
                 {upcomingEvents.slice(0, 5).map((item) => (
-                  <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} />
+                  <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} onEdit={handleEditEvent} />
                 ))}
               </div>
             )}
