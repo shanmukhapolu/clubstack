@@ -60,6 +60,11 @@ const directoryData = ({ id, requiresApproval = false, membersVisible = true, st
   color: '#4567ab',
   status,
   leaderName: 'Club Leader',
+  sponsorName: 'Club Advisor',
+  meetingDay: 'Tuesday',
+  meetingTime: '3:30 PM',
+  location: 'Private Room 101',
+  contactEmail: 'private-contact@example.test',
   requiresApproval,
   membersVisible,
   createdAt: 1,
@@ -200,6 +205,10 @@ try {
     await assertFails(updateDoc(doc(adminDb, 'clubDirectory', 'club-visible'), { memberCount: 9999 }))
   })
 
+  await check('students can check their own missing membership before joining', () =>
+    assertSucceeds(getDoc(doc(outsider, 'memberships', 'student-unaffiliated_club-visible'))))
+  await check('students can check their own missing request before requesting to join', () =>
+    assertSucceeds(getDoc(doc(outsider, 'clubJoinRequests', 'club-visible_student-unaffiliated'))))
   await check('direct join works when approval is disabled', () =>
     assertSucceeds(setDoc(doc(environment.authenticatedContext('student-outsider').firestore(), 'memberships', 'student-outsider_club-visible'), {
       uid: 'student-outsider', clubId: 'club-visible', joinedAt: 5,
@@ -228,7 +237,7 @@ try {
       emoji: '❤️',
       createdAt: 8,
     })))
-  await check('only members can RSVP for a meeting', async () => {
+  await check('only members can RSVP for a meeting, while managers can inspect member responses', async () => {
     await assertSucceeds(setDoc(doc(member, 'eventRsvps', 'event-visible_member-visible'), {
       eventId: 'event-visible',
       clubId: 'club-visible',
@@ -236,6 +245,8 @@ try {
       status: 'going',
       updatedAt: 9,
     }))
+    const managerRsvps = query(collection(leader, 'eventRsvps'), where('eventId', '==', 'event-visible'), where('clubId', '==', 'club-visible'))
+    await assertSucceeds(getDocs(managerRsvps))
     await assertFails(setDoc(doc(outsider, 'eventRsvps', 'event-visible_student-unaffiliated'), {
       eventId: 'event-visible',
       clubId: 'club-visible',
