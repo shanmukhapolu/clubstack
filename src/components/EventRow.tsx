@@ -76,20 +76,12 @@ export function EventRow({
               )}
             </div>
           </div>
-          {canManage && (onDelete || onEdit) && <div className="flex shrink-0 items-center gap-1">}
-          {canManage && onEdit && <button type="button" onClick={() => onEdit(event)} className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink" aria-label={`Edit meeting ${event.title}`} title="Edit meeting"><Pencil size={14}/></button>}
-          {canManage && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(event)}
-              className="rounded-lg p-1.5 text-muted transition-colors hover:bg-[#ffe9e2] hover:text-[#9c2f18]"
-              aria-label={`Delete event ${event.title}`}
-              title="Delete event"
-            >
-              <Trash2 size={14} />
-            </button>
+          {canManage && (onDelete || onEdit) && (
+            <div className="flex shrink-0 items-center gap-1">
+              {onEdit && <button type="button" onClick={() => onEdit(event)} className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink" aria-label={`Edit meeting ${event.title}`} title="Edit meeting"><Pencil size={14}/></button>}
+              {onDelete && <button type="button" onClick={() => onDelete(event)} className="rounded-lg p-1.5 text-muted transition-colors hover:bg-[#ffe9e2] hover:text-[#9c2f18]" aria-label={`Delete event ${event.title}`} title="Delete event"><Trash2 size={14}/></button>}
+            </div>
           )}
-          {canManage && (onDelete || onEdit) && </div>}
         </div>
 
         {(user && (isJoined(event.clubId) || user.role === 'admin' || isManager)) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span className="font-semibold">Estimated attendance</span><span>{rsvp.going} going</span><span>· {rsvp.maybe} maybe</span>{isManager && <span>· {rsvp.notGoing} can’t</span>}</div>}
