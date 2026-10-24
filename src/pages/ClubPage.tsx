@@ -571,7 +571,7 @@ export function ClubPage() {
           <Button variant="brand" size="sm" onClick={() => setAnnouncementOpen(true)}>
             <Megaphone size={15} /> Post announcement
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setEventOpen(true)}>
+          <Button variant="secondary" size="sm" onClick={() => { setEditingEvent(null); setEventTitle(''); setEventDescription(''); setEventLocation(''); setEventStart(toDateTimeInput(defaultEventStart())); setEventEnd(''); setEventType('General Meeting'); setEventAttendance('optional'); setEventOpen(true) }}>
             <CalendarPlus size={15} /> Add meeting
           </Button>
         </div>
@@ -860,7 +860,7 @@ export function ClubPage() {
           </div>
           {formError && <p className="text-[13px] font-medium text-[#9c2f18]">{formError}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={() => setEventOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => { setEventOpen(false); setEditingEvent(null) }}>
               Cancel
             </Button>
             <Button type="submit" loading={saving}>
