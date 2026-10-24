@@ -288,7 +288,7 @@ export function AdminPage() {
                     <button type="button" onClick={() => void toggleClubVisibility(club)} disabled={workingId === club.id} className="rounded-full p-1.5 text-muted hover:bg-canvas disabled:opacity-50" title={club.hidden ? 'Make club publicly visible' : 'Hide club from public discovery'} aria-label={club.hidden ? `Show ${club.name} publicly` : `Hide ${club.name} from public discovery`}>
                       {club.hidden ? <Eye size={15} /> : <EyeOff size={15} />}
                     </button>
-                    <Link to={`/clubs/${club.id}` className="rounded-full p-1.5 text-muted hover:bg-canvas" title="Edit club details" aria-label={`Edit ${club.name}`}>
+                    <Link to={`/clubs/${club.id}`} className="rounded-full p-1.5 text-muted hover:bg-canvas" title="Edit club details" aria-label={`Edit ${club.name}`}>
                       <ShieldCheck size={15} />
                     </Link>
                     <button type="button" onClick={() => void deleteClub(club)} disabled={workingId === club.id} className="rounded-full p-1.5 text-muted hover:bg-[#fff0eb] hover:text-[#9c2f18] disabled:opacity-50" title="Delete club" aria-label={`Delete ${club.name}`}>
