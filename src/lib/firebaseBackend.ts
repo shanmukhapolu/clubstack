@@ -32,6 +32,8 @@ import type {
   Announcement,
   AppUser,
   Club,
+  ClubDeletionRequest,
+  ClubDeletionStatus,
   ClubEvent,
   ClubInput,
   ClubStatus,
@@ -72,6 +74,24 @@ function toUser(id: string, data: Record<string, unknown>): AppUser {
   }
 }
 
+function normalizeMeetingFrequency(value: unknown, meetingDay: string): Club['meetingFrequency'] {
+  return value === 'weekly' || value === 'everyOtherWeek' || value === 'monthly' || value === 'custom'
+    ? value
+    : meetingDay === 'Flexible' ? 'custom' : 'weekly'
+}
+
+function normalizeMeetingOrdinal(value: unknown): Club['meetingOrdinal'] {
+  return value === 'second' || value === 'third' || value === 'fourth' || value === 'last'
+    ? value
+    : 'first'
+}
+
+function normalizeInstagramHandle(value: string): string {
+  const trimmed = value.trim()
+  const withoutUrl = trimmed.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/?[?#].*$/, '')
+  return withoutUrl.replace(/^@+/, '').replace(/\/$/, '').trim()
+}
+
 function toDirectoryData(data: Record<string, unknown>): Record<string, unknown> {
   return {
     name: stringOr(data.name, 'Untitled club'),
@@ -83,9 +103,15 @@ function toDirectoryData(data: Record<string, unknown>): Record<string, unknown>
     leaderName: stringOr(data.leaderName, ''),
     sponsorName: stringOr(data.sponsorName, ''),
     meetingDay: stringOr(data.meetingDay, 'Flexible'),
+    meetingFrequency: normalizeMeetingFrequency(data.meetingFrequency, stringOr(data.meetingDay, 'Flexible')),
+    meetingOrdinal: normalizeMeetingOrdinal(data.meetingOrdinal),
+    customMeetingSchedule: stringOr(data.customMeetingSchedule, ''),
     meetingTime: stringOr(data.meetingTime, ''),
     location: stringOr(data.location, ''),
     contactEmail: stringOr(data.contactEmail, ''),
+    prerequisites: stringOr(data.prerequisites, ''),
+    dues: stringOr(data.dues, ''),
+    instagramHandle: normalizeInstagramHandle(stringOr(data.instagramHandle, '')),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
     createdAt: numberOr(data.createdAt),
@@ -104,6 +130,9 @@ function toClub(id: string, data: Record<string, unknown>): Club {
     description: stringOr(data.description, ''),
     category: (data.category as Club['category']) ?? 'Other',
     meetingDay: stringOr(data.meetingDay, 'Flexible'),
+    meetingFrequency: normalizeMeetingFrequency(data.meetingFrequency, stringOr(data.meetingDay, 'Flexible')),
+    meetingOrdinal: normalizeMeetingOrdinal(data.meetingOrdinal),
+    customMeetingSchedule: stringOr(data.customMeetingSchedule, ''),
     meetingTime: stringOr(data.meetingTime, ''),
     location: stringOr(data.location, ''),
     emoji: stringOr(data.emoji, '🎒'),
@@ -120,6 +149,9 @@ function toClub(id: string, data: Record<string, unknown>): Club {
     sponsorName: stringOr(data.sponsorName, ''),
     sponsorStatus: (['pending', 'accepted', 'declined', 'none'].includes(String(data.sponsorStatus)) ? data.sponsorStatus : 'none') as Club['sponsorStatus'],
     contactEmail: stringOr(data.contactEmail, ''),
+    prerequisites: stringOr(data.prerequisites, ''),
+    dues: stringOr(data.dues, ''),
+    instagramHandle: normalizeInstagramHandle(stringOr(data.instagramHandle, '')),
     memberCount: numberOr(data.memberCount),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
@@ -302,7 +334,7 @@ export const firebaseApi: ClubStackApi = {
         const needsSync = privateSnapshot.docs.filter((item) => {
           const existing = directories.get(item.id)
           const expected = toDirectoryData(item.data())
-          return !existing || ['sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail', 'requiresApproval', 'membersVisible']
+          return !existing || ['sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible']
             .some((key) => existing[key] !== expected[key])
         })
         for (let i = 0; i < needsSync.length; i += 400) {
@@ -395,6 +427,12 @@ export const firebaseApi: ClubStackApi = {
       const createdAt = Date.now()
       const privateData = {
         ...input,
+        meetingFrequency: input.meetingFrequency ?? (input.meetingDay === 'Flexible' ? 'custom' : 'weekly'),
+        meetingOrdinal: input.meetingOrdinal ?? 'first',
+        customMeetingSchedule: input.customMeetingSchedule ?? '',
+        prerequisites: input.prerequisites ?? '',
+        dues: input.dues ?? '',
+        instagramHandle: normalizeInstagramHandle(input.instagramHandle ?? ''),
         status: 'pending' satisfies ClubStatus,
         leaderId: leader.id,
         leaderName: leader.displayName,
@@ -428,22 +466,39 @@ export const firebaseApi: ClubStackApi = {
       const directoryRef = doc(db, 'clubDirectory', id)
       const current = await getDoc(clubRef)
       if (!current.exists()) throw new Error('That club no longer exists.')
-      const directory = await getDoc(directoryRef)
-      if (!directory.exists()) await setDoc(directoryRef, toDirectoryData(current.data()))
-      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail'] as const
+      const currentData = current.data()
+      const directorySnapshot = await getDoc(directoryRef)
+      const directoryData = directorySnapshot.exists() ? directorySnapshot.data() : {}
       const privatePatch: Record<string, unknown> = {}
-      const directoryPatch: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(patch)) {
-        if (key === 'memberCount') continue
-        if (key === 'requiresApproval' || key === 'membersVisible') directoryPatch[key] = value
-        else if ((directoryKeys as readonly string[]).includes(key)) {
-          privatePatch[key] = value
-          directoryPatch[key] = value
-        } else privatePatch[key] = value
+        if (key === 'memberCount' || key === 'requiresApproval' || key === 'membersVisible') continue
+        if (key === 'instagramHandle') privatePatch[key] = normalizeInstagramHandle(stringOr(value, ''))
+        else privatePatch[key] = value
+      }
+
+      // Migrate older club documents in the same atomic write so directory mirror rules
+      // compare fully populated records, not missing legacy fields.
+      const defaults: Record<string, unknown> = {
+        meetingFrequency: normalizeMeetingFrequency(currentData.meetingFrequency, stringOr(currentData.meetingDay, 'Flexible')),
+        meetingOrdinal: normalizeMeetingOrdinal(currentData.meetingOrdinal),
+        customMeetingSchedule: stringOr(currentData.customMeetingSchedule, ''),
+        prerequisites: stringOr(currentData.prerequisites, ''),
+        dues: stringOr(currentData.dues, ''),
+        instagramHandle: normalizeInstagramHandle(stringOr(currentData.instagramHandle, '')),
+      }
+      for (const [key, value] of Object.entries(defaults)) {
+        if (currentData[key] === undefined && privatePatch[key] === undefined) privatePatch[key] = value
+      }
+      const projectedPrivate = { ...currentData, ...privatePatch }
+      const directoryPatch = {
+        ...toDirectoryData(projectedPrivate),
+        requiresApproval: typeof patch.requiresApproval === 'boolean' ? patch.requiresApproval : directoryData.requiresApproval === true,
+        membersVisible: typeof patch.membersVisible === 'boolean' ? patch.membersVisible : directoryData.membersVisible !== false,
       }
       const batch = writeBatch(db)
       if (Object.keys(privatePatch).length) batch.update(clubRef, privatePatch)
-      if (Object.keys(directoryPatch).length) batch.update(directoryRef, directoryPatch)
+      if (directorySnapshot.exists()) batch.set(directoryRef, directoryPatch, { merge: true })
+      else batch.set(directoryRef, directoryPatch)
       await batch.commit()
     },
 
