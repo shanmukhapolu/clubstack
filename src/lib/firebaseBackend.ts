@@ -1214,10 +1214,10 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
       ])
 
-      const related = [
+      const related = [...new Map([
         ...memberships.docs, ...joinRequests.docs, ...invited.docs, ...sentInvites.docs,
         ...reports.docs, ...reactions.docs, ...rsvps.docs, ...sponsorRequests.docs, ...deletionRequests.docs,
-      ]
+      ].map(item => [item.ref.path, item])).values()]
       for (let offset = 0; offset < related.length; offset += 400) {
         const batch = writeBatch(db)
         related.slice(offset, offset + 400).forEach(item => batch.delete(item.ref))
