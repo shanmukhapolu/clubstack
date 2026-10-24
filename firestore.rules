@@ -147,7 +147,7 @@ service cloud.firestore {
           && onlyChanged(['sponsorName'])
           && request.resource.data.sponsorName is string
           && directoryMirrorMatchesPrivate(clubId));
-      allow delete: if isAdmin() || (isManager(clubId) && deletionApproved(clubId));
+      allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
     match /clubs/{clubId} {
@@ -251,7 +251,7 @@ service cloud.firestore {
         );
       allow delete: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid)
-        || (isManager(resource.data.clubId) && deletionApproved(resource.data.clubId));
+        || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
       allow update: if false;
     }
 
@@ -316,7 +316,7 @@ service cloud.firestore {
           && request.resource.data.status in ['approved','declined']
           && request.resource.data.reviewedAt is number
           && request.resource.data.reviewedById == request.auth.uid);
-      allow delete: if isAdmin() || (isManager(clubId) && resource.data.status == 'approved');
+      allow delete: if isAdmin() || (isLeader(clubId) && resource.data.status == 'approved');
     }
 
     match /clubSponsorRequests/{requestId} {
