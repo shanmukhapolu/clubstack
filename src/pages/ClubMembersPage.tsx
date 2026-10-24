@@ -13,7 +13,7 @@ import { Avatar, Badge, Spinner } from '../components/ui'
 export function ClubMembersPage() {
   const { clubId = '' } = useParams()
   const { user } = useAuth()
-  const { clubs, isJoined } = useClubs()
+  const { clubs, isJoined, refresh } = useClubs()
   const { notify } = useToast()
   const [club, setClub] = useState<Club | null>(clubs.find(item => item.id === clubId) ?? null)
   const [loading, setLoading] = useState(true)
@@ -56,6 +56,7 @@ export function ClubMembersPage() {
     setRemovingId(member.id)
     try {
       await api.memberships.removeMember(club.id, member.id)
+      await refresh()
       setMembers(current => current.filter(person => person.id !== member.id))
       notify(`${member.displayName} was removed from the club.`)
     } catch (caught) {
