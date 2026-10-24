@@ -6,6 +6,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -35,8 +36,14 @@ const clubData = ({ id, leaderId = 'leader', sponsorId = '', sponsorStatus = 'no
   description: 'A student club with enough detail for the public directory preview.',
   category: 'Academic',
   meetingDay: 'Tuesday',
+  meetingFrequency: 'weekly',
+  meetingOrdinal: 'first',
+  customMeetingSchedule: '',
   meetingTime: '3:30 PM',
   location: 'Private Room 101',
+  prerequisites: '',
+  dues: '',
+  instagramHandle: '',
   emoji: '🎒',
   color: '#4567ab',
   contactEmail: 'private-contact@example.test',
@@ -62,9 +69,15 @@ const directoryData = ({ id, requiresApproval = false, membersVisible = true, st
   leaderName: 'Club Leader',
   sponsorName: sponsorId ? 'Club Advisor' : '',
   meetingDay: 'Tuesday',
+  meetingFrequency: 'weekly',
+  meetingOrdinal: 'first',
+  customMeetingSchedule: '',
   meetingTime: '3:30 PM',
   location: 'Private Room 101',
   contactEmail: 'private-contact@example.test',
+  prerequisites: '',
+  dues: '',
+  instagramHandle: '',
   requiresApproval,
   membersVisible,
   createdAt: 1,
@@ -113,7 +126,12 @@ async function seed() {
     ]
 
     for (const club of clubs) {
-      await setDoc(doc(db, 'clubs', club.id), clubData(club))
+      const privateData = clubData(club)
+      if (club.id === 'club-visible') {
+        privateData.officerIds = ['member-visible']
+        privateData.officers = [{ uid: 'member-visible', displayName: 'Visible Club Member', email: 'member.visible@example.test', title: 'Officer' }]
+      }
+      await setDoc(doc(db, 'clubs', club.id), privateData)
       await setDoc(doc(db, 'clubDirectory', club.id), directoryData(club))
       await setDoc(doc(db, 'memberships', `leader_${club.id}`), { uid: 'leader', clubId: club.id, joinedAt: 1 })
     }
@@ -254,6 +272,73 @@ try {
       status: 'going',
       updatedAt: 10,
     }))
+  })
+
+  await check('club leaders can save About changes when private and public summaries are updated together', async () => {
+    const batch = writeBatch(leader)
+    const detail = {
+      name: 'Club Visible',
+      description: 'Updated club description with enough characters to pass validation.',
+      category: 'Academic',
+      meetingDay: 'Thursday',
+      meetingFrequency: 'monthly',
+      meetingOrdinal: 'first',
+      customMeetingSchedule: '',
+      meetingTime: '5:00 PM',
+      location: 'Room 202',
+      contactEmail: 'updated-club@example.test',
+      prerequisites: 'Attend orientation',
+      dues: '$5 per year',
+      instagramHandle: 'clubvisible',
+    }
+    batch.update(doc(leader, 'clubs', 'club-visible'), detail)
+    batch.update(doc(leader, 'clubDirectory', 'club-visible'), {
+      ...detail,
+      emoji: '🎒',
+      color: '#4567ab',
+      status: 'approved',
+      leaderName: 'Club Leader',
+      sponsorName: '',
+      requiresApproval: false,
+      membersVisible: true,
+      createdAt: 1,
+    })
+    await assertSucceeds(batch.commit())
+    await assertSucceeds(getDoc(doc(outsider, 'clubDirectory', 'club-visible')))
+    await assertFails(getDoc(doc(outsider, 'clubs', 'club-visible')))
+  })
+
+  await check('advisor must approve deletion and only the club leader can finalize it', async () => {
+    const requestRef = doc(leader, 'clubDeletionRequests', 'club-accepted-sponsor-one')
+    await assertSucceeds(setDoc(requestRef, {
+      clubId: 'club-accepted-sponsor-one',
+      clubName: 'Club Accepted Sponsor One',
+      requestedById: 'leader',
+      requestedByName: 'Club Leader',
+      status: 'pending',
+      createdAt: 10,
+    }))
+    await assertSucceeds(updateDoc(requestRef, {
+      status: 'approved',
+      reviewedAt: 11,
+      reviewedById: 'teacher-accepted',
+    }))
+    await assertFails(deleteDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one')))
+    await assertSucceeds(deleteDoc(doc(leader, 'clubs', 'club-accepted-sponsor-one')))
+  })
+
+  await check('current club leader can transfer ownership to an existing student officer', async () => {
+    const batch = writeBatch(leader)
+    batch.update(doc(leader, 'clubs', 'club-visible'), {
+      leaderId: 'member-visible',
+      leaderName: 'Visible Club Member',
+      leaderTitle: 'President',
+      officers: [{ uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'Former President' }],
+      officerIds: ['leader'],
+    })
+    batch.update(doc(leader, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' })
+    await assertSucceeds(batch.commit())
+    await assertSucceeds(getDoc(doc(member, 'clubs', 'club-visible')))
   })
 
   const maliciousClub = {
