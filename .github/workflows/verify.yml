@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Install Firestore security test helper
+        run: npm install --no-save --package-lock=false @firebase/rules-unit-testing@5.0.2
       - name: Build and type-check
         run: npm run build
       - name: Run unit tests
@@ -31,5 +33,5 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Validate Firestore rules
-        run: npx --yes firebase-tools emulators:exec --project demo-clubstack --only firestore "echo Firestore rules loaded successfully"
+      - name: Test Firestore security rules
+        run: npx --yes firebase-tools emulators:exec --project demo-clubstack --only firestore "node scripts/firestore.rules.test.mjs"
