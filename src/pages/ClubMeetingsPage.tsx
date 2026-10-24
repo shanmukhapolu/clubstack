@@ -27,7 +27,7 @@ export function ClubMeetingsPage() {
   const [club,setClub]=useState<Club|null>(fromContext)
   const [clubLoading,setClubLoading]=useState(!fromContext)
   const [hasPendingOfficerInvite,setHasPendingOfficerInvite]=useState(false)
-  const hasPrivateAccess = !!(user && club && (isJoined(club.id) || user.role === 'admin' || club.leaderId === user.id || club.sponsorId === user.id || (club.officerIds ?? []).includes(user.id)))
+  const hasPrivateAccess = !!(user && club && (isJoined(club.id) || user.role === 'admin' || club.leaderId === user.id || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id)))
   const { events,loading,refresh:refreshFeed }=useClubFeed(clubId && hasPrivateAccess ? [clubId] : [])
   const [view,setView]=useState<'calendar'|'list'>('calendar')
   const [month,setMonth]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1))

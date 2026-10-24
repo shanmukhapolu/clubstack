@@ -45,7 +45,7 @@ export function ClubPage() {
 
   const [club, setClub] = useState<Club | null>(() => clubs.find((item) => item.id === clubId) ?? null)
   const joined = isJoined(clubId)
-  const hasPrivateAccess = !!(user && (joined || user.role === 'admin' || (club && (club.leaderId === user.id || club.sponsorId === user.id || (club.officerIds ?? []).includes(user.id)))))
+  const hasPrivateAccess = !!(user && (joined || user.role === 'admin' || (club && (club.leaderId === user.id || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id)))))
   const [missing, setMissing] = useState(false)
   const [hasPendingOfficerInvite, setHasPendingOfficerInvite] = useState(false)
   const [joinRequestStatus, setJoinRequestStatus] = useState<'pending' | 'approved' | 'declined' | null>(null)
