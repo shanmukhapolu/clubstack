@@ -109,3 +109,20 @@
     transform: translateY(0);
   }
 }
+
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { animation: reveal-up .7s cubic-bezier(.2,.7,.2,1) both; }
+.reveal-delay { animation-delay: .14s; }
+@supports (animation-timeline: view()) {
+  .reveal { animation: reveal-up linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  .reveal-delay { animation-delay: 0s; animation-range: entry 0% entry 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal, .reveal-delay, .fade-in { animation: none !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
