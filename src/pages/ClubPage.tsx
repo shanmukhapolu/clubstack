@@ -555,10 +555,10 @@ export function ClubPage() {
 
       {hasPrivateAccess && <div className="mt-4 flex flex-wrap items-center gap-2">
         <nav aria-label="Club pages" className="flex flex-wrap items-center gap-2">
-          <Link to={`/clubs/${club.id}`} aria-current="page" className="rounded-xl border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
-          <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
-          <Link to={`/clubs/${club.id}/members`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
-          {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Settings</Link>}
+          <Link to={`/clubs/${club.id}`} aria-current="page" className="rounded-full border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
+          <Link to={`/clubs/${club.id}/meetings`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
+          <Link to={`/clubs/${club.id}/members`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
+          {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-full border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Settings</Link>}
         </nav>
         {canManage && <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => setAnnouncementOpen(true)}><Megaphone size={15} /> Post announcement</Button>
@@ -569,93 +569,22 @@ export function ClubPage() {
         <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}><Flag size={14} /> Report a concern</Button>
       </div>}
 
-      {hasPrivateAccess && (
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] xl:gap-6">
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[17px] font-extrabold">Announcements</h2>
-            {announcements.length > 0 && (
-              <span className="text-[12px] font-medium text-muted">{announcements.length} total</span>
-            )}
-          </div>
-
-          {feedLoading ? (
-            <Spinner label="Loading announcements" />
-          ) : announcements.length === 0 ? (
-            <EmptyState
-              icon={<Megaphone size={20} />}
-              title="No announcements yet"
-              description={
-                canManage
-                  ? 'Post the first update to tell members what is coming up.'
-                  : 'When the club leader posts an update, it will show up here.'
-              }
-              action={
-                canManage ? (
-                  <Button size="sm" onClick={() => setAnnouncementOpen(true)}>
-                    <Megaphone size={15} /> Post announcement
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : (
-            <div className="space-y-3">
-              {[...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt).map((announcement) => (
-                <AnnouncementCard
-                  key={announcement.id}
-                  announcement={announcement}
-                  canManage={canManage}
-                  onDelete={handleDeleteAnnouncement}
-                  onEdit={handleEditAnnouncement}
-                  onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="space-y-4">
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>
-              <Link
-                to={`/clubs/${club.id}/meetings`}
-                className="text-[12px] font-semibold text-brand-600 hover:underline"
-              >
-                Calendar
-              </Link>
-            </div>
-            {feedLoading ? (
-              <Spinner label="Loading meetings" />
-            ) : upcomingEvents.length === 0 ? (
-              <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] leading-relaxed text-muted">
-                No meetings scheduled yet.
-                {canManage ? ' Add one so members can plan ahead.' : ''}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {upcomingEvents.slice(0, 5).map((item) => (
-                  <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} onEdit={handleEditEvent} />
-                ))}
-              </div>
-            )}
-            {canManage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3 w-full justify-start"
-                onClick={() => setEventOpen(true)}
-              >
-                <CalendarPlus size={15} /> Add a meeting
-              </Button>
-            )}
+      <div className="relative mt-6">
+        <div className={`grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] xl:gap-6 ${hasPrivateAccess ? '' : 'pointer-events-none select-none'}`}>
+          <section>
+            <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-extrabold">Announcements</h2>{hasPrivateAccess && announcements.length > 0 && <span className="text-[12px] font-medium text-muted">{announcements.length} total</span>}</div>
+            {hasPrivateAccess ? (
+              feedLoading ? <Spinner label="Loading announcements" /> : announcements.length === 0 ? <EmptyState icon={<Megaphone size={20} />} title="No announcements yet" description={canManage ? 'Post the first update to tell members what is coming up.' : 'When the club leader posts an update, it will show up here.'} action={canManage ? <Button size="sm" onClick={() => setAnnouncementOpen(true)}><Megaphone size={15} /> Post announcement</Button> : undefined} /> : <div className="space-y-3">{[...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt).map((announcement) => <AnnouncementCard key={announcement.id} announcement={announcement} canManage={canManage} onDelete={handleDeleteAnnouncement} onEdit={handleEditAnnouncement} onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))} />)}</div>
+            ) : <div aria-hidden="true" className="space-y-3">{[0, 1].map((item) => <article key={item} className="rounded-2xl border border-line bg-surface p-4"><div className="flex items-center gap-3 opacity-75 blur-[1.5px]"><span className="h-9 w-9 rounded-xl bg-[#f5eadb]"/><div className="flex-1 space-y-2"><div className="h-3 w-2/5 rounded-full bg-ink/20"/><div className="h-2.5 w-4/5 rounded-full bg-ink/15"/></div></div><div className="mt-4 space-y-2 opacity-75 blur-[1.5px]"><div className="h-2.5 w-full rounded-full bg-ink/15"/><div className="h-2.5 w-5/6 rounded-full bg-ink/15"/></div></article>)}</div>}
           </section>
-
-
-
-        </aside>
+          <aside className="space-y-4"><section className="card p-4">
+            <div className="mb-3 flex items-center justify-between"><h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>{hasPrivateAccess && <Link to={`/clubs/${club.id}/meetings`} className="text-[12px] font-semibold text-brand-600 hover:underline">Calendar</Link>}</div>
+            {hasPrivateAccess ? (feedLoading ? <Spinner label="Loading meetings" /> : upcomingEvents.length === 0 ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] leading-relaxed text-muted">No meetings scheduled yet.{canManage ? ' Add one so members can plan ahead.' : ''}</p> : <div className="space-y-2">{upcomingEvents.slice(0, 5).map((item) => <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} onEdit={handleEditEvent} />)}</div>) : <div aria-hidden="true" className="space-y-2">{[0,1,2].map((item)=><div key={item} className="rounded-xl border border-line bg-surface p-3"><div className="flex gap-3 opacity-75 blur-[1.5px]"><div className="h-10 w-10 rounded-lg bg-[#e7efe8]"/><div className="flex-1 space-y-2 pt-1"><div className="h-3 w-3/5 rounded-full bg-ink/20"/><div className="h-2.5 w-4/5 rounded-full bg-ink/15"/></div></div></div>)}</div>}
+            {hasPrivateAccess && canManage && <Button variant="ghost" size="sm" className="mt-3 w-full justify-start" onClick={() => setEventOpen(true)}><CalendarPlus size={15} /> Add a meeting</Button>}
+          </section></aside>
+        </div>
+        {!hasPrivateAccess && <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-6"><div className="w-full max-w-md rounded-2xl border border-line bg-canvas/95 p-5 text-center shadow-none backdrop-blur-sm sm:p-6"><div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-soft"><ShieldCheck size={19}/></div><h2 className="mt-3 text-[15px] font-extrabold">Members-only updates</h2><p className="mt-2 text-[12.5px] leading-6 text-ink-soft">Only club members can see specific meetings, announcements, and other club updates.</p><p className="mt-2 text-[11.5px] text-muted">Join this club to view the details.</p></div></div>}
       </div>
-      )}
 
       {aboutOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
