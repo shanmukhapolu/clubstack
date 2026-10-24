@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Search, ShieldCheck, Users, UserMinus, Crown, GraduationCap, UserRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -85,13 +85,13 @@ export function ClubMembersPage() {
         const sponsor = club.sponsorName && matches(club.sponsorName) ? club.sponsorName : ''
         const officers = (club.officers ?? []).filter(officer => matches(officer.displayName))
         const officerIds = new Set((club.officers ?? []).map(officer => officer.uid))
-        const regularMembers = filtered.filter(person => person.id !== club.leaderId && person.id !== club.sponsorId && !officerIds.has(person.id) && !(club.officerIds ?? []).includes(person.id))
+        const regularMembers = filtered.filter(person => person.id !== club.sponsorId && !officerIds.has(person.id) && !(club.officerIds ?? []).includes(person.id)).sort((a, b) => Number(b.id === club.leaderId) - Number(a.id === club.leaderId))
         const renderMember = (member: AppUser, kind: 'owner' | 'officer' | 'member') => {
           const officer = (club.officers ?? []).find(item => item.uid === member.id)
           const title = kind === 'owner' ? (club.leaderTitle || 'Club Owner') : kind === 'officer' ? (officer?.title || 'Officer') : member.role === 'teacher' ? 'Teacher / Advisor' : member.role === 'admin' ? 'Administrator' : 'Student'
           return <div key={member.id} className="flex items-center gap-3 px-4 py-3.5"><Avatar name={member.displayName} size={38}/><div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-1.5 truncate text-[13px] font-bold">{member.displayName}{kind === 'owner' && <Crown size={15} aria-label="Club owner" className="shrink-0 fill-amber-400 text-amber-600"/>}</p><p className="mt-0.5 text-[11px] text-muted">{title}{member.grade && kind === 'member' ? ` · ${member.grade}` : ''}</p></div>{kind === 'owner' && <Badge tone="brand">{club.leaderTitle || 'Club Owner'}</Badge>}{canManage && member.id !== club.leaderId && member.id !== user.id && <button type="button" onClick={() => void removeMember(member)} disabled={removingId===member.id} title="Remove member" aria-label={`Remove ${member.displayName} from club`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">{removingId===member.id?<span className="text-xs">…</span>:<UserMinus size={15}/>}</button>}</div>
         }
-        const section = (title: string, icon: React.ReactNode, children: React.ReactNode, empty?: string) => <section className="border-b border-line last:border-b-0"><div className="flex items-center gap-2 bg-canvas/70 px-4 py-3"><span className="text-muted">{icon}</span><h2 className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-ink-soft">{title}</h2></div>{children || <p className="px-4 py-4 text-[12px] text-muted">{empty}</p>}</section>
+        const section = (title: string, icon: ReactNode, children: ReactNode, empty?: string) => <section className="border-b border-line last:border-b-0"><div className="flex items-center gap-2 bg-canvas/70 px-4 py-3"><span className="text-muted">{icon}</span><h2 className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-ink-soft">{title}</h2></div>{children || <p className="px-4 py-4 text-[12px] text-muted">{empty}</p>}</section>
         return <div>
           {section('Teacher Sponsor', <GraduationCap size={15}/>, sponsor ? <div className="flex items-center gap-3 px-4 py-4"><div className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#e8dfcf] bg-[#f4ecdf] text-[#705b3b]"><GraduationCap size={18}/></div><div><p className="text-[13px] font-bold">{club.sponsorName}</p><p className="mt-0.5 text-[11px] text-muted">Teacher Sponsor</p></div></div> : null, club.sponsorName ? 'No sponsor matches your search.' : 'No teacher sponsor listed.')}
           {section('Club Owner', <Crown size={15} className="text-amber-600"/>, owner ? renderMember(owner, 'owner') : null, 'No club owner matches your search.')}
