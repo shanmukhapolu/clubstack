@@ -103,7 +103,7 @@ export function ClubMeetingsPage() {
     finally{setSaving(false)}
   }
 
-  function editEvent(item:ClubEvent){setEditingEvent(item);setTitle(item.title);setDescription(item.description);setLocation(item.location);setStart(toDateTimeInput(new Date(item.startAt)));setEnd(item.endAt?toDateTimeInput(new Date(item.endAt)):'');setMeetingType(item.type??'General Meeting');setAttendance(item.attendance??'optional');setAddOpen(true)}
+  function editEvent(item:ClubEvent){setEditingEvent(item);setTitle(item.title);setDescription(item.description);setLocation(item.location);setStart(toDateTimeInput(item.startAt));setEnd(item.endAt?toDateTimeInput(item.endAt):'');setMeetingType(item.type??'General Meeting');setAttendance(item.attendance??'optional');setAddOpen(true)}
 
   async function deleteEvent(item:ClubEvent){
     if(!window.confirm(`Delete “${item.title}”? This cannot be undone.`))return
