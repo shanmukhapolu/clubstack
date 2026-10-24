@@ -164,7 +164,11 @@ export const demoApi: ClubStackApi = {
   clubs: {
     async list() {
       await wait()
-      return [...read().clubs].sort((a, b) => b.createdAt - a.createdAt)
+      const store = read()
+      const user = currentUser(store)
+      if (!user) return []
+      const memberIds = new Set(store.memberships.filter((membership) => membership.uid === user.id).map((membership) => membership.clubId))
+      return [...store.clubs.filter((club) => user.role === 'admin' || !club.hidden || memberIds.has(club.id) || club.leaderId === user.id || (club.officerIds ?? []).includes(user.id) || club.sponsorId === user.id)].sort((a, b) => b.createdAt - a.createdAt)
     },
 
     async get(id) {
