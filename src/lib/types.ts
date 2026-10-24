@@ -101,6 +101,20 @@ export interface OfficerInvitation {
   createdAt: number
 }
 
+export type ClubDeletionStatus = 'pending' | 'approved' | 'declined'
+
+export interface ClubDeletionRequest {
+  id: string
+  clubId: string
+  clubName: string
+  requestedById: string
+  requestedByName: string
+  status: ClubDeletionStatus
+  createdAt: number
+  reviewedAt?: number
+  reviewedById?: string
+}
+
 export interface ClubSponsorRequest {
   id: string
   clubId: string
