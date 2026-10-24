@@ -140,10 +140,8 @@ service cloud.firestore {
         && directoryMirrorMatchesPrivate(clubId);
       allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
-          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName', 'sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible'])
-          && directoryMirrorMatchesPrivate(clubId)
-          && request.resource.data.requiresApproval is bool
-          && request.resource.data.membersVisible is bool)
+          && directoryFieldsValid(request.resource.data)
+          && directoryMirrorMatchesPrivate(clubId))
         || (isTeacher() && isSponsorCandidate(clubId)
           && privateClub(clubId).sponsorStatus == 'pending'
           && onlyChanged(['sponsorName'])
@@ -356,9 +354,12 @@ service cloud.firestore {
         && request.resource.data.createdAt is number
         && (
           (request.resource.data.stage == 'currentSponsorApproval'
-            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid
+            && userRole() == 'student'
+            && (isMember(request.resource.data.clubId)
+              || get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid)
             && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorId == request.resource.data.previousSponsorId
-            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'accepted')
+            && get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'accepted'
+            && request.resource.data.previousSponsorId != request.resource.data.teacherId)
           || (!('stage' in request.resource.data.keys())
             && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.leaderId == request.auth.uid
             && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorId == request.resource.data.teacherId
@@ -369,12 +370,13 @@ service cloud.firestore {
         || resource.data.requestedById == request.auth.uid || isManager(resource.data.clubId)
       ));
       allow update: if isAdmin()
-        || (isLeader(resource.data.clubId)
-          && resource.data.stage in ['currentSponsorApproval','newSponsorApproval']
+        || (signedIn()
+          && userRole() == 'student'
           && resource.data.status == 'declined'
           && request.resource.data.stage == 'currentSponsorApproval'
           && request.resource.data.status == 'pending'
           && request.resource.data.requestedById == request.auth.uid
+          && (isMember(resource.data.clubId) || isLeader(resource.data.clubId))
           && onlyChanged(['clubId','clubName','teacherId','teacherName','requestedById','requestedByName','previousSponsorId','previousSponsorName','stage','status','createdAt']))
         || (isTeacher()
           && resource.data.previousSponsorId == request.auth.uid
