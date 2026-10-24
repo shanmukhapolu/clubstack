@@ -113,7 +113,7 @@ export function ClubPage() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutSaving, setAboutSaving] = useState(false)
   useEffect(() => {
-    if (!user || user.role !== 'student' || !joined || teacherSearch.trim().length < 3) { setTeacherResults([]); return }
+    if (!user || user.role !== 'student' || !(joined || club?.leaderId === user.id) || teacherSearch.trim().length < 3) { setTeacherResults([]); return }
     let active = true
     const handle = window.setTimeout(() => {
       void api.users.searchDirectory(teacherSearch.trim(), 'teacher', 8).then(results => {
@@ -121,7 +121,7 @@ export function ClubPage() {
       }).catch(() => { if (active) setTeacherResults([]) })
     }, 220)
     return () => { active = false; window.clearTimeout(handle) }
-  }, [teacherSearch, user?.id, user?.role, joined, club?.sponsorId])
+  }, [teacherSearch, user?.id, user?.role, joined, club?.leaderId, club?.sponsorId])
 
   const [aboutForm, setAboutForm] = useState({
     name: '',
@@ -419,7 +419,7 @@ export function ClubPage() {
   }
 
   async function requestSponsorChange() {
-    if (!club || !user || !selectedTeacher || user.role !== 'student' || !joined || sponsorSaving) return
+    if (!club || !user || !selectedTeacher || user.role !== 'student' || !(joined || club.leaderId === user.id) || sponsorSaving) return
     setSponsorSaving(true)
     try {
       await api.sponsorRequests.requestChange(club, selectedTeacher, user)
@@ -665,7 +665,7 @@ export function ClubPage() {
         </section>
 
         <aside className="space-y-4">
-          {user.role === 'student' && joined && club.sponsorStatus === 'accepted' && (
+          {user.role === 'student' && (joined || club.leaderId === user.id) && club.sponsorStatus === 'accepted' && (
             <section className="card border-brand-100 bg-brand-50/40 p-4">
               <div className="flex items-start gap-2.5"><ShieldCheck size={17} className="mt-0.5 text-brand-700"/><div><h2 className="text-[14px] font-extrabold">Request a sponsor change</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Choose a teacher to propose. Both the current sponsor and the proposed sponsor must approve before the club changes advisors.</p></div></div>
               <p className="mt-3 text-[11.5px] text-muted">Current sponsor: <span className="font-semibold text-ink">{club.sponsorName}</span></p>
