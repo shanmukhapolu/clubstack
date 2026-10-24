@@ -510,24 +510,117 @@ export const firebaseApi: ClubStackApi = {
       await batch.commit()
     },
 
+    async transferOwnership(id, newLeaderId, currentLeader) {
+      const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const current = await getDoc(clubRef)
+      if (!current.exists()) throw new Error('That club no longer exists.')
+      const data = current.data()
+      if (data.leaderId !== currentLeader.id) throw new Error('Only the current club leader can transfer ownership.')
+      if (newLeaderId === currentLeader.id || !Array.isArray(data.officerIds) || !data.officerIds.includes(newLeaderId)) {
+        throw new Error('Choose an existing club officer to become the new leader.')
+      }
+      const target = (Array.isArray(data.officers) ? data.officers : []).find((officer) => officer && typeof officer === 'object' && (officer as Record<string, unknown>).uid === newLeaderId) as Record<string, unknown> | undefined
+      if (!target) throw new Error('The selected officer record could not be found.')
+      const roleProfile = await getDoc(doc(db, 'users', newLeaderId))
+      if (!roleProfile.exists() || roleProfile.data().role !== 'student') throw new Error('The new club leader must be a student account.')
+      const officers = (Array.isArray(data.officers) ? data.officers : []).filter((officer) => {
+        const person = officer as Record<string, unknown>
+        return person.uid !== newLeaderId && person.uid !== currentLeader.id
+      })
+      officers.push({
+        uid: currentLeader.id,
+        displayName: currentLeader.displayName,
+        email: currentLeader.email,
+        title: 'Former President',
+      })
+      const officerIds = [...new Set([...(data.officerIds as string[]).filter((uid) => uid !== newLeaderId), currentLeader.id])]
+      const batch = writeBatch(db)
+      batch.update(clubRef, {
+        leaderId: newLeaderId,
+        leaderName: stringOr(target.displayName, 'Club leader'),
+        leaderTitle: 'President',
+        officers,
+        officerIds,
+      })
+      batch.update(doc(db, 'clubDirectory', id), { leaderName: stringOr(target.displayName, 'Club leader') })
+      await batch.commit()
+    },
+
+    async getDeletionRequest(id) {
+      const snapshot = await getDoc(doc(requireDb(), 'clubDeletionRequests', id))
+      return snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as ClubDeletionRequest) : null
+    },
+
+    async requestDeletion(id, currentLeader) {
+      const db = requireDb()
+      const clubSnapshot = await getDoc(doc(db, 'clubs', id))
+      if (!clubSnapshot.exists()) throw new Error('That club no longer exists.')
+      if (clubSnapshot.data().leaderId !== currentLeader.id) throw new Error('Only the club leader can request deletion.')
+      if (!clubSnapshot.data().sponsorId || clubSnapshot.data().sponsorStatus !== 'accepted') {
+        throw new Error('Assign and confirm a teacher advisor before requesting deletion approval.')
+      }
+      const requestRef = doc(db, 'clubDeletionRequests', id)
+      const existing = await getDoc(requestRef)
+      if (existing.exists() && existing.data().status === 'pending') throw new Error('A deletion request is already awaiting the teacher advisor.')
+      if (existing.exists() && existing.data().status === 'approved') throw new Error('The advisor approved deletion. Use the permanent delete action instead.')
+      const createdAt = Date.now()
+      const data = {
+        clubId: id,
+        clubName: stringOr(clubSnapshot.data().name, 'Club'),
+        requestedById: currentLeader.id,
+        requestedByName: currentLeader.displayName,
+        status: 'pending' satisfies ClubDeletionStatus,
+        createdAt,
+      }
+      if (existing.exists()) await updateDoc(requestRef, data)
+      else await setDoc(requestRef, data)
+    },
+
+    async respondToDeletionRequest(id, status, advisor) {
+      if (advisor.role !== 'teacher') throw new Error('Only the teacher advisor can review a club deletion request.')
+      const db = requireDb()
+      const requestRef = doc(db, 'clubDeletionRequests', id)
+      const snapshot = await getDoc(requestRef)
+      if (!snapshot.exists()) throw new Error('This deletion request no longer exists.')
+      if (snapshot.data().status !== 'pending') throw new Error('This deletion request has already been reviewed.')
+      await updateDoc(requestRef, { status, reviewedAt: Date.now(), reviewedById: advisor.id })
+    },
+
     async delete(id) {
       const db = requireDb()
+      const authUid = requireAuth().currentUser?.uid
+      if (!authUid) throw new Error('You must be signed in to delete a club.')
+      const profile = await getDoc(doc(db, 'users', authUid))
+      const isAdministrator = profile.data()?.role === 'admin'
+      if (!isAdministrator) {
+        const approval = await getDoc(doc(db, 'clubDeletionRequests', id))
+        if (!approval.exists() || approval.data().status !== 'approved') {
+          throw new Error('The teacher advisor must approve deletion before this club can be deleted.')
+        }
+      }
       const related = await Promise.all([
         getDocs(query(collection(db, 'memberships'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'announcements'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'events'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'clubSponsorRequests'), where('clubId', '==', id))),
-        getDocs(query(collection(db, 'moderationReports'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'officerInvitations'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'clubJoinRequests'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'announcementReactions'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'eventRsvps'), where('clubId', '==', id))),
       ])
-      const batch = writeBatch(db)
-      related.flatMap((snapshot) => snapshot.docs).forEach((item) => batch.delete(item.ref))
-      batch.delete(doc(db, 'clubs', id))
-      batch.delete(doc(db, 'clubDirectory', id))
-      await batch.commit()
+      const refs = related.flatMap((snapshot) => snapshot.docs.map((item) => item.ref))
+      for (let offset = 0; offset < refs.length; offset += 400) {
+        const batch = writeBatch(db)
+        refs.slice(offset, offset + 400).forEach((ref) => batch.delete(ref))
+        await batch.commit()
+      }
+      const finalBatch = writeBatch(db)
+      finalBatch.delete(doc(db, 'clubs', id))
+      finalBatch.delete(doc(db, 'clubDirectory', id))
+      const request = await getDoc(doc(db, 'clubDeletionRequests', id))
+      if (request.exists()) finalBatch.delete(request.ref)
+      await finalBatch.commit()
     },
   },
 
