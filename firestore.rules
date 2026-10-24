@@ -109,10 +109,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      // Role selection intentionally remains open for test accounts only.
+      // New accounts always start as students. Privileged roles must be assigned by an existing administrator.
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(['displayName', 'email', 'role', 'createdAt', 'grade'])
-        && request.resource.data.role in ['student', 'teacher', 'admin']
+        && request.resource.data.role == 'student'
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() >= 2
         && request.resource.data.email is string;
