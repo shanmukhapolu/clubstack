@@ -115,7 +115,7 @@ export function NotificationsPage() {
 
   async function respondSponsor(item: ClubSponsorRequest, status: 'accepted' | 'declined') {
     setWorkingId(item.id)
-    markAsRead(`sponsor:${item.id}`)
+    markAsRead(`sponsor:${item.id}:${item.stage ?? 'initial'}`)
     try {
       await api.sponsorRequests.respond(item.id, status)
       notify(item.stage === 'currentSponsorApproval' ? (status === 'accepted' ? `Sponsor change approved for ${item.clubName}. The new teacher can now accept.` : `Sponsor change rejected for ${item.clubName}.`) : (status === 'accepted' ? `You are now advisor for ${item.clubName}.` : 'Advisor request declined.'))
@@ -235,7 +235,7 @@ export function NotificationsPage() {
               <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold"><ShieldCheck size={17} /> Advisor requests</h2>
               <div className="space-y-2">
                 {items.sponsorRequests.map((item) => {
-                  const id = `sponsor:${item.id}`
+                  const id = `sponsor:${item.id}:${item.stage ?? 'initial'}`
                   return (
                     <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><ShieldCheck size={18} /></div>
