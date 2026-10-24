@@ -194,6 +194,11 @@ try {
     assertFails(updateDoc(doc(leader, 'clubs', 'club-visible'), { memberCount: 9999 })))
   await check('a member cannot add a count field to the public directory', () =>
     assertFails(updateDoc(doc(leader, 'clubDirectory', 'club-visible'), { memberCount: 9999 })))
+  await check('administrators cannot override derived member counts', async () => {
+    const adminDb = environment.authenticatedContext('admin').firestore()
+    await assertFails(updateDoc(doc(adminDb, 'clubs', 'club-visible'), { memberCount: 9999 }))
+    await assertFails(updateDoc(doc(adminDb, 'clubDirectory', 'club-visible'), { memberCount: 9999 }))
+  })
 
   await check('direct join works when approval is disabled', () =>
     assertSucceeds(setDoc(doc(environment.authenticatedContext('student-outsider').firestore(), 'memberships', 'student-outsider_club-visible'), {
