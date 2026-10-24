@@ -481,6 +481,13 @@ export const demoApi: ClubStackApi = {
       })
     },
 
+    async update(id, input) {
+      await wait()
+      mutate((store) => {
+        store.announcements = store.announcements.map((item) => item.id === id ? { ...item, title: input.title, body: input.body, updatedAt: Date.now() } : item)
+      })
+    },
+
     async setPinned(id, pinned) {
       await wait()
       mutate((store) => { store.announcements = store.announcements.map((item) => item.id === id ? { ...item, pinned, updatedAt: Date.now() } : item) })
