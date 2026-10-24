@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
@@ -15,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { api } from '../lib/backend'
 import { Avatar, ClubMark } from './ui'
+import { fetchInboxItems, getUnreadNotificationCount, notificationChangeEvent, notificationIds, syncKnownNotificationIds } from '../lib/notificationState'
 
 const navItems = [
   { to: '/home', label: 'Home', icon: House, end: true },
@@ -65,6 +67,35 @@ export function AppShell() {
   const { user, mode, signOut } = useAuth()
   const { clubs, joinedIds } = useClubs()
   const navigate = useNavigate()
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadNotifications(0)
+      return
+    }
+    let active = true
+    const syncCount = () => {
+      if (active) setUnreadNotifications(getUnreadNotificationCount(user.id))
+    }
+    const load = async () => {
+      try {
+        const inbox = await fetchInboxItems(user, clubs, joinedIds)
+        if (!active) return
+        syncKnownNotificationIds(user.id, notificationIds(inbox))
+        syncCount()
+      } catch {
+        // Keep previously known notification state if a role-scoped query is temporarily unavailable.
+        syncCount()
+      }
+    }
+    window.addEventListener(notificationChangeEvent, syncCount)
+    void load()
+    return () => {
+      active = false
+      window.removeEventListener(notificationChangeEvent, syncCount)
+    }
+  }, [user, clubs, joinedIds])
 
   if (!user) return null
 
@@ -115,6 +146,7 @@ export function AppShell() {
             >
               <Icon size={18} strokeWidth={2.2} />
               {label}
+              {to === '/notifications' && unreadNotifications > 0 && <span aria-label={`${unreadNotifications} unread notifications`} className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
             </NavLink>
           ))}
         </nav>
@@ -222,7 +254,7 @@ export function AppShell() {
                 }`
               }
             >
-              <Icon size={20} strokeWidth={2.1} />
+              <span className="relative inline-flex"><Icon size={20} strokeWidth={2.1} />{to === '/notifications' && unreadNotifications > 0 && <span aria-label={`${unreadNotifications} unread notifications`} className="absolute -right-2 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</span>
               {label}
             </NavLink>
           ))}
