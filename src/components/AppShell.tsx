@@ -152,7 +152,7 @@ export function AppShell() {
           </div>
         </div>}
 
-        <div className="mt-4 space-y-3 border-t border-line pt-4">
+        <div className="mt-auto space-y-3 border-t border-line pt-4">
           {mode === 'demo' && <DemoSwitcher />}
           <div className="flex items-center gap-2.5 rounded-2xl bg-canvas p-2.5">
             <Avatar name={user.displayName} size={34} />

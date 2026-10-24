@@ -361,7 +361,6 @@ service cloud.firestore {
         && request.resource.data.eventId is string
         && request.resource.data.clubId is string
         && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId == request.resource.data.clubId
-        && (isAdmin() || isManager(request.resource.data.clubId) || isMember(request.resource.data.clubId))
         && request.resource.data.status in ['going','maybe','notGoing']
         && request.resource.data.updatedAt is number
         && request.resource.data.keys().hasOnly(['eventId','clubId','uid','status','updatedAt']);
