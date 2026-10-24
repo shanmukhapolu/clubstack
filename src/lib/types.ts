@@ -60,6 +60,7 @@ export interface AnnouncementReaction {
 export interface ReactionSummary {
   counts: Record<string, number>
   mine: string | null
+  peopleByEmoji?: Record<string, string[]>
 }
 
 export type EventRsvpStatus = 'going' | 'maybe' | 'notGoing'
@@ -73,11 +74,18 @@ export interface EventRsvp {
   updatedAt: number
 }
 
+export interface RsvpParticipant {
+  uid: string
+  displayName: string
+  status: EventRsvpStatus
+}
+
 export interface RsvpSummary {
   going: number
   maybe: number
   notGoing: number
   mine: EventRsvpStatus | null
+  participants?: RsvpParticipant[]
 }
 
 export interface OfficerInvitation {
