@@ -1022,8 +1022,6 @@ export const firebaseApi: ClubStackApi = {
         if (status === 'accepted') {
           batch.update(doc(db, 'clubs', request.clubId), { sponsorId: request.teacherId, sponsorName: request.teacherName, sponsorStatus: 'accepted' })
           batch.update(doc(db, 'clubDirectory', request.clubId), { sponsorName: request.teacherName })
-        } else {
-          batch.update(doc(db, 'clubs', request.clubId), { sponsorStatus: 'accepted' })
         }
       } else {
         batch.update(doc(db, 'clubs', request.clubId), {
