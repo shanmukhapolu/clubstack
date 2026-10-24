@@ -95,6 +95,11 @@ export function ClubPage() {
   const [eventOpen, setEventOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [teacherResults, setTeacherResults] = useState<import('../lib/types').AppUser[]>([])
+  const [selectedTeacher, setSelectedTeacher] = useState<import('../lib/types').AppUser | null>(null)
+  const [sponsorSaving, setSponsorSaving] = useState(false)
   const [eventTitle, setEventTitle] = useState('')
   const [eventDescription, setEventDescription] = useState('')
   const [eventLocation, setEventLocation] = useState('')
@@ -107,6 +112,17 @@ export function ClubPage() {
   const [saving, setSaving] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutSaving, setAboutSaving] = useState(false)
+  useEffect(() => {
+    if (!user || user.role !== 'student' || !joined || teacherSearch.trim().length < 3) { setTeacherResults([]); return }
+    let active = true
+    const handle = window.setTimeout(() => {
+      void api.users.searchDirectory(teacherSearch.trim(), 'teacher', 8).then(results => {
+        if (active) setTeacherResults(results.filter(person => person.id !== club?.sponsorId))
+      }).catch(() => { if (active) setTeacherResults([]) })
+    }, 220)
+    return () => { active = false; window.clearTimeout(handle) }
+  }, [teacherSearch, user?.id, user?.role, joined, club?.sponsorId])
+
   const [aboutForm, setAboutForm] = useState({
     name: '',
     description: '',
@@ -332,16 +348,17 @@ export function ClubPage() {
     setSaving(true)
     setFormError(null)
     try {
-      await api.announcements.create(
-        club.id,
-        { title: title.trim(), body: body.trim() },
-        user!,
-      )
+      if (editingAnnouncement) {
+        await api.announcements.update(editingAnnouncement.id, { title: title.trim(), body: body.trim() })
+      } else {
+        await api.announcements.create(club.id, { title: title.trim(), body: body.trim() }, user!)
+      }
       setTitle('')
       setBody('')
       setAnnouncementOpen(false)
+      setEditingAnnouncement(null)
       refreshFeed()
-      notify('Announcement posted.')
+      notify(editingAnnouncement ? 'Announcement updated.' : 'Announcement posted.')
     } catch (caught) {
       setFormError(friendlyError(caught))
     } finally {
@@ -391,6 +408,25 @@ export function ClubPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function handleEditAnnouncement(announcement: Announcement) {
+    setEditingAnnouncement(announcement)
+    setTitle(announcement.title)
+    setBody(announcement.body)
+    setFormError(null)
+    setAnnouncementOpen(true)
+  }
+
+  async function requestSponsorChange() {
+    if (!club || !user || !selectedTeacher || user.role !== 'student' || !joined || sponsorSaving) return
+    setSponsorSaving(true)
+    try {
+      await api.sponsorRequests.requestChange(club, selectedTeacher, user)
+      setTeacherSearch(''); setTeacherResults([]); setSelectedTeacher(null)
+      notify('Sponsor change requested. The current and proposed teachers must approve it in Notifications.')
+    } catch (caught) { notify(friendlyError(caught), 'error') }
+    finally { setSponsorSaving(false) }
   }
 
   async function handleDeleteAnnouncement(announcement: Announcement) {
@@ -620,6 +656,7 @@ export function ClubPage() {
                   announcement={announcement}
                   canManage={canManage}
                   onDelete={handleDeleteAnnouncement}
+                  onEdit={handleEditAnnouncement}
                   onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))}
                 />
               ))}
@@ -628,6 +665,16 @@ export function ClubPage() {
         </section>
 
         <aside className="space-y-4">
+          {user.role === 'student' && joined && club.sponsorStatus === 'accepted' && (
+            <section className="card border-brand-100 bg-brand-50/40 p-4">
+              <div className="flex items-start gap-2.5"><ShieldCheck size={17} className="mt-0.5 text-brand-700"/><div><h2 className="text-[14px] font-extrabold">Request a sponsor change</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Choose a teacher to propose. Both the current sponsor and the proposed sponsor must approve before the club changes advisors.</p></div></div>
+              <p className="mt-3 text-[11.5px] text-muted">Current sponsor: <span className="font-semibold text-ink">{club.sponsorName}</span></p>
+              <label htmlFor="club-sponsor-search" className="label mt-3">Find a teacher</label>
+              <input id="club-sponsor-search" className="field" value={teacherSearch} placeholder="Type at least 3 letters…" onChange={event => { setTeacherSearch(event.target.value); setSelectedTeacher(null) }}/>
+              {teacherResults.map(person => <button key={person.id} type="button" onClick={() => { setSelectedTeacher(person); setTeacherSearch(person.displayName); setTeacherResults([]) }} className={`mt-1 flex w-full rounded-xl border px-3 py-2 text-left text-[12.5px] ${selectedTeacher?.id === person.id ? 'border-brand-300 bg-brand-50' : 'border-line bg-white hover:bg-canvas'}`}>{person.displayName}</button>)}
+              <Button className="mt-3 w-full" size="sm" disabled={!selectedTeacher || sponsorSaving} loading={sponsorSaving} onClick={() => void requestSponsorChange()}><ShieldCheck size={14}/> Send request</Button>
+            </section>
+          )}
           <section className="card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>
@@ -732,8 +779,8 @@ export function ClubPage() {
       <Modal
         open={announcementOpen}
         onClose={() => setAnnouncementOpen(false)}
-        title="New announcement"
-        description={`Post an update to everyone following ${club.name}.`}
+        title={editingAnnouncement ? 'Edit announcement' : 'New announcement'}
+        description={editingAnnouncement ? 'Update the title or message for club members.' : `Post an update to everyone following ${club.name}.`}
       >
         <form onSubmit={handleAnnouncement} className="space-y-4">
           <div>
@@ -766,11 +813,11 @@ export function ClubPage() {
           </div>
           {formError && <p className="text-[13px] font-medium text-[#9c2f18]">{formError}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={() => setAnnouncementOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => { setAnnouncementOpen(false); setEditingAnnouncement(null); setFormError(null) }}>
               Cancel
             </Button>
             <Button type="submit" loading={saving}>
-              Post update
+              {editingAnnouncement ? 'Save changes' : 'Post update'}
             </Button>
           </div>
         </form>
