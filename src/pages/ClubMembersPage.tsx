@@ -56,9 +56,28 @@ export function ClubMembersPage() {
     setRemovingId(member.id)
     try {
       await api.memberships.removeMember(club.id, member.id)
+      const isLeader = club.leaderId === member.id
+      const isSponsor = club.sponsorId === member.id
+      const officers = (club.officers ?? []).filter(officer => officer.uid !== member.id)
+      const officerIds = (club.officerIds ?? []).filter(id => id !== member.id)
+      if (isLeader || isSponsor || officers.length !== (club.officers ?? []).length || officerIds.length !== (club.officerIds ?? []).length) {
+        await api.clubs.update(club.id, {
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'Club Owner', pendingLeaderTransfer: null } : {}),
+          ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
+          officers,
+          officerIds,
+        })
+        setClub(current => current ? {
+          ...current,
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'Club Owner', pendingLeaderTransfer: null } : {}),
+          ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
+          officers,
+          officerIds,
+        } : null)
+      }
       await refresh()
       setMembers(current => current.filter(person => person.id !== member.id))
-      notify(`${member.displayName} was removed from the club.`)
+      notify(`${member.displayName} was removed from the club. Their ClubStack account remains active.`)
     } catch (caught) {
       notify(friendlyError(caught), 'error')
     } finally {
