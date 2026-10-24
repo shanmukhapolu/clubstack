@@ -614,6 +614,11 @@ export const firebaseApi: ClubStackApi = {
       const profile = await getDoc(doc(db, 'users', authUid))
       const isAdministrator = profile.data()?.role === 'admin'
       if (!isAdministrator) {
+        const clubSnapshot = await getDoc(doc(db, 'clubs', id))
+        if (!clubSnapshot.exists()) throw new Error('That club no longer exists.')
+        if (clubSnapshot.data().leaderId !== authUid) {
+          throw new Error('Only the club leader can complete an advisor-approved deletion.')
+        }
         const approval = await getDoc(doc(db, 'clubDeletionRequests', id))
         if (!approval.exists() || approval.data().status !== 'approved') {
           throw new Error('The teacher advisor must approve deletion before this club can be deleted.')
