@@ -166,7 +166,7 @@ export function ClubPage() {
     return () => { active = false }
   }, [clubId, user?.id, user?.role])
 
-  const upcomingEvents = useMemo(() => upcoming(events), [events])
+  const upcomingEvents = useMemo(() => upcoming(events.filter((event) => !event.deletedAt)).sort((a, b) => Number(!!b.type) - Number(!!a.type)), [events])
 
   if (!user) return null
 
@@ -364,17 +364,17 @@ export function ClubPage() {
     setSaving(true)
     setFormError(null)
     try {
-      await api.events.create(
-        club.id,
-        {
-          title: eventTitle.trim(),
-          description: eventDescription.trim(),
-          location: eventLocation.trim() || club.location,
-          startAt,
-          endAt: eventEnd ? fromDateTimeInput(eventEnd) : null,
-        },
-        user!,
-      )
+      const eventInput = {
+        title: eventTitle.trim(),
+        description: eventDescription.trim(),
+        location: eventLocation.trim() || club.location,
+        startAt,
+        endAt: eventEnd ? fromDateTimeInput(eventEnd) : null,
+        type: eventType,
+        attendance: eventAttendance,
+      }
+      if (editingEvent) await api.events.update(editingEvent.id, eventInput)
+      else await api.events.create(club.id, eventInput, user!)
       setEventTitle('')
       setEventDescription('')
       setEventLocation('')
@@ -799,6 +799,14 @@ export function ClubPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
+              <label htmlFor="event-type" className="label">Type</label>
+              <select id="event-type" className="field" value={eventType} onChange={(event) => setEventType(event.target.value as ClubEvent['type'])}>{['Event', 'Callout', 'General Meeting', 'Workshop'].map((type) => <option key={type}>{type}</option>)}</select>
+            </div>
+            <div>
+              <label htmlFor="event-attendance" className="label">Attendance</label>
+              <select id="event-attendance" className="field" value={eventAttendance} onChange={(event) => setEventAttendance(event.target.value as ClubEvent['attendance'])}><option value="optional">Optional</option><option value="mandatory">Mandatory</option></select>
+            </div>
+            <div>
               <label htmlFor="event-start" className="label">
                 Starts
               </label>
@@ -856,7 +864,7 @@ export function ClubPage() {
               Cancel
             </Button>
             <Button type="submit" loading={saving}>
-              Add meeting
+              {editingEvent ? 'Save changes' : 'Add meeting'}
             </Button>
           </div>
         </form>
