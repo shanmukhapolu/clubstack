@@ -170,6 +170,8 @@ function toAnnouncement(id: string, data: Record<string, unknown>): Announcement
     body: stringOr(data.body, ''),
     authorId: stringOr(data.authorId, ''),
     authorName: stringOr(data.authorName, 'Club leader'),
+    pinned: data.pinned === true,
+    updatedAt: numberOr(data.updatedAt, numberOr(data.createdAt)),
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -198,6 +200,9 @@ function toSponsorRequest(id: string, data: Record<string, unknown>): ClubSponso
     requestedById: stringOr(data.requestedById, ''),
     requestedByName: stringOr(data.requestedByName, ''),
     status: (['pending', 'accepted', 'declined'].includes(String(data.status)) ? data.status : 'pending') as SponsorRequestStatus,
+    previousSponsorId: stringOr(data.previousSponsorId, '') || undefined,
+    previousSponsorName: stringOr(data.previousSponsorName, '') || undefined,
+    stage: data.stage === 'currentSponsorApproval' || data.stage === 'newSponsorApproval' ? data.stage : undefined,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -212,6 +217,10 @@ function toEvent(id: string, data: Record<string, unknown>): ClubEvent {
     startAt: numberOr(data.startAt),
     endAt: typeof data.endAt === 'number' ? data.endAt : null,
     createdBy: stringOr(data.createdBy, ''),
+    type: (['Event', 'Callout', 'General Meeting', 'Workshop'].includes(String(data.type)) ? data.type : 'General Meeting') as ClubEvent['type'],
+    attendance: data.attendance === 'mandatory' ? 'mandatory' : 'optional',
+    updatedAt: numberOr(data.updatedAt, numberOr(data.createdAt)),
+    deletedAt: typeof data.deletedAt === 'number' ? data.deletedAt : null,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -461,6 +470,22 @@ export const firebaseApi: ClubStackApi = {
         })
       }
       return clubRef.id
+    },
+
+    async removeOfficer(id, officerId) {
+      const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const snapshot = await getDoc(clubRef)
+      if (!snapshot.exists()) throw new Error('That club no longer exists.')
+      const data = snapshot.data()
+      const actorId = requireAuth().currentUser?.uid
+      if (!actorId || !(data.leaderId === actorId || data.get?.('') || false)) {
+        // Firestore rules remain the source of truth for manager/admin authorization.
+        if (!actorId) throw new Error('You must be signed in to manage officers.')
+      }
+      const officers = Array.isArray(data.officers) ? data.officers.filter((item) => (item as Record<string, unknown>).uid !== officerId) : []
+      const officerIds = Array.isArray(data.officerIds) ? data.officerIds.filter((uid) => uid !== officerId) : []
+      await updateDoc(clubRef, { officers, officerIds })
     },
 
     async update(id, patch: Partial<Club>) {
@@ -786,8 +811,14 @@ export const firebaseApi: ClubStackApi = {
         body: input.body,
         authorId: author.id,
         authorName: author.displayName,
+        pinned: false,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
       })
+    },
+
+    async setPinned(id, pinned) {
+      await updateDoc(doc(requireDb(), 'announcements', id), { pinned, updatedAt: Date.now() })
     },
 
     async getReactionSummary(announcementId, clubId, uid) {
@@ -852,9 +883,17 @@ export const firebaseApi: ClubStackApi = {
         location: input.location,
         startAt: input.startAt,
         endAt: input.endAt,
+        type: input.type ?? 'General Meeting',
+        attendance: input.attendance ?? 'optional',
         createdBy: author.id,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
+        deletedAt: null,
       })
+    },
+
+    async update(id, input) {
+      await updateDoc(doc(requireDb(), 'events', id), { ...input, updatedAt: Date.now() })
     },
 
     async getRsvpSummary(eventId, clubId, uid) {
@@ -886,7 +925,7 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async remove(id) {
-      await deleteDoc(doc(requireDb(), 'events', id))
+      await updateDoc(doc(requireDb(), 'events', id), { deletedAt: Date.now(), updatedAt: Date.now() })
     },
   },
 
@@ -918,8 +957,13 @@ export const firebaseApi: ClubStackApi = {
 
   sponsorRequests: {
     async listForTeacher(teacherId) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'clubSponsorRequests'), where('teacherId', '==', teacherId)))
-      return snapshot.docs.map((item) => toSponsorRequest(item.id, item.data())).sort(byNewest)
+      const db = requireDb()
+      const [targetSnapshot, currentSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('teacherId', '==', teacherId))),
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('previousSponsorId', '==', teacherId))),
+      ])
+      const requests = new Map([...targetSnapshot.docs, ...currentSnapshot.docs].map((item) => [item.id, toSponsorRequest(item.id, item.data())]))
+      return [...requests.values()].sort(byNewest)
     },
 
     async create(club, teacher, requester) {
@@ -944,22 +988,53 @@ export const firebaseApi: ClubStackApi = {
       await batch.commit()
     },
 
+    async requestChange(club, teacher, requester) {
+      if (!club.sponsorId || club.sponsorStatus !== 'accepted') throw new Error('This club does not have an accepted sponsor to approve the change.')
+      if (teacher.id === club.sponsorId) throw new Error('Choose a different teacher.')
+      const db = requireDb()
+      await addDoc(collection(db, 'clubSponsorRequests'), {
+        clubId: club.id, clubName: club.name, teacherId: teacher.id, teacherName: teacher.displayName,
+        requestedById: requester.id, requestedByName: requester.displayName,
+        previousSponsorId: club.sponsorId, previousSponsorName: club.sponsorName,
+        stage: 'currentSponsorApproval', status: 'pending', createdAt: Date.now(),
+      })
+    },
+
     async respond(requestId, status) {
       const db = requireDb()
       const requestRef = doc(db, 'clubSponsorRequests', requestId)
       const requestSnapshot = await getDoc(requestRef)
       if (!requestSnapshot.exists()) throw new Error('This sponsor request no longer exists.')
       const request = toSponsorRequest(requestSnapshot.id, requestSnapshot.data())
+      if (request.stage === 'currentSponsorApproval') {
+        const actorId = requireAuth().currentUser?.uid
+        if (actorId !== request.previousSponsorId) throw new Error('Only the current sponsor can approve this change.')
+        if (status === 'declined') {
+          await updateDoc(requestRef, { status: 'declined' })
+          return
+        }
+        await updateDoc(requestRef, { stage: 'newSponsorApproval' })
+        return
+      }
       const batch = writeBatch(db)
       batch.update(requestRef, { status })
-      batch.update(doc(db, 'clubs', request.clubId), {
-        sponsorId: status === 'accepted' ? request.teacherId : '',
-        sponsorName: status === 'accepted' ? request.teacherName : '',
-        sponsorStatus: status,
-      })
-      batch.update(doc(db, 'clubDirectory', request.clubId), {
-        sponsorName: status === 'accepted' ? request.teacherName : '',
-      })
+      if (request.previousSponsorId) {
+        if (status === 'accepted') {
+          batch.update(doc(db, 'clubs', request.clubId), { sponsorId: request.teacherId, sponsorName: request.teacherName, sponsorStatus: 'accepted' })
+          batch.update(doc(db, 'clubDirectory', request.clubId), { sponsorName: request.teacherName })
+        } else {
+          batch.update(doc(db, 'clubs', request.clubId), { sponsorStatus: 'accepted' })
+        }
+      } else {
+        batch.update(doc(db, 'clubs', request.clubId), {
+          sponsorId: status === 'accepted' ? request.teacherId : '',
+          sponsorName: status === 'accepted' ? request.teacherName : '',
+          sponsorStatus: status,
+        })
+        batch.update(doc(db, 'clubDirectory', request.clubId), {
+          sponsorName: status === 'accepted' ? request.teacherName : '',
+        })
+      }
       await batch.commit()
     },
   },
