@@ -253,6 +253,7 @@ service cloud.firestore {
         );
       allow delete: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid)
+        || isManager(resource.data.clubId)
         || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
       allow update: if false;
     }
