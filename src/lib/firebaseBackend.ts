@@ -814,6 +814,10 @@ export const firebaseApi: ClubStackApi = {
       })
     },
 
+    async update(id, input) {
+      await updateDoc(doc(requireDb(), 'announcements', id), { title: input.title, body: input.body, updatedAt: Date.now() })
+    },
+
     async setPinned(id, pinned) {
       await updateDoc(doc(requireDb(), 'announcements', id), { pinned, updatedAt: Date.now() })
     },
