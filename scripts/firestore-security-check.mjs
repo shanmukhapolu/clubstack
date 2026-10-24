@@ -52,7 +52,7 @@ const clubData = ({ id, leaderId = 'leader', sponsorId = '', sponsorStatus = 'no
   createdAt: 1,
 })
 
-const directoryData = ({ id, requiresApproval = false, membersVisible = true, status = 'approved' }) => ({
+const directoryData = ({ id, requiresApproval = false, membersVisible = true, status = 'approved', sponsorId = '' }) => ({
   name: id.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
   description: 'A student club with enough detail for the public directory preview.',
   category: 'Academic',
@@ -60,7 +60,7 @@ const directoryData = ({ id, requiresApproval = false, membersVisible = true, st
   color: '#4567ab',
   status,
   leaderName: 'Club Leader',
-  sponsorName: 'Club Advisor',
+  sponsorName: sponsorId ? 'Club Advisor' : '',
   meetingDay: 'Tuesday',
   meetingTime: '3:30 PM',
   location: 'Private Room 101',
