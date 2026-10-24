@@ -62,6 +62,7 @@ export interface MembershipsApi {
 export interface AnnouncementsApi {
   listForClubs(clubIds: string[]): Promise<Announcement[]>
   create(clubId: string, input: { title: string; body: string }, author: AppUser): Promise<void>
+  update(id: string, input: { title: string; body: string }): Promise<void>
   setPinned(id: string, pinned: boolean): Promise<void>
   getReactionSummary(announcementId: string, clubId: string, uid: string): Promise<ReactionSummary>
   setReaction(announcementId: string, clubId: string, uid: string, emoji: string | null): Promise<void>
