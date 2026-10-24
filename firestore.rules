@@ -219,7 +219,7 @@ service cloud.firestore {
           && resource.data.sponsorStatus == 'pending'
           && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
           && request.resource.data.sponsorStatus in ['accepted','declined']);
-      allow delete: if isAdmin() || (isManager(clubId) && deletionApproved(clubId));
+      allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
     match /memberships/{membershipId} {
@@ -338,7 +338,7 @@ service cloud.firestore {
         && resource.data.status == 'pending'
         && onlyChanged(['status'])
         && request.resource.data.status in ['accepted','declined']);
-      allow delete: if isAdmin() || (isManager(resource.data.clubId) && deletionApproved(resource.data.clubId));
+      allow delete: if isAdmin() || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
     }
 
     match /officerInvitations/{invitationId} {
@@ -411,7 +411,7 @@ service cloud.firestore {
         && onlyChanged(['emoji','createdAt'])
         && request.resource.data.emoji in ['👍','❤️','🎉','😂','👏'];
       allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
-        || (isManager(resource.data.clubId) && deletionApproved(resource.data.clubId));
+        || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
     }
 
     match /events/{eventId} {
@@ -442,7 +442,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt is number
         && request.resource.data.keys().hasOnly(['eventId','clubId','uid','status','updatedAt']);
       allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
-        || (isManager(resource.data.clubId) && deletionApproved(resource.data.clubId));
+        || (isLeader(resource.data.clubId) && deletionApproved(resource.data.clubId));
     }
   }
 }
