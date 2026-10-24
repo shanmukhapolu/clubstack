@@ -2,76 +2,90 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ── Helpers ────────────────────────────────────────────────────────────
-    function isSignedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function userRole() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'student')
+        : '';
     }
-
-    function isAdmin() {
-      return isSignedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isAdmin() { return signedIn() && userRole() == 'admin'; }
+    function isTeacher() { return signedIn() && userRole() == 'teacher'; }
+    function privateClubExists(clubId) {
+      return exists(/databases/$(database)/documents/clubs/$(clubId));
     }
-
-    function isTeacher() {
-      return isSignedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
-    }
-
-    function clubDoc(clubId) {
+    function privateClub(clubId) {
       return get(/databases/$(database)/documents/clubs/$(clubId)).data;
     }
-
-    function isClubLeader(clubId) {
-      return isSignedIn() && clubDoc(clubId).leaderId == request.auth.uid;
+    function isMember(clubId) {
+      return signedIn() && exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + clubId));
     }
-
-    function isClubOfficer(clubId) {
-      return isSignedIn() && clubDoc(clubId).get('officerIds', []).hasAny([request.auth.uid]);
+    function isLeader(clubId) {
+      return signedIn() && privateClubExists(clubId) && privateClub(clubId).leaderId == request.auth.uid;
     }
-
-    function isClubSponsor(clubId) {
-      return isSignedIn()
-        && clubDoc(clubId).sponsorId == request.auth.uid
-        && clubDoc(clubId).sponsorStatus == 'accepted';
+    function isOfficer(clubId) {
+      return signedIn() && privateClubExists(clubId)
+        && privateClub(clubId).get('officerIds', []).hasAny([request.auth.uid]);
     }
-
-    function isClubManager(clubId) {
-      return isAdmin() || isClubLeader(clubId) || isClubSponsor(clubId) || isClubOfficer(clubId);
+    function isSponsor(clubId) {
+      return signedIn() && privateClubExists(clubId)
+        && privateClub(clubId).sponsorId == request.auth.uid
+        && privateClub(clubId).sponsorStatus == 'accepted';
     }
-
+    function isSponsorCandidate(clubId) {
+      return signedIn() && privateClubExists(clubId)
+        && privateClub(clubId).sponsorId == request.auth.uid;
+    }
+    function isManager(clubId) {
+      return isAdmin() || isLeader(clubId) || isOfficer(clubId) || isSponsor(clubId);
+    }
+    function canReadPrivateClub(clubId) {
+      return isAdmin() || isMember(clubId) || isLeader(clubId) || isOfficer(clubId) || isSponsorCandidate(clubId);
+    }
     function onlyChanged(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
+    function directoryFieldsValid(data) {
+      return data.keys().hasOnly([
+          'name', 'description', 'category', 'emoji', 'color', 'status',
+          'leaderName', 'requiresApproval', 'membersVisible', 'createdAt'
+        ])
+        && data.name is string && data.name.size() >= 3
+        && data.description is string && data.description.size() >= 20
+        && data.category is string && data.emoji is string && data.color is string
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.leaderName is string
+        && data.requiresApproval is bool && data.membersVisible is bool
+        && data.createdAt is number;
+    }
+    function directoryMirrorMatchesPrivate(clubId) {
+      return getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.name == request.resource.data.name
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.description == request.resource.data.description
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.category == request.resource.data.category
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.emoji == request.resource.data.emoji
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.color == request.resource.data.color
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.status == request.resource.data.status
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName == request.resource.data.leaderName;
+    }
 
-    // ── User profiles ──────────────────────────────────────────────────────
-    // During testing, signup can create student, teacher, or admin profiles.
-    // Restrict this allowlist before opening ClubStack for real school use.
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-
-      allow create: if isSignedIn()
-        && request.auth.uid == userId
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      // Role selection intentionally remains open for test accounts only.
+      allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.role in ['student', 'teacher', 'admin']
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() >= 2
         && request.resource.data.email is string;
-
       allow update: if isAdmin()
-        || (isSignedIn()
-            && request.auth.uid == userId
-            && onlyChanged(['displayName', 'grade'])
-            && request.resource.data.displayName is string
-            && request.resource.data.displayName.size() >= 2);
-
+        || (signedIn() && request.auth.uid == userId
+          && onlyChanged(['displayName', 'grade'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() >= 2);
       allow delete: if isAdmin();
     }
 
-    // ── Minimal directory for teacher and officer selection ────────────────
-    // Directory entries intentionally omit email and grade.
     match /userDirectory/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() || (isSignedIn()
+      allow read: if signedIn();
+      allow create, update: if isAdmin() || (signedIn()
         && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(['displayName', 'role', 'createdAt', 'nameLower'])
         && request.resource.data.displayName is string
@@ -82,45 +96,40 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ── Moderation reports ─────────────────────────────────────────────────
-    // Public account registration currently allows teacher/admin roles for testing.
-    // Reports are visible to platform admins and to their original reporter.
-    match /moderationReports/{reportId} {
-      allow create: if isSignedIn()
-        && request.resource.data.reporterId == request.auth.uid
-        && request.resource.data.reporterName is string
-        && request.resource.data.clubId is string
-        && request.resource.data.clubName is string
-        && request.resource.data.reason is string
-        && request.resource.data.reason.size() > 0
-        && request.resource.data.details is string
-        && request.resource.data.status == 'open'
-        && request.resource.data.createdAt is number;
-
-      allow read: if isAdmin()
-        || (isSignedIn() && resource.data.reporterId == request.auth.uid);
-
-      allow update, delete: if isAdmin();
+    // Public directory summaries intentionally contain no location, contact email, officer list, sponsor identifiers, or meeting schedule.
+    match /clubDirectory/{clubId} {
+      allow read: if signedIn() && (
+        resource.data.status == 'approved' || isAdmin() || isManager(clubId) || isMember(clubId) || isSponsorCandidate(clubId)
+      );
+      allow create: if signedIn()
+        && directoryFieldsValid(request.resource.data)
+        && privateClubExists(clubId)
+        && (isAdmin() || get(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId == request.auth.uid)
+        && directoryMirrorMatchesPrivate(clubId);
+      allow update: if isAdmin()
+        || (isManager(clubId)
+          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName'])
+          && directoryMirrorMatchesPrivate(clubId))
+        || (isManager(clubId) && onlyChanged(['requiresApproval', 'membersVisible'])
+          && request.resource.data.requiresApproval is bool
+          && request.resource.data.membersVisible is bool);
+      allow delete: if isAdmin();
     }
 
-    // ── Clubs ──────────────────────────────────────────────────────────────
-    // New pages are always created as "pending" with the creator as leader.
-    // Admins approve or reject them; leaders may edit their own content but
-    // cannot change the leader, status, or creation date.
     match /clubs/{clubId} {
-      allow read: if isSignedIn();
-
-      allow create: if isSignedIn()
+      allow read: if signedIn() && (
+        isAdmin() || isMember(clubId) || resource.data.leaderId == request.auth.uid
+        || resource.data.get('officerIds', []).hasAny([request.auth.uid])
+        || resource.data.sponsorId == request.auth.uid
+      );
+      allow create: if signedIn()
         && request.resource.data.leaderId == request.auth.uid
         && request.resource.data.status == 'pending'
-        && request.resource.data.name is string
-        && request.resource.data.name.size() >= 3
-        && request.resource.data.description is string
-        && request.resource.data.description.size() >= 20
+        && request.resource.data.name is string && request.resource.data.name.size() >= 3
+        && request.resource.data.description is string && request.resource.data.description.size() >= 20
         && request.resource.data.category is string
-        && request.resource.data.emoji is string
+        && request.resource.data.emoji is string && request.resource.data.color is string
         && request.resource.data.contactEmail is string
-        && request.resource.data.memberCount == 0
         && request.resource.data.createdAt is number
         && request.resource.data.leaderTitle is string
         && request.resource.data.officers is list
@@ -128,169 +137,214 @@ service cloud.firestore {
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
-
       allow update: if isAdmin()
-        || (isClubLeader(clubId)
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
-                 ['leaderId', 'status', 'createdAt', 'memberCount', 'officers', 'officerIds', 'sponsorId', 'sponsorName', 'sponsorStatus']))
-        || ((isClubSponsor(clubId) || isClubOfficer(clubId))
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['name', 'description', 'category', 'meetingDay', 'meetingTime', 'location', 'emoji', 'color', 'contactEmail', 'leaderTitle']))
-        || (isSignedIn()
-            && isClubManager(clubId)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds'])
-            && resource.data.get('officerIds', []) is list
-            && request.resource.data.officerIds is list
-            && resource.data.get('officerIds', []).hasAll(request.resource.data.officerIds))
-        || (isTeacher()
-            && resource.data.sponsorId == request.auth.uid
-            && resource.data.sponsorStatus == 'pending'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorStatus'])
-            && request.resource.data.sponsorStatus in ['accepted', 'declined'])
-        || (isSignedIn()
-            && !(resource.data.get('officerIds', []) is list && resource.data.get('officerIds', []).hasAny([request.auth.uid]))
-            && request.resource.data.officerIds is list
-            && request.resource.data.officerIds.hasAny([request.auth.uid])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['officers', 'officerIds', 'memberCount'])
-            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount'])
-                || request.resource.data.memberCount == resource.data.memberCount + 1)
-            && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
-            && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student')
-        || (isSignedIn()
-            && onlyChanged(['memberCount'])
-            && request.resource.data.memberCount is number
-            && request.resource.data.memberCount >= 0
-            && (request.resource.data.memberCount == resource.data.memberCount + 1
-                || request.resource.data.memberCount == resource.data.memberCount - 1));
-
+        || (isLeader(clubId)
+          && onlyChanged(['name','description','category','meetingDay','meetingTime','location','emoji','color','contactEmail','leaderTitle'])
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
+        || ((isSponsor(clubId) || isOfficer(clubId))
+          && onlyChanged(['name','description','category','meetingDay','meetingTime','location','emoji','color','contactEmail','leaderTitle']))
+        || (isManager(clubId)
+          && onlyChanged(['officers','officerIds'])
+          && resource.data.get('officerIds', []) is list
+          && request.resource.data.officerIds is list
+          && resource.data.get('officerIds', []).hasAll(request.resource.data.officerIds))
+        || (signedIn() && isManager(clubId)
+          && !(resource.data.get('officerIds', []) is list && resource.data.get('officerIds', []).hasAny([request.auth.uid]))
+          && request.resource.data.officerIds is list
+          && request.resource.data.officerIds.hasAny([request.auth.uid])
+          && onlyChanged(['officers','officerIds'])
+          && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
+          && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
+          && userRole() == 'student')
+        || (isLeader(clubId)
+          && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
+          && request.resource.data.sponsorId is string
+          && request.resource.data.sponsorName is string
+          && request.resource.data.sponsorStatus == 'pending'
+          && get(/databases/$(database)/documents/users/$(request.resource.data.sponsorId)).data.role == 'teacher')
+        || (isTeacher() && resource.data.sponsorId == request.auth.uid
+          && resource.data.sponsorStatus == 'pending'
+          && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
+          && request.resource.data.sponsorStatus in ['accepted','declined']);
       allow delete: if isAdmin();
     }
 
-    // ── Teacher sponsor requests ──────────────────────────────────────────
+    match /memberships/{membershipId} {
+      allow read: if signedIn() && (
+        resource.data.uid == request.auth.uid || isAdmin() || isManager(resource.data.clubId)
+        || (isMember(resource.data.clubId)
+          && get(/databases/$(database)/documents/clubDirectory/$(resource.data.clubId)).data.membersVisible == true)
+      );
+      allow create: if signedIn()
+        && membershipId == request.resource.data.uid + '_' + request.resource.data.clubId
+        && request.resource.data.uid is string
+        && request.resource.data.clubId is string
+        && request.resource.data.joinedAt is number
+        && (
+          (request.resource.data.uid == request.auth.uid && userRole() == 'student'
+            && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.status == 'approved'
+            && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.requiresApproval == false)
+          || (request.resource.data.uid == request.auth.uid && isLeader(request.resource.data.clubId)
+            && privateClub(request.resource.data.clubId).status == 'pending')
+          || (request.resource.data.uid == request.auth.uid && userRole() == 'student'
+            && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid)
+          || (isManager(request.resource.data.clubId)
+            && getAfter(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.status == 'approved'
+            && get(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.status == 'pending'
+            && get(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.uid == request.resource.data.uid)
+        );
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if false;
+    }
+
+    match /clubJoinRequests/{requestId} {
+      allow create: if signedIn()
+        && requestId == request.resource.data.clubId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && userRole() == 'student'
+        && request.resource.data.clubId is string
+        && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.status == 'approved'
+        && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.requiresApproval == true
+        && request.resource.data.clubName is string
+        && request.resource.data.displayName is string
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is number
+        && request.resource.data.keys().hasOnly(['clubId','clubName','uid','displayName','status','createdAt']);
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.uid == request.auth.uid || isManager(resource.data.clubId)
+      ));
+      allow update: if signedIn() && isManager(resource.data.clubId)
+        && resource.data.status == 'pending'
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.clubId == resource.data.clubId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['approved','declined'];
+      allow delete: if isAdmin() || isManager(resource.data.clubId);
+    }
+
     match /clubSponsorRequests/{requestId} {
-      allow create: if isSignedIn()
+      allow create: if signedIn()
         && request.resource.data.requestedById == request.auth.uid
         && request.resource.data.teacherId is string
         && get(/databases/$(database)/documents/users/$(request.resource.data.teacherId)).data.role == 'teacher'
         && request.resource.data.clubId is string
-        && clubDoc(request.resource.data.clubId).leaderId == request.auth.uid
-        && clubDoc(request.resource.data.clubId).sponsorId == request.resource.data.teacherId
-        && clubDoc(request.resource.data.clubId).sponsorStatus == 'pending'
+        && privateClub(request.resource.data.clubId).leaderId == request.auth.uid
+        && privateClub(request.resource.data.clubId).sponsorId == request.resource.data.teacherId
+        && privateClub(request.resource.data.clubId).sponsorStatus == 'pending'
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt is number;
-
-      allow read: if isAdmin()
-        || (isSignedIn() && (resource.data.teacherId == request.auth.uid || resource.data.requestedById == request.auth.uid));
-
-      allow update: if isAdmin()
-        || (isTeacher()
-            && resource.data.teacherId == request.auth.uid
-            && resource.data.status == 'pending'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-            && request.resource.data.status in ['accepted', 'declined']);
-
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.teacherId == request.auth.uid || resource.data.requestedById == request.auth.uid
+      ));
+      allow update: if isAdmin() || (isTeacher()
+        && resource.data.teacherId == request.auth.uid
+        && resource.data.status == 'pending'
+        && onlyChanged(['status'])
+        && request.resource.data.status in ['accepted','declined']);
       allow delete: if isAdmin();
     }
 
-    // ── Student officer invitations ───────────────────────────────────────
-    // A deterministic ID (clubId_userId) permits safe acceptance in one batch.
     match /officerInvitations/{invitationId} {
-      allow create: if isSignedIn()
+      allow create: if signedIn()
         && request.resource.data.clubId is string
         && request.resource.data.invitedUserId is string
         && get(/databases/$(database)/documents/users/$(request.resource.data.invitedUserId)).data.role == 'student'
         && request.resource.data.invitedById == request.auth.uid
-        && isClubManager(request.resource.data.clubId)
+        && isManager(request.resource.data.clubId)
         && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasOnly(['clubId', 'clubName', 'invitedUserId', 'invitedUserName', 'invitedById', 'invitedByName', 'title', 'status', 'createdAt']);
-
-      allow read: if isAdmin()
-        || (isSignedIn() && (resource.data.invitedUserId == request.auth.uid || isClubManager(resource.data.clubId)));
-
+        && request.resource.data.keys().hasOnly(['clubId','clubName','invitedUserId','invitedUserName','invitedById','invitedByName','title','status','createdAt']);
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.invitedUserId == request.auth.uid || isManager(resource.data.clubId)
+      ));
       allow update: if isAdmin()
-        || (isSignedIn() && isClubManager(resource.data.clubId)
-            && request.resource.data.status == 'pending'
-            && request.resource.data.clubId == resource.data.clubId
-            && request.resource.data.invitedUserId == resource.data.invitedUserId
-            && request.resource.data.invitedById == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['clubName', 'invitedUserName', 'invitedById', 'invitedByName', 'title', 'status', 'createdAt']))
-        || (isSignedIn()
-            && resource.data.invitedUserId == request.auth.uid
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
-            && resource.data.status == 'pending'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-            && request.resource.data.status in ['accepted', 'declined']);
-
-      allow delete: if isAdmin() || isClubManager(resource.data.clubId);
+        || (signedIn() && isManager(resource.data.clubId)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.clubId == resource.data.clubId
+          && request.resource.data.invitedUserId == resource.data.invitedUserId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clubName','invitedUserName','invitedById','invitedByName','title','status','createdAt']))
+        || (signedIn() && resource.data.invitedUserId == request.auth.uid
+          && userRole() == 'student'
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['accepted','declined']);
+      allow delete: if isAdmin() || isManager(resource.data.clubId);
     }
 
-    // ── Memberships ────────────────────────────────────────────────────────
-    // Students join approved clubs. A leader may join their own pending club
-    // (the 1 member counted at creation).
-    match /memberships/{membershipId} {
-      allow read: if isSignedIn()
-        && (resource.data.uid == request.auth.uid || isAdmin() || isClubManager(resource.data.clubId));
-
-      allow create: if isSignedIn()
-        && membershipId == request.auth.uid + '_' + request.resource.data.clubId
-        && request.resource.data.uid == request.auth.uid
+    match /moderationReports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.reporterName is string
         && request.resource.data.clubId is string
-        && request.resource.data.joinedAt is number
-        && (clubDoc(request.resource.data.clubId).status == 'approved'
-            || clubDoc(request.resource.data.clubId).leaderId == request.auth.uid
-            || (getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.status == 'accepted'
-                && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
-                && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'));
-
-      allow delete: if isAdmin()
-        || (isSignedIn()
-            && resource.data.uid == request.auth.uid
-            && getAfter(/databases/$(database)/documents/clubs/$(resource.data.clubId)).data.memberCount
-                == get(/databases/$(database)/documents/clubs/$(resource.data.clubId)).data.memberCount - 1);
-
-      allow update: if false;
+        && request.resource.data.clubName is string
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0
+        && request.resource.data.details is string
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt is number;
+      allow read: if isAdmin() || (signedIn() && resource.data.reporterId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
-    // ── Announcements ──────────────────────────────────────────────────────
     match /announcements/{announcementId} {
-      allow read: if isSignedIn();
-
-      allow create: if isSignedIn()
+      allow read: if isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId);
+      allow create: if signedIn()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.clubId is string
-        && isClubManager(request.resource.data.clubId)
-        && request.resource.data.title is string
-        && request.resource.data.title.size() > 0
-        && request.resource.data.body is string
-        && request.resource.data.body.size() > 0
+        && isManager(request.resource.data.clubId)
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.body is string && request.resource.data.body.size() > 0
         && request.resource.data.createdAt is number;
-
-      allow update: if isAdmin()
-        || (isClubManager(resource.data.clubId) && onlyChanged(['title', 'body']));
-
-      allow delete: if isClubManager(resource.data.clubId);
+      allow update: if isAdmin() || (isManager(resource.data.clubId) && onlyChanged(['title','body']));
+      allow delete: if isAdmin() || isManager(resource.data.clubId);
     }
 
-    // ── Meetings & events ──────────────────────────────────────────────────
-    match /events/{eventId} {
-      allow read: if isSignedIn();
+    match /announcementReactions/{reactionId} {
+      allow read: if isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId);
+      allow create: if signedIn()
+        && reactionId == request.resource.data.announcementId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.announcementId is string
+        && request.resource.data.clubId is string
+        && get(/databases/$(database)/documents/announcements/$(request.resource.data.announcementId)).data.clubId == request.resource.data.clubId
+        && (isAdmin() || isManager(request.resource.data.clubId) || isMember(request.resource.data.clubId))
+        && request.resource.data.emoji in ['👍','❤️','🎉','😂','👏']
+        && request.resource.data.createdAt is number
+        && request.resource.data.keys().hasOnly(['announcementId','clubId','uid','emoji','createdAt']);
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && (isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId))
+        && onlyChanged(['emoji','createdAt'])
+        && request.resource.data.emoji in ['👍','❤️','🎉','😂','👏'];
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
 
-      allow create: if isSignedIn()
+    match /events/{eventId} {
+      allow read: if isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId);
+      allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.clubId is string
-        && isClubManager(request.resource.data.clubId)
-        && request.resource.data.title is string
-        && request.resource.data.title.size() > 0
+        && isManager(request.resource.data.clubId)
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
         && request.resource.data.startAt is number
         && request.resource.data.createdAt is number;
+      allow update: if isAdmin() || (isManager(resource.data.clubId)
+        && onlyChanged(['title','description','location','startAt','endAt']));
+      allow delete: if isAdmin() || isManager(resource.data.clubId);
+    }
 
-      allow update: if isAdmin()
-        || (isClubManager(resource.data.clubId)
-            && onlyChanged(['title', 'description', 'location', 'startAt', 'endAt']));
-
-      allow delete: if isClubManager(resource.data.clubId);
+    match /eventRsvps/{rsvpId} {
+      allow read: if isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId);
+      allow create, update: if signedIn()
+        && rsvpId == request.resource.data.eventId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.eventId is string
+        && request.resource.data.clubId is string
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.clubId == request.resource.data.clubId
+        && (isAdmin() || isManager(request.resource.data.clubId) || isMember(request.resource.data.clubId))
+        && request.resource.data.status in ['going','maybe','notGoing']
+        && request.resource.data.updatedAt is number
+        && request.resource.data.keys().hasOnly(['eventId','clubId','uid','status','updatedAt']);
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
   }
 }

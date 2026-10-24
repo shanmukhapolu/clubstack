@@ -7,6 +7,9 @@ import type {
   Membership,
   ModerationReport,
   OfficerInvitation,
+  ClubJoinRequest,
+  AnnouncementReaction,
+  EventRsvp,
 } from './types'
 
 export interface DemoStore {
@@ -19,6 +22,9 @@ export interface DemoStore {
   reports: ModerationReport[]
   sponsorRequests: import('./types').ClubSponsorRequest[]
   officerInvitations: OfficerInvitation[]
+  joinRequests: ClubJoinRequest[]
+  announcementReactions: AnnouncementReaction[]
+  eventRsvps: EventRsvp[]
   currentUid: string | null
 }
 
@@ -601,6 +607,8 @@ export function createDemoStore(): DemoStore {
     sponsorId: '',
     sponsorName: '',
     sponsorStatus: 'none',
+    requiresApproval: false,
+    membersVisible: true,
     createdAt: club.createdAt,
   }))
 
@@ -639,6 +647,9 @@ export function createDemoStore(): DemoStore {
     reports: [],
     sponsorRequests: [],
     officerInvitations: [],
+    joinRequests: [],
+    announcementReactions: [],
+    eventRsvps: [],
     currentUid: null,
   }
 }

@@ -1,6 +1,6 @@
 import type { ClubStackApi } from './backend'
 import { createDemoStore, DEMO_PASSWORD, DEMO_USERS, type DemoStore } from './demoSeed'
-import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus } from './types'
+import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus, ClubJoinRequest, JoinRequestStatus, ReactionSummary, EventRsvpStatus, RsvpSummary } from './types'
 
 const STORAGE_KEY = 'clubstack.demo.v1'
 const RESEED_AFTER_MS = 1000 * 60 * 60 * 24 * 14
@@ -26,6 +26,10 @@ function load(): DemoStore {
         if (!Array.isArray(parsed.reports)) parsed.reports = []
         if (!Array.isArray(parsed.sponsorRequests)) parsed.sponsorRequests = []
         if (!Array.isArray(parsed.officerInvitations)) parsed.officerInvitations = []
+        if (!Array.isArray(parsed.joinRequests)) parsed.joinRequests = []
+        if (!Array.isArray(parsed.announcementReactions)) parsed.announcementReactions = []
+        if (!Array.isArray(parsed.eventRsvps)) parsed.eventRsvps = []
+        parsed.clubs = parsed.clubs.map((club) => ({ requiresApproval: false, membersVisible: true, ...club }))
         return parsed
       }
     }
@@ -235,6 +239,37 @@ export const demoApi: ClubStackApi = {
       return read().memberships.filter((membership) => membership.clubId === clubId).map((membership) => membership.uid)
     },
 
+    async listRequestsForClub(clubId) {
+      await wait()
+      return read().joinRequests.filter((request) => request.clubId === clubId).sort((a, b) => b.createdAt - a.createdAt)
+    },
+
+    async listRequestsForUser(uid) {
+      await wait()
+      return read().joinRequests.filter((request) => request.uid === uid).sort((a, b) => b.createdAt - a.createdAt)
+    },
+
+    async respondToRequest(requestId, status) {
+      await wait()
+      const current = read()
+      const request = current.joinRequests.find((item) => item.id === requestId)
+      const actor = requireUser(current)
+      if (!request || request.status !== 'pending') throw new Error('This membership request is no longer pending.')
+      const club = current.clubs.find((item) => item.id === request.clubId)
+      if (!club) throw new Error('This club no longer exists.')
+      if (!(actor.role === 'admin' || club.leaderId === actor.id || (club.sponsorId === actor.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(actor.id))) throw new Error('Only club managers can review membership requests.')
+      mutate((store) => {
+        const target = store.joinRequests.find((item) => item.id === requestId)
+        if (!target || target.status !== 'pending') throw new Error('This request is no longer pending.')
+        target.status = status
+        if (status === 'approved' && !store.memberships.some((m) => m.uid === target.uid && m.clubId === target.clubId)) {
+          store.memberships.push({ id: `${target.uid}_${target.clubId}`, uid: target.uid, clubId: target.clubId, joinedAt: Date.now() })
+          const targetClub = store.clubs.find((item) => item.id === target.clubId)
+          if (targetClub) targetClub.memberCount += 1
+        }
+      })
+    },
+
     async join(clubId) {
       await wait()
       const store = read()
@@ -243,6 +278,14 @@ export const demoApi: ClubStackApi = {
       if (!club) throw new Error('That club no longer exists.')
       if (club.status !== 'approved') throw new Error('This club is not open for joining yet.')
       if (store.memberships.some((m) => m.uid === user.id && m.clubId === clubId)) return
+      if (club.requiresApproval) {
+        if (store.joinRequests.some((r) => r.uid === user.id && r.clubId === clubId && r.status === 'pending')) return
+        mutate((draft) => {
+          draft.joinRequests = draft.joinRequests.filter((r) => !(r.uid === user.id && r.clubId === clubId))
+          draft.joinRequests.unshift({ id: `${clubId}_${user.id}`, clubId, clubName: club.name, uid: user.id, displayName: user.displayName, status: 'pending', createdAt: Date.now() })
+        })
+        return
+      }
 
       mutate((draft) => {
         draft.memberships.push({
@@ -303,10 +346,28 @@ export const demoApi: ClubStackApi = {
       })
     },
 
+    async getReactionSummary(announcementId, uid) {
+      await wait()
+      const reactions = read().announcementReactions.filter((item) => item.announcementId === announcementId)
+      const counts: Record<string, number> = {}
+      let mine: string | null = null
+      for (const reaction of reactions) { counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1; if (reaction.uid === uid) mine = reaction.emoji }
+      return { counts, mine }
+    },
+
+    async setReaction(announcementId, clubId, uid, emoji) {
+      await wait()
+      mutate((store) => {
+        store.announcementReactions = store.announcementReactions.filter((item) => !(item.announcementId === announcementId && item.uid === uid))
+        if (emoji) store.announcementReactions.push({ id: `${announcementId}_${uid}`, announcementId, clubId, uid, emoji, createdAt: Date.now() })
+      })
+    },
+
     async remove(id) {
       await wait()
       mutate((store) => {
         store.announcements = store.announcements.filter((item) => item.id !== id)
+        store.announcementReactions = store.announcementReactions.filter((item) => item.announcementId !== id)
       })
     },
   },
@@ -314,7 +375,14 @@ export const demoApi: ClubStackApi = {
   events: {
     async listAll() {
       await wait()
-      return [...read().events].sort(sortByStart)
+      const store = read()
+      const user = currentUser(store)
+      if (!user) return []
+      const visible = user.role === 'admin' ? new Set(store.clubs.map((club) => club.id)) : new Set([
+        ...store.memberships.filter((membership) => membership.uid === user.id).map((membership) => membership.clubId),
+        ...store.clubs.filter((club) => club.leaderId === user.id || (club.officerIds ?? []).includes(user.id) || (club.sponsorId === user.id && club.sponsorStatus === 'accepted')).map((club) => club.id),
+      ])
+      return store.events.filter((event) => visible.has(event.clubId)).sort(sortByStart)
     },
 
     async listForClubs(clubIds) {
@@ -343,10 +411,27 @@ export const demoApi: ClubStackApi = {
       })
     },
 
+    async getRsvpSummary(eventId, uid) {
+      await wait()
+      const rsvps = read().eventRsvps.filter((item) => item.eventId === eventId)
+      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
+      for (const item of rsvps) { if (item.status === 'going') summary.going++; else if (item.status === 'maybe') summary.maybe++; else summary.notGoing++; if (item.uid === uid) summary.mine = item.status }
+      return summary
+    },
+
+    async setRsvp(eventId, clubId, uid, status) {
+      await wait()
+      mutate((store) => {
+        store.eventRsvps = store.eventRsvps.filter((item) => !(item.eventId === eventId && item.uid === uid))
+        store.eventRsvps.push({ id: `${eventId}_${uid}`, eventId, clubId, uid, status, updatedAt: Date.now() })
+      })
+    },
+
     async remove(id) {
       await wait()
       mutate((store) => {
         store.events = store.events.filter((event) => event.id !== id)
+        store.eventRsvps = store.eventRsvps.filter((rsvp) => rsvp.eventId !== id)
       })
     },
   },
