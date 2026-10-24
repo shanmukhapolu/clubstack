@@ -579,7 +579,7 @@ export function ClubPage() {
           <Button variant="brand" size="sm" onClick={() => { setEditingEvent(null); setEventTitle(''); setEventDescription(''); setEventLocation(''); setEventStart(toDateTimeInput(defaultEventStart())); setEventEnd(''); setEventType('General Meeting'); setEventAttendance('optional'); setEventOpen(true) }}><CalendarPlus size={15} /> Add meeting</Button>
         </div>}
       </div>}
-      {user && <div className={`mt-3 flex ${hasPrivateAccess ? 'justify-end' : 'justify-start'}`}>
+      {hasPrivateAccess && <div className="mt-3 flex justify-end">
         <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}><Flag size={14} /> Report a concern</Button>
       </div>}
 
