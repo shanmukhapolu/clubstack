@@ -16,6 +16,7 @@ import {
   Trash2,
   Flag,
   Link2,
+  X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -466,6 +467,7 @@ export function ClubPage() {
         </div>
       )}
 
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
       <section className="card overflow-hidden">
         <div
           className="h-24 sm:h-28"
@@ -528,6 +530,24 @@ export function ClubPage() {
           </div>
         </div>
       </section>
+      <section className="card p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-[15px] font-bold">About</h2>
+          {canManage && <Button variant="secondary" size="sm" onClick={openAboutEditor}><Pencil size={14}/> Edit information</Button>}
+        </div>
+        <dl className="grid gap-y-4 text-[12.5px]">
+          <div className="flex gap-2.5"><Clock size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual meetings</dt><dd className="mt-0.5 text-muted">{describeClubSchedule(club)}</dd></div></div>
+          <div className="flex gap-2.5"><MapPin size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div></div>
+          {club.sponsorName && <div className="flex gap-2.5"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div></div>}
+          {club.contactEmail && <div className="flex gap-2.5"><Mail size={15} className="mt-0.5 shrink-0 text-muted"/><div className="min-w-0"><dt className="font-semibold">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-brand-600 hover:underline">{club.contactEmail}</a></dd></div></div>}
+          {club.prerequisites && <div className="flex gap-2.5 sm:col-span-2"><Check size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Prerequisites</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.prerequisites}</dd></div></div>}
+          {club.dues && <div className="flex gap-2.5 sm:col-span-2"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club dues</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.dues}</dd></div></div>}
+          {hasPrivateAccess && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club leader</dt><dd className="mt-0.5 text-muted">{club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</dd></div></div>}
+          {hasPrivateAccess && (club.officers ?? []).length > 0 && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Student officers</dt><dd className="mt-0.5 text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div></div>}
+          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Link2 size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
+        </dl>
+      </section>
+      </div>
 
       <nav aria-label="Club pages" className="mt-4 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
         <Link to={`/clubs/${club.id}`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
@@ -559,24 +579,6 @@ export function ClubPage() {
           <Flag size={14} /> Report a concern
         </Button>
       </div>
-
-      <section className="card mt-6 p-4 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-bold">About</h2>
-          {canManage && <Button variant="secondary" size="sm" onClick={openAboutEditor}><Pencil size={14}/> Edit information</Button>}
-        </div>
-        <dl className="grid gap-x-6 gap-y-4 text-[12.5px] sm:grid-cols-2">
-          <div className="flex gap-2.5"><Clock size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual meetings</dt><dd className="mt-0.5 text-muted">{describeClubSchedule(club)}</dd></div></div>
-          <div className="flex gap-2.5"><MapPin size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div></div>
-          {club.sponsorName && <div className="flex gap-2.5"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div></div>}
-          {club.contactEmail && <div className="flex gap-2.5"><Mail size={15} className="mt-0.5 shrink-0 text-muted"/><div className="min-w-0"><dt className="font-semibold">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-brand-600 hover:underline">{club.contactEmail}</a></dd></div></div>}
-          {club.prerequisites && <div className="flex gap-2.5 sm:col-span-2"><Check size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Prerequisites</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.prerequisites}</dd></div></div>}
-          {club.dues && <div className="flex gap-2.5 sm:col-span-2"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club dues</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.dues}</dd></div></div>}
-          {hasPrivateAccess && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club leader</dt><dd className="mt-0.5 text-muted">{club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</dd></div></div>}
-          {hasPrivateAccess && (club.officers ?? []).length > 0 && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Student officers</dt><dd className="mt-0.5 text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div></div>}
-          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Link2 size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
-        </dl>
-      </section>
 
       {hasPrivateAccess ? (
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.55fr_1fr] lg:gap-6">
@@ -714,13 +716,15 @@ export function ClubPage() {
         </section>
       )}
 
-      <Modal
-        open={aboutOpen}
-        onClose={() => setAboutOpen(false)}
-        title="Edit club information"
-        description="These details appear on the club overview and in the public directory."
-      >
-        <form onSubmit={(event) => void saveAbout(event)} className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
+      {aboutOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button type="button" aria-label="Close edit club information" className="absolute inset-0 bg-ink/40" onClick={() => setAboutOpen(false)} />
+          <aside role="dialog" aria-modal="true" aria-labelledby="about-sidebar-title" className="relative flex h-full w-full max-w-xl flex-col border-l border-line bg-surface shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b border-line p-5">
+              <div><h2 id="about-sidebar-title" className="text-[18px] font-extrabold">Edit club information</h2><p className="mt-1 text-[12.5px] text-muted">These details appear on the club overview and in the public directory.</p></div>
+              <button type="button" aria-label="Close sidebar" onClick={() => setAboutOpen(false)} className="rounded-lg p-2 text-muted hover:bg-canvas hover:text-ink"><X size={18}/></button>
+            </header>
+                    <form onSubmit={(event) => void saveAbout(event)} className="flex-1 space-y-4 overflow-y-auto p-5">
           <div><label className="label" htmlFor="about-name">Club name</label><input id="about-name" className="field" value={aboutForm.name} maxLength={80} onChange={(event) => setAboutForm({ ...aboutForm, name: event.target.value })} required/></div>
           <div><label className="label" htmlFor="about-description">Description</label><textarea id="about-description" className="field min-h-24 resize-y" value={aboutForm.description} maxLength={600} onChange={(event) => setAboutForm({ ...aboutForm, description: event.target.value })} required/><p className="mt-1 text-right text-[11px] text-muted">{aboutForm.description.length}/600</p></div>
           <div><label className="label" htmlFor="about-category">Category</label><select id="about-category" className="field" value={aboutForm.category} onChange={(event) => setAboutForm({ ...aboutForm, category: event.target.value as ClubCategory })}>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></div>
@@ -742,7 +746,9 @@ export function ClubPage() {
           {formError && <p role="alert" className="text-[12.5px] font-medium text-[#9c2f18]">{formError}</p>}
           <div className="flex justify-end gap-2 border-t border-line pt-3"><Button type="button" variant="secondary" onClick={() => setAboutOpen(false)}>Cancel</Button><Button type="submit" loading={aboutSaving}><Save size={14}/> Save information</Button></div>
         </form>
-      </Modal>
+          </aside>
+        </div>
+      )}
 
       <Modal
         open={announcementOpen}
