@@ -401,7 +401,7 @@ export function ClubPage() {
                 {club.meetingDay === 'Flexible'
                   ? 'Flexible meeting time'
                   : `${club.meetingDay}s · ${club.meetingTime}`}
-              </span>
+              </span>}
               {hasPrivateAccess && club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
               {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
             </div>
@@ -413,7 +413,7 @@ export function ClubPage() {
         <Link to={`/clubs/${club.id}`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
         <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
         {hasPrivateAccess && <Link to={`/clubs/${club.id}/members`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Members</Link>}
-        {canManage && <Link> to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}
+        {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}
       </nav>
 
       {canManage && (
