@@ -598,16 +598,24 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async getReactionSummary(announcementId, clubId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
+      const db = requireDb()
+      const snapshot = await getDocs(query(collection(db, 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
       const counts: Record<string, number> = {}
+      const peopleByEmoji: Record<string, string[]> = {}
       let mine: string | null = null
-      for (const item of snapshot.docs) {
+      await Promise.all(snapshot.docs.map(async (item) => {
         const data = item.data()
         const emoji = stringOr(data.emoji, '')
-        if (emoji) counts[emoji] = (counts[emoji] ?? 0) + 1
-        if (data.uid === uid) mine = emoji || null
-      }
-      return { counts, mine }
+        const responderId = stringOr(data.uid, '')
+        if (!emoji || !responderId) return
+        counts[emoji] = (counts[emoji] ?? 0) + 1
+        const profile = await getDoc(doc(db, 'userDirectory', responderId))
+        const name = stringOr(profile.data()?.displayName, 'Member')
+        ;(peopleByEmoji[emoji] ??= []).push(name)
+        if (responderId === uid) mine = emoji
+      }))
+      for (const names of Object.values(peopleByEmoji)) names.sort((a, b) => a.localeCompare(b))
+      return { counts, mine, peopleByEmoji }
     },
 
     async setReaction(announcementId, clubId, uid, emoji) {
@@ -657,15 +665,26 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async getRsvpSummary(eventId, clubId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
-      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
-      for (const item of snapshot.docs) {
+      const db = requireDb()
+      const snapshot = await getDocs(query(collection(db, 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
+      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null, participants: [] }
+      await Promise.all(snapshot.docs.map(async (item) => {
         const data = item.data()
-        if (data.status === 'going') summary.going += 1
-        if (data.status === 'maybe') summary.maybe += 1
-        if (data.status === 'notGoing') summary.notGoing += 1
-        if (data.uid === uid) summary.mine = data.status as EventRsvpStatus
-      }
+        const status = data.status as EventRsvpStatus
+        if (status === 'going') summary.going += 1
+        if (status === 'maybe') summary.maybe += 1
+        if (status === 'notGoing') summary.notGoing += 1
+        const responderId = stringOr(data.uid, '')
+        if (responderId === uid) summary.mine = status
+        if (!responderId || !['going', 'maybe', 'notGoing'].includes(status)) return
+        const profile = await getDoc(doc(db, 'userDirectory', responderId))
+        summary.participants!.push({
+          uid: responderId,
+          displayName: stringOr(profile.data()?.displayName, 'Member'),
+          status,
+        })
+      }))
+      summary.participants!.sort((a, b) => a.displayName.localeCompare(b.displayName))
       return summary
     },
 
