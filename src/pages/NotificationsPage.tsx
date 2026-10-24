@@ -118,7 +118,7 @@ export function NotificationsPage() {
     markAsRead(`sponsor:${item.id}`)
     try {
       await api.sponsorRequests.respond(item.id, status)
-      notify(status === 'accepted' ? `You are now advisor for ${item.clubName}.` : 'Advisor request declined.')
+      notify(item.stage === 'currentSponsorApproval' ? (status === 'accepted' ? `Sponsor change approved for ${item.clubName}. The new teacher can now accept.` : `Sponsor change rejected for ${item.clubName}.`) : (status === 'accepted' ? `You are now advisor for ${item.clubName}.` : 'Advisor request declined.'))
       await refresh()
       await load()
     } catch (caught) {
@@ -241,10 +241,10 @@ export function NotificationsPage() {
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><ShieldCheck size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.clubName}</h3>
-                        <p className="mt-1 text-[12px] text-muted">Requested by {item.requestedByName} · {relativeTime(item.createdAt)}</p>
+                        <p className="mt-1 text-[12px] text-muted">{item.stage === 'currentSponsorApproval' ? `The current sponsor, ${item.previousSponsorName ?? 'you'}, must approve changing the advisor to ${item.teacherName}.` : item.previousSponsorId ? `You have been invited to become the new advisor, replacing ${item.previousSponsorName ?? 'the current sponsor'}.` : `Requested by ${item.requestedByName} · ${relativeTime(item.createdAt)}`}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          <Button size="sm" variant="lime" loading={workingId === item.id} onClick={() => void respondSponsor(item, 'accepted')}><Check size={14} /> Accept</Button>
-                          <Button size="sm" variant="secondary" disabled={workingId === item.id} onClick={() => void respondSponsor(item, 'declined')}><X size={14} /> Decline</Button>
+                          <Button size="sm" variant="lime" loading={workingId === item.id} onClick={() => void respondSponsor(item, 'accepted')}><Check size={14} /> {item.stage === 'currentSponsorApproval' ? 'Approve change' : 'Accept'}</Button>
+                          <Button size="sm" variant="secondary" disabled={workingId === item.id} onClick={() => void respondSponsor(item, 'declined')}><X size={14} /> {item.stage === 'currentSponsorApproval' ? 'Reject change' : 'Decline'}</Button>
                         </div>
                       </div>
                     <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
@@ -323,14 +323,14 @@ export function NotificationsPage() {
                   )
                 })}
                 {items.events.map((item) => {
-                  const id = `event:${item.id}`
+                  const id = `event:${item.id}:${item.updatedAt ?? item.createdAt}`
                   return (
                     <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><CalendarDays size={18} /></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="text-[13.5px] font-bold">{item.title}</h3>
-                        <p className="mt-1 text-[12px] text-muted">{new Date(item.startAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {item.location}</p>
-                        <Link to={`/clubs/${item.clubId}/meetings`} className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">View meeting and RSVP</Link>
+                        <p className="mt-1 text-[12px] text-muted">{item.deletedAt ? 'Cancelled' : item.updatedAt && item.updatedAt > item.createdAt + 5000 ? 'Meeting updated · ' : ''}{new Date(item.startAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {item.location}</p>
+                        <Link to={`/clubs/${item.clubId}/meetings`} className="mt-2 inline-flex text-[12px] font-semibold text-ink-soft hover:underline">{item.deletedAt ? 'View club calendar' : 'View meeting and RSVP'}</Link>
                       </div>
                     <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
                   )
