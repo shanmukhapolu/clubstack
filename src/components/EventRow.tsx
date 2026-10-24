@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, MapPin, Trash2 } from 'lucide-react'
+import { Clock, MapPin, Pencil, Trash2 } from 'lucide-react'
 import type { Club, ClubEvent, EventRsvpStatus, RsvpSummary } from '../lib/types'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -15,11 +15,13 @@ export function EventRow({
   club,
   canManage = false,
   onDelete,
+  onEdit,
 }: {
   event: ClubEvent
   club?: Club
   canManage?: boolean
   onDelete?: (event: ClubEvent) => void
+  onEdit?: (event: ClubEvent) => void
 }) {
   const { user } = useAuth()
   const { notify } = useToast()
@@ -59,7 +61,7 @@ export function EventRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-bold leading-snug">{event.title}</p>
+            <p className="truncate text-[14px] font-bold leading-snug">{event.title}</p><div className="mt-1 flex flex-wrap gap-1.5">{event.type && <span className="rounded-full bg-canvas px-2 py-0.5 text-[10px] font-semibold">{event.type}</span>}<span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${event.attendance === 'mandatory' ? 'bg-[#fff0eb] text-[#9c2f18]' : 'bg-canvas text-muted'}`}>{event.attendance === 'mandatory' ? 'Mandatory' : 'Optional'}</span></div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
               <span className="inline-flex items-center gap-1">
                 <Clock size={12} /> {formatTimeRange(event.startAt, event.endAt)}
@@ -74,6 +76,8 @@ export function EventRow({
               )}
             </div>
           </div>
+          {canManage && (onDelete || onEdit) && <div className="flex shrink-0 items-center gap-1">}
+          {canManage && onEdit && <button type="button" onClick={() => onEdit(event)} className="rounded-lg p-1.5 text-muted transition-colors hover:bg-canvas hover:text-ink" aria-label={`Edit meeting ${event.title}`} title="Edit meeting"><Pencil size={14}/></button>}
           {canManage && onDelete && (
             <button
               type="button"
@@ -85,6 +89,7 @@ export function EventRow({
               <Trash2 size={14} />
             </button>
           )}
+          {canManage && (onDelete || onEdit) && </div>}
         </div>
 
         {(user && (isJoined(event.clubId) || user.role === 'admin' || isManager)) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span className="font-semibold">Estimated attendance</span><span>{rsvp.going} going</span><span>· {rsvp.maybe} maybe</span>{isManager && <span>· {rsvp.notGoing} can’t</span>}</div>}
