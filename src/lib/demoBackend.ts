@@ -350,11 +350,19 @@ export const demoApi: ClubStackApi = {
 
     async getReactionSummary(announcementId, clubId, uid) {
       await wait()
-      const reactions = read().announcementReactions.filter((item) => item.announcementId === announcementId && item.clubId === clubId)
+      const store = read()
+      const reactions = store.announcementReactions.filter((item) => item.announcementId === announcementId && item.clubId === clubId)
       const counts: Record<string, number> = {}
+      const peopleByEmoji: Record<string, string[]> = {}
       let mine: string | null = null
-      for (const reaction of reactions) { counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1; if (reaction.uid === uid) mine = reaction.emoji }
-      return { counts, mine }
+      for (const reaction of reactions) {
+        counts[reaction.emoji] = (counts[reaction.emoji] ?? 0) + 1
+        const name = store.users.find((person) => person.id === reaction.uid)?.displayName ?? 'Member'
+        ;(peopleByEmoji[reaction.emoji] ??= []).push(name)
+        if (reaction.uid === uid) mine = reaction.emoji
+      }
+      for (const names of Object.values(peopleByEmoji)) names.sort((a, b) => a.localeCompare(b))
+      return { counts, mine, peopleByEmoji }
     },
 
     async setReaction(announcementId, clubId, uid, emoji) {
@@ -415,9 +423,20 @@ export const demoApi: ClubStackApi = {
 
     async getRsvpSummary(eventId, clubId, uid) {
       await wait()
-      const rsvps = read().eventRsvps.filter((item) => item.eventId === eventId && item.clubId === clubId)
-      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
-      for (const item of rsvps) { if (item.status === 'going') summary.going++; else if (item.status === 'maybe') summary.maybe++; else summary.notGoing++; if (item.uid === uid) summary.mine = item.status }
+      const store = read()
+      const rsvps = store.eventRsvps.filter((item) => item.eventId === eventId && item.clubId === clubId)
+      const participants = rsvps.map((item) => ({
+        uid: item.uid,
+        displayName: store.users.find((person) => person.id === item.uid)?.displayName ?? 'Member',
+        status: item.status,
+      })).sort((a, b) => a.displayName.localeCompare(b.displayName))
+      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null, participants }
+      for (const item of rsvps) {
+        if (item.status === 'going') summary.going++
+        else if (item.status === 'maybe') summary.maybe++
+        else summary.notGoing++
+        if (item.uid === uid) summary.mine = item.status
+      }
       return summary
     },
 
