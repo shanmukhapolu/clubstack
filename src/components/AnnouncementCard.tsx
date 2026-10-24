@@ -77,7 +77,7 @@ export function AnnouncementCard({
           </div>
           <p className="text-[11.5px] text-muted">{relativeTime(announcement.createdAt)}</p>
         </div>
-        {canManage && onTogglePin && <button type="button" onClick={() => onTogglePin(announcement)} className="rounded-lg p-1.5 text-muted hover:bg-canvas" title={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'} aria-label={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'}><Pin size={14} className={announcement.pinned ? 'fill-current text-brand-600' : ''}/></button>}
+        {canManage && onTogglePin && <button type="button" onClick={() => onTogglePin(announcement)} className="ml-auto rounded-lg p-1.5 text-muted hover:bg-canvas" title={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'} aria-label={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'}><Pin size={14} className={announcement.pinned ? 'fill-current text-brand-600' : ''}/></button>}
           {canManage && onDelete && (
           <button
             type="button"
