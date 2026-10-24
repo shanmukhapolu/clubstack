@@ -468,7 +468,7 @@ export function ClubPage() {
         </div>
       )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">
       <section className="card overflow-hidden">
         <div
           className="h-24 sm:h-28"
@@ -582,7 +582,7 @@ export function ClubPage() {
       </div>
 
       {hasPrivateAccess ? (
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1.55fr_1fr] lg:gap-6">
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] xl:gap-6">
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[17px] font-extrabold">Announcements</h2>
