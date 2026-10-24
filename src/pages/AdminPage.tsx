@@ -133,7 +133,7 @@ export function AdminPage() {
     const displayName = userForm.displayName.trim()
     const email = userForm.email.trim().toLowerCase()
     if (displayName.length < 2) { notify('Name must contain at least 2 characters.', 'error'); return }
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { notify('Enter a valid email address.', 'error'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { notify('Enter a valid email address.', 'error'); return }
     if (editingUser.id === user?.id && userForm.role !== editingUser.role) { notify('You cannot change your own administrator role.', 'error'); return }
     setWorkingId(editingUser.id)
     try {
