@@ -730,10 +730,15 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async create(club, teacher, requester) {
-      await updateDoc(doc(requireDb(), 'clubs', club.id), {
+      const db = requireDb()
+      const createdAt = Date.now()
+      const requestRef = doc(collection(db, 'clubSponsorRequests'))
+      const batch = writeBatch(db)
+      batch.update(doc(db, 'clubs', club.id), {
         sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending',
       })
-      await addDoc(collection(requireDb(), 'clubSponsorRequests'), {
+      batch.update(doc(db, 'clubDirectory', club.id), { sponsorName: teacher.displayName })
+      batch.set(requestRef, {
         clubId: club.id,
         clubName: club.name,
         teacherId: teacher.id,
@@ -741,8 +746,9 @@ export const firebaseApi: ClubStackApi = {
         requestedById: requester.id,
         requestedByName: requester.displayName,
         status: 'pending' satisfies SponsorRequestStatus,
-        createdAt: Date.now(),
+        createdAt,
       })
+      await batch.commit()
     },
 
     async respond(requestId, status) {
@@ -751,12 +757,17 @@ export const firebaseApi: ClubStackApi = {
       const requestSnapshot = await getDoc(requestRef)
       if (!requestSnapshot.exists()) throw new Error('This sponsor request no longer exists.')
       const request = toSponsorRequest(requestSnapshot.id, requestSnapshot.data())
-      await updateDoc(requestRef, { status })
-      await updateDoc(doc(db, 'clubs', request.clubId), {
+      const batch = writeBatch(db)
+      batch.update(requestRef, { status })
+      batch.update(doc(db, 'clubs', request.clubId), {
         sponsorId: status === 'accepted' ? request.teacherId : '',
         sponsorName: status === 'accepted' ? request.teacherName : '',
         sponsorStatus: status,
       })
+      batch.update(doc(db, 'clubDirectory', request.clubId), {
+        sponsorName: status === 'accepted' ? request.teacherName : '',
+      })
+      await batch.commit()
     },
   },
 
