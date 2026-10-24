@@ -315,7 +315,7 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
         getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
-        getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid), where('sponsorStatus', '==', 'accepted'))),
       ])
       const directories = new Map(directorySnapshot.docs.map((item) => [item.id, item.data()]))
       const privateClubs = new Map<string, Record<string, unknown>>()
