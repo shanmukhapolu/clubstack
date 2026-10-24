@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
+    function signedIn() { return request.auth != null && !exists(/databases/$(database)/documents/disabledUsers/$(request.auth.uid)); }
     function userRole() {
       return signedIn()
         ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'student')
@@ -96,6 +96,15 @@ service cloud.firestore {
         && (!('prerequisites' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.prerequisites == request.resource.data.prerequisites)
         && (!('dues' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.dues == request.resource.data.dues)
         && (!('instagramHandle' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.instagramHandle == request.resource.data.instagramHandle);
+    }
+
+    // Tombstones block deleted accounts from recreating their profile on the next sign-in.
+    match /disabledUsers/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if isAdmin()
+        && request.resource.data.uid == userId
+        && request.resource.data.disabledBy == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     match /users/{userId} {
