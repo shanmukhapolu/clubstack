@@ -354,6 +354,8 @@ service cloud.firestore {
     match /eventRsvps/{rsvpId} {
       allow read: if isAdmin() || isManager(resource.data.clubId) || isMember(resource.data.clubId);
       allow create, update: if signedIn()
+        && userRole() == 'student'
+        && isMember(request.resource.data.clubId)
         && rsvpId == request.resource.data.eventId + '_' + request.auth.uid
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.eventId is string
