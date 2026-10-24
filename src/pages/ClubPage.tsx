@@ -168,7 +168,7 @@ export function ClubPage() {
   if (!user) return null
 
   const canView =
-    club && (club.status === 'approved' || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id) || hasPendingOfficerInvite)
+    club && ((club.status === 'approved' && (!club.hidden || hasPrivateAccess)) || club.leaderId === user.id || user.role === 'admin' || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id) || hasPendingOfficerInvite)
 
   if (!club || !canView) {
     return (
