@@ -154,7 +154,9 @@ service cloud.firestore {
       allow read: if signedIn() && (
         isAdmin() || isMember(clubId) || resource.data.leaderId == request.auth.uid
         || resource.data.get('officerIds', []).hasAny([request.auth.uid])
-        || (resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus == 'accepted')
+        // A teacher who was invited to sponsor this club must be able to read the
+        // pending club document so the accept/decline transaction can complete.
+        || (resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus in ['pending', 'accepted'])
       );
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
