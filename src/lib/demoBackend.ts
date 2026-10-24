@@ -332,6 +332,20 @@ export const demoApi: ClubStackApi = {
       return read().memberships.filter((membership) => membership.clubId === clubId).map((membership) => membership.uid)
     },
 
+    async removeMember(clubId, uid) {
+      await wait()
+      const current = read()
+      const actor = requireUser(current)
+      const club = current.clubs.find((item) => item.id === clubId)
+      if (!club) throw new Error('This club no longer exists.')
+      if (!(actor.role === 'admin' || club.leaderId === actor.id || (club.officerIds ?? []).includes(actor.id) || (club.sponsorId === actor.id && club.sponsorStatus === 'accepted'))) throw new Error('Only club managers can remove members.')
+      if (actor.id === uid) throw new Error('Use Leave club to remove yourself.')
+      mutate((draft) => {
+        draft.memberships = draft.memberships.filter((membership) => !(membership.clubId === clubId && membership.uid === uid))
+        draft.clubs = draft.clubs.map((item) => item.id === clubId ? { ...item, memberCount: Math.max(0, item.memberCount - 1) } : item)
+      })
+    },
+
     async listRequestsForClub(clubId) {
       await wait()
       return read().joinRequests.filter((request) => request.clubId === clubId).sort((a, b) => b.createdAt - a.createdAt)
