@@ -124,6 +124,9 @@ export interface ClubSponsorRequest {
   requestedById: string
   requestedByName: string
   status: SponsorRequestStatus
+  previousSponsorId?: string
+  previousSponsorName?: string
+  stage?: 'currentSponsorApproval' | 'newSponsorApproval'
   createdAt: number
 }
 
@@ -168,6 +171,8 @@ export interface Announcement {
   body: string
   authorId: string
   authorName: string
+  pinned?: boolean
+  updatedAt?: number
   createdAt: number
 }
 
@@ -180,6 +185,10 @@ export interface ClubEvent {
   startAt: number
   endAt: number | null
   createdBy: string
+  type?: 'Event' | 'Callout' | 'General Meeting' | 'Workshop'
+  attendance?: 'optional' | 'mandatory'
+  updatedAt?: number
+  deletedAt?: number | null
   createdAt: number
 }
 
