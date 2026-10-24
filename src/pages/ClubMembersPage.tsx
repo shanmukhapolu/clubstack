@@ -81,7 +81,6 @@ export function ClubMembersPage() {
       {(() => {
         const query = search.trim().toLocaleLowerCase()
         const matches = (name: string) => name.toLocaleLowerCase().includes(query)
-        const owner = filtered.find(person => person.id === club.leaderId)
         const sponsor = club.sponsorName && matches(club.sponsorName) ? club.sponsorName : ''
         const officers = (club.officers ?? []).filter(officer => matches(officer.displayName))
         const officerIds = new Set((club.officers ?? []).map(officer => officer.uid))
@@ -94,12 +93,11 @@ export function ClubMembersPage() {
         const section = (title: string, icon: ReactNode, children: ReactNode, empty?: string) => <section className="border-b border-line last:border-b-0"><div className="flex items-center gap-2 bg-canvas/70 px-4 py-3"><span className="text-muted">{icon}</span><h2 className="text-[11px] font-extrabold uppercase tracking-[0.09em] text-ink-soft">{title}</h2></div>{children || <p className="px-4 py-4 text-[12px] text-muted">{empty}</p>}</section>
         return <div>
           {section('Teacher Sponsor', <GraduationCap size={15}/>, sponsor ? <div className="flex items-center gap-3 px-4 py-4"><div className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#e8dfcf] bg-[#f4ecdf] text-[#705b3b]"><GraduationCap size={18}/></div><div><p className="text-[13px] font-bold">{club.sponsorName}</p><p className="mt-0.5 text-[11px] text-muted">Teacher Sponsor</p></div></div> : null, club.sponsorName ? 'No sponsor matches your search.' : 'No teacher sponsor listed.')}
-          {section('Club Owner', <Crown size={15} className="text-amber-600"/>, owner ? renderMember(owner, 'owner') : null, 'No club owner matches your search.')}
           {section('Officers', <Users size={15}/>, officers.length ? officers.map(officer => {
             const member = filtered.find(person => person.id === officer.uid)
             return <div key={officer.uid} className="flex items-center gap-3 px-4 py-3.5"><Avatar name={officer.displayName} size={38}/><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-bold">{officer.displayName}</p><p className="mt-0.5 text-[11px] text-muted">{officer.title}</p></div>{canManage && member && member.id !== user.id && <button type="button" onClick={() => void removeMember(member)} disabled={removingId===member.id} title="Remove member" aria-label={`Remove ${member.displayName} from club`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50">{removingId===member.id?<span className="text-xs">…</span>:<UserMinus size={15}/>}</button>}</div>
           }) : null, 'No officers match your search.')}
-          {section('Members', <UserRound size={15}/>, regularMembers.length ? regularMembers.map(member => renderMember(member, 'member')) : null, members.length ? 'No members match your search.' : 'No members are listed yet.')}
+          {section('Members', <UserRound size={15}/>, regularMembers.length ? regularMembers.map(member => renderMember(member, member.id === club.leaderId ? 'owner' : 'member')) : null, members.length ? 'No members match your search.' : 'No members are listed yet.')}
         </div>
       })()}
     </section>}
