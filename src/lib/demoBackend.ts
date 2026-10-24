@@ -225,6 +225,18 @@ export const demoApi: ClubStackApi = {
       return id
     },
 
+    async removeOfficer(id, officerId) {
+      await wait()
+      const store = read()
+      const actor = requireUser(store)
+      const club = store.clubs.find((item) => item.id === id)
+      if (!club || !(actor.role === 'admin' || club.leaderId === actor.id)) throw new Error('Only the club leader or an administrator can remove officers.')
+      mutate((draft) => updateClub(draft, id, {
+        officers: club.officers.filter((item) => item.uid !== officerId),
+        officerIds: club.officerIds.filter((uid) => uid !== officerId),
+      }))
+    },
+
     async update(id, patch) {
       await wait()
       mutate((store) => updateClub(store, id, patch))
@@ -469,6 +481,11 @@ export const demoApi: ClubStackApi = {
       })
     },
 
+    async setPinned(id, pinned) {
+      await wait()
+      mutate((store) => { store.announcements = store.announcements.map((item) => item.id === id ? { ...item, pinned, updatedAt: Date.now() } : item) })
+    },
+
     async getReactionSummary(announcementId, clubId, uid) {
       await wait()
       const store = read()
@@ -536,10 +553,19 @@ export const demoApi: ClubStackApi = {
           location: input.location,
           startAt: input.startAt,
           endAt: input.endAt,
+          type: input.type ?? 'General Meeting',
+          attendance: input.attendance ?? 'optional',
           createdBy: author.id,
           createdAt: Date.now(),
+          updatedAt: Date.now(),
+          deletedAt: null,
         })
       })
+    },
+
+    async update(id, input) {
+      await wait()
+      mutate((store) => { store.events = store.events.map((item) => item.id === id ? { ...item, ...input, updatedAt: Date.now() } : item) })
     },
 
     async getRsvpSummary(eventId, clubId, uid) {
@@ -632,17 +658,31 @@ export const demoApi: ClubStackApi = {
       })
     },
 
+    async requestChange(club, teacher, requester) {
+      await wait()
+      if (!club.sponsorId || club.sponsorStatus !== 'accepted') throw new Error('This club does not have an accepted sponsor to approve the change.')
+      if (teacher.id === club.sponsorId) throw new Error('Choose a different teacher.')
+      const request: ClubSponsorRequest = { id: `sr-${Math.random().toString(36).slice(2, 10)}`, clubId: club.id, clubName: club.name, teacherId: teacher.id, teacherName: teacher.displayName, requestedById: requester.id, requestedByName: requester.displayName, previousSponsorId: club.sponsorId, previousSponsorName: club.sponsorName, stage: 'currentSponsorApproval', status: 'pending', createdAt: Date.now() }
+      mutate((store) => { store.sponsorRequests.unshift(request) })
+    },
+
     async respond(requestId, status: Extract<SponsorRequestStatus, 'accepted' | 'declined'>) {
       await wait()
       mutate((store) => {
         const request = store.sponsorRequests.find((item) => item.id === requestId)
         if (!request) throw new Error('This sponsor request no longer exists.')
+        if (request.stage === 'currentSponsorApproval') {
+          if (currentUser(store).id !== request.previousSponsorId) throw new Error('Only the current sponsor can approve this change.')
+          if (status === 'declined') { request.status = 'declined'; return }
+          request.stage = 'newSponsorApproval'
+          return
+        }
         request.status = status
-        updateClub(store, request.clubId, {
-          sponsorId: status === 'accepted' ? request.teacherId : '',
-          sponsorName: status === 'accepted' ? request.teacherName : '',
-          sponsorStatus: status,
-        })
+        if (request.previousSponsorId) {
+          if (status === 'accepted') updateClub(store, request.clubId, { sponsorId: request.teacherId, sponsorName: request.teacherName, sponsorStatus: 'accepted' })
+        } else {
+          updateClub(store, request.clubId, { sponsorId: status === 'accepted' ? request.teacherId : '', sponsorName: status === 'accepted' ? request.teacherName : '', sponsorStatus: status })
+        }
       })
     },
   },
