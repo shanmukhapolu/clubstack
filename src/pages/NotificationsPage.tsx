@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Building2, CalendarDays, Check, Clock, Flag, MailCheck, Megaphone, ShieldCheck, Users, X } from 'lucide-react'
+import { Bell, Building2, CalendarDays, Check, Clock, Flag, MailCheck, Megaphone, ShieldCheck, Users, X, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { useToast } from '../context/ToastContext'
@@ -112,6 +112,21 @@ export function NotificationsPage() {
     }
   }
 
+  async function respondDeletion(item: import('../lib/types').ClubDeletionRequest, status: 'approved' | 'declined') {
+    setWorkingId(item.id)
+    markAsRead(`deletion:${item.id}`)
+    try {
+      await api.clubs.respondToDeletionRequest(item.clubId, status, user!)
+      notify(status === 'approved' ? `Deletion approved for ${item.clubName}.` : `Deletion request declined for ${item.clubName}.`)
+      await refresh()
+      await load()
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setWorkingId(null)
+    }
+  }
+
   if (!user) return null
   if (loading) return <Spinner label="Loading notifications" />
 
@@ -201,6 +216,31 @@ export function NotificationsPage() {
                         </div>
                       </div>
                     <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={(event) => { event.stopPropagation(); markAsRead(id) }} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button></article>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {items.deletionRequests.length > 0 && (
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold"><Trash2 size={17} /> Club deletion requests</h2>
+              <div className="space-y-2">
+                {items.deletionRequests.map((item) => {
+                  const id = `deletion:${item.id}`
+                  return (
+                    <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Trash2 size={18} /></div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-[13.5px] font-bold">Delete {item.clubName}?</h3>
+                        <p className="mt-1 text-[12px] text-muted">Requested by {item.requestedByName} · {relativeTime(item.createdAt)}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button size="sm" variant="lime" loading={workingId === item.id} onClick={() => void respondDeletion(item, 'approved')}><Check size={14} /> Approve deletion</Button>
+                          <Button size="sm" variant="secondary" disabled={workingId === item.id} onClick={() => void respondDeletion(item, 'declined')}><X size={14} /> Keep club</Button>
+                        </div>
+                      </div>
+                      <button type="button" aria-label={readIds.has(id) ? 'Already read' : 'Mark as read'} title={readIds.has(id) ? 'Already read' : 'Mark as read'} onClick={() => markAsRead(id)} disabled={readIds.has(id)} className={`ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink ${readIds.has(id) ? 'opacity-60' : ''}`}>{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button>
+                    </article>
                   )
                 })}
               </div>
