@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Building2, CalendarDays, Check, Clock, Flag, MailCheck, Megaphone, ShieldCheck, Users, X, Trash2 } from 'lucide-react'
+import { Bell, Building2, CalendarDays, Check, Clock, Crown, Flag, MailCheck, Megaphone, ShieldCheck, Users, X, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { useToast } from '../context/ToastContext'
 import { api } from '../lib/backend'
 import { friendlyError } from '../lib/helpers'
 import { relativeTime } from '../lib/dates'
-import type { ClubJoinRequest, ClubSponsorRequest, OfficerInvitation } from '../lib/types'
+import type { Club, ClubJoinRequest, ClubSponsorRequest, OfficerInvitation } from '../lib/types'
 import {
   emptyInbox,
   fetchInboxItems,
@@ -65,6 +65,22 @@ export function NotificationsPage() {
 
   function cardClass(id: string, base: string) {
     return `card relative after:content-[''] after:absolute after:right-3 after:top-3 after:h-2 after:w-2 after:rounded-full after:bg-red-500 ${readIds.has(id) ? 'after:hidden' : ''} ${base}`
+  }
+
+  async function respondOwnershipTransfer(item: Club, accept: boolean) {
+    if (!user) return
+    setWorkingId(item.id)
+    markAsRead(`ownership-transfer:${item.id}`)
+    try {
+      await api.clubs.respondToOwnershipTransfer(item.id, accept, user)
+      notify(accept ? `You are now the leader of ${item.name}.` : `Ownership transfer for ${item.name} declined.`)
+      await refresh()
+      await load()
+    } catch (caught) {
+      notify(friendlyError(caught), 'error')
+    } finally {
+      setWorkingId(null)
+    }
   }
 
   async function respondInvitation(item: OfficerInvitation, status: 'accepted' | 'declined') {
@@ -155,6 +171,22 @@ export function NotificationsPage() {
         </section>
       ) : (
         <div className="space-y-8">
+          {items.ownershipTransfers.length > 0 && (
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold"><Crown size={17} /> Ownership transfer requests</h2>
+              <div className="space-y-2">
+                {items.ownershipTransfers.map((item) => {
+                  const id = `ownership-transfer:${item.id}`
+                  return <article key={item.id} data-unread={!readIds.has(id)} className={cardClass(id, 'flex flex-wrap items-start gap-3 p-4')}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Crown size={18} /></div>
+                    <div className="min-w-0 flex-1"><h3 className="text-[13.5px] font-bold">{item.name}</h3><p className="mt-1 text-[12px] text-muted">{item.pendingLeaderTransfer?.fromName} wants to transfer club ownership to you.</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="lime" loading={workingId === item.id} onClick={() => void respondOwnershipTransfer(item, true)}><Check size={14} /> Accept ownership</Button><Button size="sm" variant="secondary" disabled={workingId === item.id} onClick={() => void respondOwnershipTransfer(item, false)}><X size={14} /> Decline</Button></div></div>
+                    <button type="button" aria-label={readIds.has(id) ? 'Mark unread' : 'Mark as read'} title={readIds.has(id) ? 'Mark unread' : 'Mark as read'} onClick={() => markAsRead(id)} className="ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-canvas hover:text-ink">{readIds.has(id) ? <MailCheck size={15} /> : <Check size={15} />}</button>
+                  </article>
+                })}
+              </div>
+            </section>
+          )}
+
           {items.invitations.some((item) => item.status === 'pending') && (
             <section>
               <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold"><MailCheck size={17} /> Officer invitations</h2>
