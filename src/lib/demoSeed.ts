@@ -2,6 +2,7 @@ import type {
   Announcement,
   AppUser,
   Club,
+  ClubDeletionRequest,
   ClubEvent,
   ClubCategory,
   Membership,
@@ -25,6 +26,7 @@ export interface DemoStore {
   joinRequests: ClubJoinRequest[]
   announcementReactions: AnnouncementReaction[]
   eventRsvps: EventRsvp[]
+  deletionRequests: ClubDeletionRequest[]
   currentUid: string | null
 }
 
@@ -650,6 +652,7 @@ export function createDemoStore(): DemoStore {
     joinRequests: [],
     announcementReactions: [],
     eventRsvps: [],
+    deletionRequests: [],
     currentUid: null,
   }
 }
