@@ -96,10 +96,6 @@ export function ClubPage() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
-  const [teacherSearch, setTeacherSearch] = useState('')
-  const [teacherResults, setTeacherResults] = useState<import('../lib/types').AppUser[]>([])
-  const [selectedTeacher, setSelectedTeacher] = useState<import('../lib/types').AppUser | null>(null)
-  const [sponsorSaving, setSponsorSaving] = useState(false)
   const [eventTitle, setEventTitle] = useState('')
   const [eventDescription, setEventDescription] = useState('')
   const [eventLocation, setEventLocation] = useState('')
@@ -112,17 +108,6 @@ export function ClubPage() {
   const [saving, setSaving] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutSaving, setAboutSaving] = useState(false)
-  useEffect(() => {
-    if (!user || user.role !== 'student' || !(joined || club?.leaderId === user.id) || teacherSearch.trim().length < 3) { setTeacherResults([]); return }
-    let active = true
-    const handle = window.setTimeout(() => {
-      void api.users.searchDirectory(teacherSearch.trim(), 'teacher', 8).then(results => {
-        if (active) setTeacherResults(results.filter(person => person.id !== club?.sponsorId))
-      }).catch(() => { if (active) setTeacherResults([]) })
-    }, 220)
-    return () => { active = false; window.clearTimeout(handle) }
-  }, [teacherSearch, user?.id, user?.role, joined, club?.leaderId, club?.sponsorId])
-
   const [aboutForm, setAboutForm] = useState({
     name: '',
     description: '',
@@ -418,17 +403,6 @@ export function ClubPage() {
     setAnnouncementOpen(true)
   }
 
-  async function requestSponsorChange() {
-    if (!club || !user || !selectedTeacher || user.role !== 'student' || !(joined || club.leaderId === user.id) || sponsorSaving) return
-    setSponsorSaving(true)
-    try {
-      await api.sponsorRequests.requestChange(club, selectedTeacher, user)
-      setTeacherSearch(''); setTeacherResults([]); setSelectedTeacher(null)
-      notify('Sponsor change requested. The current and proposed teachers must approve it in Notifications.')
-    } catch (caught) { notify(friendlyError(caught), 'error') }
-    finally { setSponsorSaving(false) }
-  }
-
   async function handleDeleteAnnouncement(announcement: Announcement) {
     if (!window.confirm('Delete this announcement? This cannot be undone.')) return
     try {
@@ -593,33 +567,23 @@ export function ClubPage() {
       </section>
       </div>
 
-      <nav aria-label="Club pages" className="mt-4 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
-        <Link to={`/clubs/${club.id}`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
-        <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
-        {hasPrivateAccess && <Link to={`/clubs/${club.id}/members`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Members</Link>}
-        {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}
-      </nav>
+      {hasPrivateAccess && <div className="mt-4 flex flex-wrap items-center gap-2">
+        <nav aria-label="Club pages" className="flex flex-wrap items-center gap-2">
+          <Link to={`/clubs/${club.id}`} aria-current="page" className="rounded-xl border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
+          <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
+          <Link to={`/clubs/${club.id}/members`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
+          {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Settings</Link>}
+        </nav>
+        {canManage && <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setAnnouncementOpen(true)}><Megaphone size={15} /> Post announcement</Button>
+          <Button variant="brand" size="sm" onClick={() => { setEditingEvent(null); setEventTitle(''); setEventDescription(''); setEventLocation(''); setEventStart(toDateTimeInput(defaultEventStart())); setEventEnd(''); setEventType('General Meeting'); setEventAttendance('optional'); setEventOpen(true) }}><CalendarPlus size={15} /> Add meeting</Button>
+        </div>}
+      </div>}
+      {user && <div className={`mt-3 flex ${hasPrivateAccess ? 'justify-end' : 'justify-start'}`}>
+        <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}><Flag size={14} /> Report a concern</Button>
+      </div>}
 
-      {canManage && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => navigate(`/clubs/${club.id}/settings`)}><Pencil size={15} /> Club settings</Button>
-          {isAdmin && <Button variant="danger" size="sm" onClick={() => void handleDeleteClub()}><Trash2 size={15} /> Delete club</Button>}
-          <Button variant="brand" size="sm" onClick={() => setAnnouncementOpen(true)}>
-            <Megaphone size={15} /> Post announcement
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => { setEditingEvent(null); setEventTitle(''); setEventDescription(''); setEventLocation(''); setEventStart(toDateTimeInput(defaultEventStart())); setEventEnd(''); setEventType('General Meeting'); setEventAttendance('optional'); setEventOpen(true) }}>
-            <CalendarPlus size={15} /> Add meeting
-          </Button>
-        </div>
-      )}
-
-      <div className="mt-3 flex justify-end">
-        <Button variant="ghost" size="sm" onClick={() => setReportOpen(true)}>
-          <Flag size={14} /> Report a concern
-        </Button>
-      </div>
-
-      {hasPrivateAccess ? (
+      {hasPrivateAccess && (
       <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] xl:gap-6">
         <section>
           <div className="mb-3 flex items-center justify-between">
@@ -648,99 +612,7 @@ export function ClubPage() {
                 ) : undefined
               }
             />
-          ) : (
-            <div className="space-y-3">
-              {[...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt).map((announcement) => (
-                <AnnouncementCard
-                  key={announcement.id}
-                  announcement={announcement}
-                  canManage={canManage}
-                  onDelete={handleDeleteAnnouncement}
-                  onEdit={handleEditAnnouncement}
-                  onTogglePin={(item) => void api.announcements.setPinned(item.id, !item.pinned).then(() => refreshFeed()).catch((caught) => notify(friendlyError(caught), 'error'))}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="space-y-4">
-          {user.role === 'student' && (joined || club.leaderId === user.id) && club.sponsorStatus === 'accepted' && (
-            <section className="card border-brand-100 bg-brand-50/40 p-4">
-              <div className="flex items-start gap-2.5"><ShieldCheck size={17} className="mt-0.5 text-brand-700"/><div><h2 className="text-[14px] font-extrabold">Request a sponsor change</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Choose a teacher to propose. Both the current sponsor and the proposed sponsor must approve before the club changes advisors.</p></div></div>
-              <p className="mt-3 text-[11.5px] text-muted">Current sponsor: <span className="font-semibold text-ink">{club.sponsorName}</span></p>
-              <label htmlFor="club-sponsor-search" className="label mt-3">Find a teacher</label>
-              <input id="club-sponsor-search" className="field" value={teacherSearch} placeholder="Type at least 3 letters…" onChange={event => { setTeacherSearch(event.target.value); setSelectedTeacher(null) }}/>
-              {teacherResults.map(person => <button key={person.id} type="button" onClick={() => { setSelectedTeacher(person); setTeacherSearch(person.displayName); setTeacherResults([]) }} className={`mt-1 flex w-full rounded-xl border px-3 py-2 text-left text-[12.5px] ${selectedTeacher?.id === person.id ? 'border-brand-300 bg-brand-50' : 'border-line bg-white hover:bg-canvas'}`}>{person.displayName}</button>)}
-              <Button className="mt-3 w-full" size="sm" disabled={!selectedTeacher || sponsorSaving} loading={sponsorSaving} onClick={() => void requestSponsorChange()}><ShieldCheck size={14}/> Send request</Button>
-            </section>
-          )}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[15px] font-extrabold">Upcoming meetings</h2>
-              <Link
-                to={`/clubs/${club.id}/meetings`}
-                className="text-[12px] font-semibold text-brand-600 hover:underline"
-              >
-                Calendar
-              </Link>
-            </div>
-            {feedLoading ? (
-              <Spinner label="Loading meetings" />
-            ) : upcomingEvents.length === 0 ? (
-              <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] leading-relaxed text-muted">
-                No meetings scheduled yet.
-                {canManage ? ' Add one so members can plan ahead.' : ''}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {upcomingEvents.slice(0, 5).map((item) => (
-                  <EventRow key={item.id} event={item} canManage={canManage} onDelete={handleDeleteEvent} onEdit={handleEditEvent} />
-                ))}
-              </div>
-            )}
-            {canManage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3 w-full justify-start"
-                onClick={() => setEventOpen(true)}
-              >
-                <CalendarPlus size={15} /> Add a meeting
-              </Button>
-            )}
-          </section>
-
-
-
-        </aside>
-      </div>
-
-      ) : (
-        <section className="card mt-6 overflow-hidden p-5 sm:p-6">
-          <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-canvas text-ink-soft"><ShieldCheck size={18}/></div><div><h2 className="text-[16px] font-bold">Member-only activity</h2><p className="mt-1 text-[13px] leading-relaxed text-muted">Specific meetings, attendance, announcements, and the member list are reserved for members. The basic club details remain public.</p></div></div>
-              <dl className="mt-5 space-y-3 border-t border-line pt-4 text-[12.5px]">
-                {club.sponsorName && <div><dt className="font-semibold text-ink">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div>}
-                {club.contactEmail && <div><dt className="font-semibold text-ink">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-ink-soft underline decoration-line underline-offset-2 hover:text-ink">{club.contactEmail}</a></dd></div>}
-                <div><dt className="font-semibold text-ink">Usual schedule</dt><dd className="mt-0.5 text-muted">{describeClubSchedule(club)}</dd></div>
-                <div><dt className="font-semibold text-ink">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div>
-              </dl>
-            </div>
-            <div className="relative min-h-[210px] overflow-hidden rounded-2xl border border-line bg-canvas/70 p-4">
-              <div aria-hidden="true" className="select-none space-y-3" style={{filter:'blur(2px)',opacity:0.68,maskImage:'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.78) 48%, transparent 100%)',WebkitMaskImage:'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.78) 48%, transparent 100%)'}}>
-                <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-white"/><div className="flex-1 space-y-1.5"><div className="h-2 w-2/5 rounded bg-ink/15"/><div className="h-2 w-1/4 rounded bg-ink/10"/></div></div>
-                <div className="rounded-xl border border-line/70 bg-white/80 p-3"><div className="h-3 w-1/3 rounded bg-ink/15"/><div className="mt-3 h-2 w-full rounded bg-ink/10"/><div className="mt-2 h-2 w-4/5 rounded bg-ink/10"/><div className="mt-2 h-2 w-2/3 rounded bg-ink/10"/></div>
-                <div className="rounded-xl border border-line/70 bg-white/80 p-3"><div className="h-3 w-2/5 rounded bg-ink/15"/><div className="mt-3 h-2 w-5/6 rounded bg-ink/10"/><div className="mt-2 h-2 w-3/5 rounded bg-ink/10"/></div>
-              </div>
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-canvas/20 to-canvas/95"/>
-              <p className="absolute inset-x-4 bottom-4 text-center text-[11.5px] font-medium text-muted">Join to see club activity</p>
-            </div>
-          </div>
-        </section>
-      )}
-
+    
       {aboutOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex justify-end">
           <button type="button" aria-label="Close edit club information" className="absolute inset-0 bg-ink/40" onClick={() => setAboutOpen(false)} />
