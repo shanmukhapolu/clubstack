@@ -597,10 +597,7 @@ export const demoApi: ClubStackApi = {
 
     async remove(id) {
       await wait()
-      mutate((store) => {
-        store.events = store.events.filter((event) => event.id !== id)
-        store.eventRsvps = store.eventRsvps.filter((rsvp) => rsvp.eventId !== id)
-      })
+      mutate((store) => { store.events = store.events.map((event) => event.id === id ? { ...event, deletedAt: Date.now(), updatedAt: Date.now() } : event) })
     },
   },
 
