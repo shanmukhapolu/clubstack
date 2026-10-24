@@ -102,6 +102,8 @@ export interface UsersApi {
   listDirectory(): Promise<AppUser[]>
   searchDirectory(prefix: string, role: Role, maxResults?: number): Promise<AppUser[]>
   setRole(uid: string, role: Role): Promise<void>
+  updateProfile(uid: string, input: { displayName: string; email: string; role: Role; grade: string }): Promise<void>
+  deleteAccount(uid: string): Promise<void>
 }
 
 export interface OfficerInvitationsApi {
