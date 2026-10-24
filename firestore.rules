@@ -195,7 +195,11 @@ service cloud.firestore {
 
     match /memberships/{membershipId} {
       allow read: if signedIn() && (
-        membershipId.matches('^' + request.auth.uid + '_.*
+        membershipId.matches('^' + request.auth.uid + '_.+')
+        || resource.data.uid == request.auth.uid || isAdmin() || isManager(resource.data.clubId)
+        || (isMember(resource.data.clubId)
+          && get(/databases/$(database)/documents/clubDirectory/$(resource.data.clubId)).data.membersVisible == true)
+      );
       allow create: if signedIn()
         && membershipId == request.resource.data.uid + '_' + request.resource.data.clubId
         && request.resource.data.uid is string
@@ -237,7 +241,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['clubId','clubName','uid','displayName','status','createdAt']);
       // Allow a student to check their own deterministic request path even before that document exists.
       allow read: if isAdmin() || (signedIn() && (
-        requestId.matches('^.*_' + request.auth.uid + '
+        requestId.matches('.*_' + request.auth.uid)
+        || resource.data.uid == request.auth.uid || isManager(resource.data.clubId)
+      ));
       allow update: if (signedIn() && isManager(resource.data.clubId)
         && resource.data.status == 'pending'
         && request.resource.data.uid == resource.data.uid
