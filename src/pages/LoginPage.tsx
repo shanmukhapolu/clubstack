@@ -35,7 +35,7 @@ export function LoginPage() {
   const { user, mode } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from ?? '/'
+  const from = (location.state as { from?: string } | null)?.from ?? '/home'
 
   const [formMode, setFormMode] = useState<Mode>('signin')
   const [name, setName] = useState('')
@@ -47,7 +47,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      const destination = from === '/' ? user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/' : from
+      const destination = from === '/' || from === '/home' ? user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/home' : from
       navigate(destination, { replace: true })
     }
   }, [user, from, navigate])

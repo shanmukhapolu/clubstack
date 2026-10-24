@@ -17,10 +17,10 @@ import { api } from '../lib/backend'
 import { Avatar, ClubMark } from './ui'
 
 const navItems = [
-  { to: '/', label: 'Home', icon: House, end: true },
+  { to: '/home', label: 'Home', icon: House, end: true },
   { to: '/discover', label: 'Discover', icon: Compass },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { to: '/invitations', label: 'Invitations', icon: Bell },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
 ]
 
 function Logo() {
@@ -82,6 +82,7 @@ export function AppShell() {
         { to: '/admin/clubs', label: 'Clubs', icon: Building2 },
         { to: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
         { to: '/admin/security', label: 'Safety', icon: ShieldCheck },
+        { to: '/notifications', label: 'Notifications', icon: Bell },
       ]
     : isTeacher
       ? [
@@ -89,6 +90,7 @@ export function AppShell() {
           { to: '/teacher/calendar', label: 'Calendar', icon: CalendarDays },
           { to: '/teacher/clubs', label: 'My clubs', icon: Building2 },
           { to: '/teacher/reports', label: 'Reports', icon: Flag },
+          { to: '/notifications', label: 'Notifications', icon: Bell },
         ]
       : navItems
 

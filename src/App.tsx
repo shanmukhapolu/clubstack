@@ -4,6 +4,9 @@ import { ClubsProvider } from './context/ClubsContext'
 import { ToastProvider } from './context/ToastContext'
 import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
+import { HomePage } from './pages/HomePage'
+import { ClubMembersPage } from './pages/ClubMembersPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { ClubPage } from './pages/ClubPage'
@@ -11,7 +14,6 @@ import { CalendarPage } from './pages/CalendarPage'
 import { RoleWorkspacePage } from './pages/RoleWorkspacePage'
 import { ClubSettingsPage } from './pages/ClubSettingsPage'
 import { ClubMeetingsPage } from './pages/ClubMeetingsPage'
-import { OfficerInvitationsPage } from './pages/OfficerInvitationsPage'
 import { CreateClubPage } from './pages/CreateClubPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -33,6 +35,13 @@ function RoleHome() {
   if (user?.role === 'admin') return <Navigate to="/admin" replace />
   if (user?.role === 'teacher') return <Navigate to="/teacher" replace />
   return <DashboardPage />
+}
+
+function EntryRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <FullScreenLoader />
+  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/home'} replace />
+  return <HomePage />
 }
 
 function RequireAuth() {
@@ -72,17 +81,20 @@ export default function App() {
         <ClubsProvider>
           <ToastProvider>
             <Routes>
+              <Route path="/" element={<EntryRoute />} />
               <Route path="/login" element={<LoginPage />} />
 
               <Route element={<RequireAuth />}>
                 <Route element={<AppShell />}>
-                  <Route index element={<RoleHome />} />
+                  <Route path="home" element={<RoleHome />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="invitations" element={<Navigate to="/notifications" replace />} />
                   <Route element={<RequireStudent />}>
                     <Route path="discover" element={<DiscoverPage />} />
                     <Route path="clubs/new" element={<CreateClubPage />} />
                     <Route path="calendar" element={<CalendarPage />} />
-                    <Route path="invitations" element={<OfficerInvitationsPage />} />
                   </Route>
+                  <Route path="clubs/:clubId/members" element={<ClubMembersPage />} />
                   <Route path="clubs/:clubId/meetings" element={<ClubMeetingsPage />} />
                   <Route path="clubs/:clubId/settings" element={<ClubSettingsPage />} />
                   <Route path="clubs/:clubId" element={<ClubPage />} />
