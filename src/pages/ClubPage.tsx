@@ -247,7 +247,7 @@ export function ClubPage() {
       setFormError('Club name must have at least 3 characters and the description at least 20.')
       return
     }
-    if (contactEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail)) {
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       setFormError('Enter a valid club email address.')
       return
     }
