@@ -614,7 +614,7 @@ export function ClubPage() {
             />
           ) : (
             <div className="space-y-3">
-              {announcements.map((announcement) => (
+              {[...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt).map((announcement) => (
                 <AnnouncementCard
                   key={announcement.id}
                   announcement={announcement}
