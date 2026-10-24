@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { api } from '../lib/backend'
 import { formatTimeRange, isToday } from '../lib/dates'
+import { friendlyError } from '../lib/helpers'
+import { useToast } from '../context/ToastContext'
 import { ClubMark } from './ui'
 
 export function EventRow({
@@ -20,12 +22,15 @@ export function EventRow({
   onDelete?: (event: ClubEvent) => void
 }) {
   const { user } = useAuth()
-  const { isJoined } = useClubs()
-  const [rsvp, setRsvp] = useState<RsvpSummary>({ going: 0, maybe: 0, notGoing: 0, mine: null })
+  const { notify } = useToast()
+  const { isJoined, clubs } = useClubs()
+  const associatedClub = club ?? clubs.find((item) => item.id === event.clubId)
+  const isManager = !!(canManage || (user && associatedClub && (user.role === 'admin' || associatedClub.leaderId === user.id || (associatedClub.officerIds ?? []).includes(user.id) || (associatedClub.sponsorId === user.id && associatedClub.sponsorStatus === 'accepted'))))
+  const [rsvp, setRsvp] = useState<RsvpSummary>({ going: 0, maybe: 0, notGoing: 0, mine: null, participants: [] })
   const [rsvpBusy, setRsvpBusy] = useState(false)
   const date = new Date(event.startAt)
   const past = event.startAt < Date.now()
-  const canRsvp = !!(user && user.role === 'student' && isJoined(event.clubId) && !past)
+  const canRsvp = !!(user && user.role === 'student' && isJoined(event.clubId) && !isManager && !past)
 
   useEffect(() => {
     if (!user) return
@@ -38,6 +43,7 @@ export function EventRow({
     if (!user || rsvpBusy) return
     setRsvpBusy(true)
     try { await api.events.setRsvp(event.id, event.clubId, user.id, status); setRsvp(await api.events.getRsvpSummary(event.id, event.clubId, user.id)) }
+    catch (caught) { notify(friendlyError(caught), 'error') }
     finally { setRsvpBusy(false) }
   }
 
@@ -81,7 +87,8 @@ export function EventRow({
           )}
         </div>
 
-        {(user && (isJoined(event.clubId) || user.role === 'admin' || canManage)) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span className="font-semibold">Estimated attendance</span><span>{rsvp.going} going</span><span>· {rsvp.maybe} maybe</span></div>}
+        {(user && (isJoined(event.clubId) || user.role === 'admin' || isManager)) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span className="font-semibold">Estimated attendance</span><span>{rsvp.going} going</span><span>· {rsvp.maybe} maybe</span>{isManager && <span>· {rsvp.notGoing} can’t</span>}</div>}
+        {isManager && (rsvp.participants?.length ?? 0) > 0 && <details className="mt-2 rounded-xl border border-line bg-canvas/60 px-3 py-2 text-[11.5px]"><summary className="cursor-pointer font-semibold text-ink-soft">View member responses</summary><div className="mt-2 space-y-2">{([['going', 'Going'], ['maybe', 'Maybe'], ['notGoing', 'Can’t go']] as [EventRsvpStatus, string][]).map(([status, label]) => { const people = (rsvp.participants ?? []).filter((person) => person.status === status); return people.length ? <div key={status}><p className="font-semibold text-ink-soft">{label} ({people.length})</p><p className="mt-0.5 leading-relaxed text-muted">{people.map((person) => person.displayName).join(', ')}</p></div> : null })}</div></details>}
         {canRsvp && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`RSVP for ${event.title}`}>{([['going','Going'],['maybe','Maybe'],['notGoing','Can’t go']] as [EventRsvpStatus,string][]).map(([status,label])=><button key={status} type="button" disabled={rsvpBusy} onClick={() => void updateRsvp(status)} aria-pressed={rsvp.mine === status} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rsvp.mine === status ? 'border-brand-300 bg-brand-50 text-brand-800' : 'border-line text-ink-soft hover:bg-canvas'}`}>{label}</button>)}</div>}
         {club && (
           <Link
