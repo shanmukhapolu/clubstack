@@ -486,8 +486,18 @@ export const firebaseApi: ClubStackApi = {
         dues: stringOr(currentData.dues, ''),
         instagramHandle: normalizeInstagramHandle(stringOr(currentData.instagramHandle, '')),
       }
-      for (const [key, value] of Object.entries(defaults)) {
-        if (currentData[key] === undefined && privatePatch[key] === undefined) privatePatch[key] = value
+      const aboutFieldsChanged = [
+        'name', 'description', 'category', 'meetingDay', 'meetingFrequency',
+        'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location',
+        'contactEmail', 'prerequisites', 'dues', 'instagramHandle',
+      ].some((key) => Object.prototype.hasOwnProperty.call(patch, key))
+      // Only migrate the private document when editing About fields. Control-only
+      // changes (privacy, officers) must not accidentally add fields and fail their
+      // narrower Firestore update rules.
+      if (aboutFieldsChanged) {
+        for (const [key, value] of Object.entries(defaults)) {
+          if (currentData[key] === undefined && privatePatch[key] === undefined) privatePatch[key] = value
+        }
       }
       const projectedPrivate = { ...currentData, ...privatePatch }
       const directoryPatch = {
@@ -504,9 +514,21 @@ export const firebaseApi: ClubStackApi = {
 
     async setStatus(id, status) {
       const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const directoryRef = doc(db, 'clubDirectory', id)
+      const snapshot = await getDoc(clubRef)
+      if (!snapshot.exists()) throw new Error('That club no longer exists.')
+      const projectedPrivate = { ...snapshot.data(), status }
+      const directorySnapshot = await getDoc(directoryRef)
+      const existingDirectory = directorySnapshot.exists() ? directorySnapshot.data() : {}
+      const completeDirectory = {
+        ...toDirectoryData(projectedPrivate),
+        requiresApproval: existingDirectory.requiresApproval === true,
+        membersVisible: existingDirectory.membersVisible !== false,
+      }
       const batch = writeBatch(db)
-      batch.update(doc(db, 'clubs', id), { status })
-      batch.update(doc(db, 'clubDirectory', id), { status })
+      batch.update(clubRef, { status })
+      batch.set(directoryRef, completeDirectory, { merge: true })
       await batch.commit()
     },
 
@@ -522,8 +544,6 @@ export const firebaseApi: ClubStackApi = {
       }
       const target = (Array.isArray(data.officers) ? data.officers : []).find((officer) => officer && typeof officer === 'object' && (officer as Record<string, unknown>).uid === newLeaderId) as Record<string, unknown> | undefined
       if (!target) throw new Error('The selected officer record could not be found.')
-      const roleProfile = await getDoc(doc(db, 'users', newLeaderId))
-      if (!roleProfile.exists() || roleProfile.data().role !== 'student') throw new Error('The new club leader must be a student account.')
       const officers = (Array.isArray(data.officers) ? data.officers : []).filter((officer) => {
         const person = officer as Record<string, unknown>
         return person.uid !== newLeaderId && person.uid !== currentLeader.id
