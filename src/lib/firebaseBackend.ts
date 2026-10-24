@@ -1199,7 +1199,7 @@ export const firebaseApi: ClubStackApi = {
       const profile = await getDoc(profileRef)
       if (!profile.exists()) throw new Error('This user profile no longer exists.')
 
-      const [memberships, joinRequests, invited, sentInvites, reports, reactions, rsvps, sponsorRequests, deletionRequests, clubsAsLeader, clubsAsSponsor, clubsAsOfficer] = await Promise.all([
+      const [memberships, joinRequests, invited, sentInvites, reports, reactions, rsvps, sponsorRequests, sponsorRequestsAsTeacher, sponsorRequestsAsPreviousSponsor, deletionRequests, deletionReviews, authoredAnnouncements, authoredEvents, clubsAsLeader, clubsAsSponsor, clubsAsOfficer] = await Promise.all([
         getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'clubJoinRequests'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'officerInvitations'), where('invitedUserId', '==', uid))),
@@ -1208,15 +1208,29 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'announcementReactions'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'eventRsvps'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'clubSponsorRequests'), where('requestedById', '==', uid))),
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('teacherId', '==', uid))),
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('previousSponsorId', '==', uid))),
         getDocs(query(collection(db, 'clubDeletionRequests'), where('requestedById', '==', uid))),
+        getDocs(query(collection(db, 'clubDeletionRequests'), where('reviewedById', '==', uid))),
+        getDocs(query(collection(db, 'announcements'), where('authorId', '==', uid))),
+        getDocs(query(collection(db, 'events'), where('createdBy', '==', uid))),
         getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
         getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid))),
         getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
       ])
 
+      const authoredAnnouncementReactions = (await Promise.all(authoredAnnouncements.docs.map(item =>
+        getDocs(query(collection(db, 'announcementReactions'), where('announcementId', '==', item.id)))
+      ))).flatMap(snapshot => snapshot.docs)
+      const authoredEventRsvps = (await Promise.all(authoredEvents.docs.map(item =>
+        getDocs(query(collection(db, 'eventRsvps'), where('eventId', '==', item.id)))
+      ))).flatMap(snapshot => snapshot.docs)
       const related = [...new Map([
         ...memberships.docs, ...joinRequests.docs, ...invited.docs, ...sentInvites.docs,
-        ...reports.docs, ...reactions.docs, ...rsvps.docs, ...sponsorRequests.docs, ...deletionRequests.docs,
+        ...reports.docs, ...reactions.docs, ...rsvps.docs, ...sponsorRequests.docs,
+        ...sponsorRequestsAsTeacher.docs, ...sponsorRequestsAsPreviousSponsor.docs,
+        ...deletionRequests.docs, ...deletionReviews.docs, ...authoredAnnouncements.docs,
+        ...authoredEvents.docs, ...authoredAnnouncementReactions, ...authoredEventRsvps,
       ].map(item => [item.ref.path, item])).values()]
       for (let offset = 0; offset < related.length; offset += 400) {
         const batch = writeBatch(db)
@@ -1261,9 +1275,8 @@ export const firebaseApi: ClubStackApi = {
       batch.delete(doc(db, 'userDirectory', uid))
       batch.delete(profileRef)
       await batch.commit()
-      // Firebase Auth does not allow the client SDK to delete another user's Auth
-      // record. The disabledUsers tombstone prevents this account from re-entering
-      // ClubStack even though its Firebase Authentication record still exists.
+      // The minimal disabledUsers tombstone blocks profile recreation. Firebase's client
+      // SDK cannot delete another user's Authentication record.
     },
   },
 }
