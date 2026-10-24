@@ -166,7 +166,7 @@ export function ClubPage() {
     return () => { active = false }
   }, [clubId, user?.id, user?.role])
 
-  const upcomingEvents = useMemo(() => upcoming(events.filter((event) => !event.deletedAt)).sort((a, b) => Number(!!b.type) - Number(!!a.type)), [events])
+  const upcomingEvents = useMemo(() => upcoming(events.filter((event) => !event.deletedAt)), [events])
 
   if (!user) return null
 
