@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Flag,
+  Instagram,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -58,10 +59,10 @@ function describeClubSchedule(club: Club): string {
 
 function cleanInstagramHandle(value: string): string {
   return value.trim()
-    .replace(/^https?:\\/\\/(www\\.)?instagram\\.com\\//i, '')
-    .replace(/\\/?[?#].*$/, '')
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/\/?[?#].*$/, '')
     .replace(/^@+/, '')
-    .replace(/\\/$/, '')
+    .replace(/\/$/, '')
     .trim()
 }
 
@@ -518,9 +519,7 @@ export function ClubPage() {
               {hasPrivateAccess && (club.membersVisible || canManage) && club.memberCount > 0 && <span className="inline-flex items-center gap-1.5 font-medium"><Users size={14} /> {club.memberCount} member{club.memberCount === 1 ? '' : 's'}</span>}
               <span className="inline-flex items-center gap-1.5">
                 <Clock size={14} />
-                {club.meetingDay === 'Flexible'
-                  ? 'Flexible meeting time'
-                  : `${club.meetingDay}s · ${club.meetingTime}`}
+                {describeClubSchedule(club)}
               </span>
               {club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
               {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
@@ -574,7 +573,7 @@ export function ClubPage() {
           {club.dues && <div className="flex gap-2.5 sm:col-span-2"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club dues</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.dues}</dd></div></div>}
           {hasPrivateAccess && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club leader</dt><dd className="mt-0.5 text-muted">{club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</dd></div></div>}
           {hasPrivateAccess && (club.officers ?? []).length > 0 && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Student officers</dt><dd className="mt-0.5 text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div></div>}
-          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Pencil size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
+          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Instagram size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
         </dl>
       </section>
 
