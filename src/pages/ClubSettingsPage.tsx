@@ -31,6 +31,10 @@ export function ClubSettingsPage() {
   const [inviting, setInviting] = useState(false)
   const [transferTargetId, setTransferTargetId] = useState('')
   const [deletionRequest, setDeletionRequest] = useState<ClubDeletionRequest | null>(null)
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [teacherResults, setTeacherResults] = useState<AppUser[]>([])
+  const [selectedTeacher, setSelectedTeacher] = useState<AppUser | null>(null)
+  const [sponsorSaving, setSponsorSaving] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -95,6 +99,31 @@ export function ClubSettingsPage() {
     return () => { active = false }
   }, [memberSearch, memberIds, club?.officerIds, club?.leaderId, canManage, notify])
 
+  useEffect(() => {
+    const prefix = teacherSearch.trim()
+    if (prefix.length < 3 || !isLeader || !club || club.sponsorStatus !== 'accepted') { setTeacherResults([]); return }
+    let active = true
+    void api.users.searchDirectory(prefix, 'teacher', 50).then((results) => {
+      if (active) setTeacherResults(results.filter((person) => person.id !== club.sponsorId))
+    }).catch((caught) => {
+      if (active) { setTeacherResults([]); notify(friendlyError(caught), 'error') }
+    })
+    return () => { active = false }
+  }, [teacherSearch, isLeader, club?.id, club?.sponsorId, club?.sponsorStatus, notify])
+
+  async function requestSponsorChange() {
+    if (!club || !user || !selectedTeacher || !isLeader) return
+    setSponsorSaving(true)
+    try {
+      await api.sponsorRequests.requestChange(club, selectedTeacher, user)
+      setTeacherSearch('')
+      setTeacherResults([])
+      setSelectedTeacher(null)
+      notify('Sponsor change request sent to the current sponsor for approval.')
+    } catch (caught) { notify(friendlyError(caught), 'error') }
+    finally { setSponsorSaving(false) }
+  }
+
   async function savePrivacy(patch: { requiresApproval?: boolean; membersVisible?: boolean }) {
     if (!club || privacySaving) return
     setPrivacySaving(true)
@@ -142,7 +171,7 @@ export function ClubSettingsPage() {
     try {
       const officers = (club.officers ?? []).filter((item) => item.uid !== officer.uid)
       const officerIds = (club.officerIds ?? []).filter((id) => id !== officer.uid)
-      await api.clubs.update(club.id, { officers, officerIds })
+      await api.clubs.removeOfficer(club.id, officer.uid)
       setClub({ ...club, officers, officerIds })
       await refresh()
       notify(`${officer.displayName} removed from officers.`)
@@ -248,6 +277,18 @@ export function ClubSettingsPage() {
           </label>
           {privacySaving && <p className="text-[11.5px] text-muted">Saving…</p>}
         </section>
+
+        {isLeader && (
+          <section className="card space-y-3 p-4 sm:p-5">
+            <div><h2 className="text-[15px] font-bold">Change teacher sponsor</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">The current sponsor must approve first. The new teacher will then receive a separate request to accept.</p></div>
+            <p className="text-[12px] text-muted">Current sponsor: <span className="font-semibold text-ink">{club.sponsorName || 'Not assigned'}</span></p>
+            {club.sponsorStatus !== 'accepted' ? <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">A sponsor must be accepted before you can request a change.</p> : <>
+              <div><label className="label" htmlFor="sponsor-search">Find a teacher</label><input id="sponsor-search" className="field" value={teacherSearch} placeholder="Type at least 3 letters…" onChange={(event) => { setTeacherSearch(event.target.value); setSelectedTeacher(null) }}/></div>
+              {teacherResults.map((person) => <button key={person.id} type="button" onClick={() => { setSelectedTeacher(person); setTeacherSearch(person.displayName); setTeacherResults([]) }} className={`flex w-full items-center rounded-xl border px-3 py-2 text-left text-[12.5px] ${selectedTeacher?.id === person.id ? 'border-brand-300 bg-brand-50' : 'border-line hover:bg-canvas'}`}>{person.displayName}</button>)}
+              <Button className="w-full" variant="secondary" disabled={!selectedTeacher || sponsorSaving} loading={sponsorSaving} onClick={() => void requestSponsorChange()}><ShieldCheck size={15}/> Request sponsor change</Button>
+            </>}
+          </section>
+        )}
 
         <section className="card p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{(club.officers ?? []).length}</Badge></div>
