@@ -602,6 +602,12 @@ export function createDemoStore(): DemoStore {
   const clubs: Club[] = seedClubs.map((club) => ({
     ...club,
     status: club.status ?? 'approved',
+    meetingFrequency: club.meetingDay === 'Flexible' ? 'custom' : 'weekly',
+    meetingOrdinal: 'first',
+    customMeetingSchedule: '',
+    prerequisites: '',
+    dues: '',
+    instagramHandle: '',
     contactEmail: `${club.name.toLowerCase().replace(/[^a-z]+/g, '.')}@northgate.edu`,
     leaderTitle: 'President',
     officers: [],
