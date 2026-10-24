@@ -117,6 +117,7 @@ async function seed() {
 
     const clubs = [
       { id: 'club-visible', requiresApproval: false, membersVisible: true, sponsorId: '', sponsorStatus: 'none' },
+      { id: 'club-legacy-settings', requiresApproval: false, membersVisible: true, sponsorId: '', sponsorStatus: 'none' },
       { id: 'club-hidden', requiresApproval: false, membersVisible: false, sponsorId: '', sponsorStatus: 'none' },
       { id: 'club-approval', requiresApproval: true, membersVisible: true, sponsorId: '', sponsorStatus: 'none' },
       { id: 'club-pending-sponsor', requiresApproval: false, membersVisible: true, sponsorId: 'teacher-pending', sponsorStatus: 'pending' },
@@ -127,12 +128,20 @@ async function seed() {
 
     for (const club of clubs) {
       const privateData = clubData(club)
+      const publicData = directoryData(club)
       if (club.id === 'club-visible') {
         privateData.officerIds = ['member-visible']
         privateData.officers = [{ uid: 'member-visible', displayName: 'Visible Club Member', email: 'member.visible@example.test', title: 'Officer' }]
       }
+      // Simulate clubs created before recurring-schedule/About fields were introduced.
+      if (club.id === 'club-legacy-settings') {
+        for (const key of ['meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'prerequisites', 'dues', 'instagramHandle']) {
+          delete privateData[key]
+          delete publicData[key]
+        }
+      }
       await setDoc(doc(db, 'clubs', club.id), privateData)
-      await setDoc(doc(db, 'clubDirectory', club.id), directoryData(club))
+      await setDoc(doc(db, 'clubDirectory', club.id), publicData)
       await setDoc(doc(db, 'memberships', `leader_${club.id}`), { uid: 'leader', clubId: club.id, joinedAt: 1 })
     }
 
@@ -306,6 +315,24 @@ try {
     await assertSucceeds(batch.commit())
     await assertSucceeds(getDoc(doc(outsider, 'clubDirectory', 'club-visible')))
     await assertFails(getDoc(doc(outsider, 'clubs', 'club-visible')))
+  })
+
+  await check('legacy privacy settings can be saved without broadening private document edits', async () => {
+    const directoryRef = doc(leader, 'clubDirectory', 'club-legacy-settings')
+    await assertSucceeds(updateDoc(directoryRef, {
+      meetingFrequency: 'weekly',
+      meetingOrdinal: 'first',
+      customMeetingSchedule: '',
+      prerequisites: '',
+      dues: '',
+      instagramHandle: '',
+      requiresApproval: true,
+      membersVisible: false,
+    }))
+    const privateSnapshot = await getDoc(doc(leader, 'clubs', 'club-legacy-settings'))
+    await assertSucceeds(Promise.resolve(privateSnapshot))
+    if ('meetingFrequency' in privateSnapshot.data()) throw new Error('A privacy-only save should not mutate legacy private club fields.')
+    await assertSucceeds(getDoc(directoryRef))
   })
 
   await check('advisor must approve deletion and only the club leader can finalize it', async () => {
