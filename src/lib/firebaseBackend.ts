@@ -15,6 +15,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import type { Firestore } from 'firebase/firestore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
