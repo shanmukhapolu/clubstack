@@ -692,13 +692,13 @@ export const firebaseApi: ClubStackApi = {
       const clubId = stringOr(data.clubId, '')
       if (!uid || !clubId) throw new Error('This request is missing a student or club.')
       await runTransaction(db, async (transaction) => {
-        const [latest, membership] = await Promise.all([
-          transaction.get(requestRef),
-          transaction.get(doc(db, 'memberships', `${uid}_${clubId}`)),
-        ])
+        // Do not read the target student's membership document here. Firestore rules
+        // intentionally restrict reads of other students' memberships, and a read of
+        // a missing membership document can fail before the approval can be committed.
+        const latest = await transaction.get(requestRef)
         if (!latest.exists() || latest.data().status !== 'pending') throw new Error('This request has already been answered.')
         transaction.update(requestRef, { status: 'approved' })
-        if (!membership.exists()) transaction.set(doc(db, 'memberships', `${uid}_${clubId}`), { uid, clubId, joinedAt: Date.now() })
+        transaction.set(doc(db, 'memberships', `${uid}_${clubId}`), { uid, clubId, joinedAt: Date.now() })
       })
     },
 
