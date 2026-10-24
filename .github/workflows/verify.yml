@@ -34,4 +34,4 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Test Firestore security rules
-        run: npx --yes firebase-tools emulators:exec --project demo-clubstack --only firestore "node scripts/firestore.rules.test.mjs"
+        run: npx --yes firebase-tools emulators:exec --project demo-clubstack --only firestore "node scripts/firestore-security-check.mjs"
