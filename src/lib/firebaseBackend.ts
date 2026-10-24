@@ -1150,6 +1150,18 @@ export const firebaseApi: ClubStackApi = {
         nameLower: stringOr(profile.data().displayName, 'Student').toLocaleLowerCase(),
       }, { merge: true })
     },
+
+    async updateProfile(uid, input) {
+      const functions = getFunctions(requireAuth().app)
+      const manageUser = httpsCallable(functions, 'adminManageUser')
+      await manageUser({ action: 'update', uid, ...input })
+    },
+
+    async deleteAccount(uid) {
+      const functions = getFunctions(requireAuth().app)
+      const manageUser = httpsCallable(functions, 'adminManageUser')
+      await manageUser({ action: 'delete', uid })
+    },
   },
 }
 
