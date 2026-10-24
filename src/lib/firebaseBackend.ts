@@ -989,7 +989,10 @@ export const firebaseApi: ClubStackApi = {
       if (!club.sponsorId || club.sponsorStatus !== 'accepted') throw new Error('This club does not have an accepted sponsor to approve the change.')
       if (teacher.id === club.sponsorId) throw new Error('Choose a different teacher.')
       const db = requireDb()
-      await addDoc(collection(db, 'clubSponsorRequests'), {
+      const requestRef = doc(db, 'clubSponsorRequests', `${club.id}_sponsor_change`)
+      const existing = await getDoc(requestRef)
+      if (existing.exists() && existing.data().status === 'pending') throw new Error('A sponsor change request is already pending.')
+      await setDoc(requestRef, {
         clubId: club.id, clubName: club.name, teacherId: teacher.id, teacherName: teacher.displayName,
         requestedById: requester.id, requestedByName: requester.displayName,
         previousSponsorId: club.sponsorId, previousSponsorName: club.sponsorName,
