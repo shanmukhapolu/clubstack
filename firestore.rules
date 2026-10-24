@@ -201,7 +201,6 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/officerInvitations/$(request.resource.data.clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid)
           || (isManager(request.resource.data.clubId)
             && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.status == 'approved'
-            && get(/databases/$(database)/documents/clubDirectory/$(request.resource.data.clubId)).data.requiresApproval == true
             && getAfter(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.status == 'approved'
             && get(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.status == 'pending'
             && get(/databases/$(database)/documents/clubJoinRequests/$(request.resource.data.clubId + '_' + request.resource.data.uid)).data.uid == request.resource.data.uid)
