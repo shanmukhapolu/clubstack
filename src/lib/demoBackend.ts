@@ -1,6 +1,6 @@
 import type { ClubStackApi } from './backend'
 import { createDemoStore, DEMO_PASSWORD, DEMO_USERS, type DemoStore } from './demoSeed'
-import type { AppUser, Club, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus, RsvpSummary } from './types'
+import type { AppUser, Club, ClubDeletionRequest, ClubDeletionStatus, ClubSponsorRequest, ModerationReport, ReportStatus, Role, SponsorRequestStatus, RsvpSummary } from './types'
 
 const STORAGE_KEY = 'clubstack.demo.v1'
 const RESEED_AFTER_MS = 1000 * 60 * 60 * 24 * 14
@@ -29,7 +29,17 @@ function load(): DemoStore {
         if (!Array.isArray(parsed.joinRequests)) parsed.joinRequests = []
         if (!Array.isArray(parsed.announcementReactions)) parsed.announcementReactions = []
         if (!Array.isArray(parsed.eventRsvps)) parsed.eventRsvps = []
-        for (const club of parsed.clubs) { if (typeof club.requiresApproval !== 'boolean') club.requiresApproval = false; if (typeof club.membersVisible !== 'boolean') club.membersVisible = true }
+        if (!Array.isArray(parsed.deletionRequests)) parsed.deletionRequests = []
+        for (const club of parsed.clubs) {
+          if (typeof club.requiresApproval !== 'boolean') club.requiresApproval = false
+          if (typeof club.membersVisible !== 'boolean') club.membersVisible = true
+          if (!club.meetingFrequency) club.meetingFrequency = club.meetingDay === 'Flexible' ? 'custom' : 'weekly'
+          if (!club.meetingOrdinal) club.meetingOrdinal = 'first'
+          if (typeof club.customMeetingSchedule !== 'string') club.customMeetingSchedule = ''
+          if (typeof club.prerequisites !== 'string') club.prerequisites = ''
+          if (typeof club.dues !== 'string') club.dues = ''
+          if (typeof club.instagramHandle !== 'string') club.instagramHandle = ''
+        }
         return parsed
       }
     }
@@ -180,6 +190,12 @@ export const demoApi: ClubStackApi = {
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
+        meetingFrequency: input.meetingFrequency ?? (input.meetingDay === 'Flexible' ? 'custom' : 'weekly'),
+        meetingOrdinal: input.meetingOrdinal ?? 'first',
+        customMeetingSchedule: input.customMeetingSchedule ?? '',
+        prerequisites: input.prerequisites ?? '',
+        dues: input.dues ?? '',
+        instagramHandle: (input.instagramHandle ?? '').replace(/^@+/, '').trim(),
         memberCount: 1,
         requiresApproval: false,
         membersVisible: true,
@@ -215,15 +231,90 @@ export const demoApi: ClubStackApi = {
       mutate((store) => updateClub(store, id, { status }))
     },
 
+    async transferOwnership(id, newLeaderId, currentLeader) {
+      await wait()
+      const store = read()
+      const club = store.clubs.find((item) => item.id === id)
+      if (!club || club.leaderId !== currentLeader.id) throw new Error('Only the current club leader can transfer ownership.')
+      const target = club.officers.find((officer) => officer.uid === newLeaderId)
+      if (!target || store.users.find((person) => person.id === newLeaderId)?.role !== 'student') {
+        throw new Error('Choose an existing student officer to become the new leader.')
+      }
+      mutate((draft) => updateClub(draft, id, {
+        leaderId: target.uid,
+        leaderName: target.displayName,
+        leaderTitle: 'President',
+        officers: [
+          ...club.officers.filter((officer) => officer.uid !== target.uid && officer.uid !== currentLeader.id),
+          { uid: currentLeader.id, displayName: currentLeader.displayName, email: currentLeader.email, title: 'Former President' },
+        ],
+        officerIds: [...new Set([...club.officerIds.filter((uid) => uid !== target.uid), currentLeader.id])],
+      }))
+    },
+
+    async getDeletionRequest(id) {
+      await wait()
+      return read().deletionRequests.find((item) => item.clubId === id) ?? null
+    },
+
+    async requestDeletion(id, currentLeader) {
+      await wait()
+      const store = read()
+      const club = store.clubs.find((item) => item.id === id)
+      if (!club || club.leaderId !== currentLeader.id) throw new Error('Only the club leader can request deletion.')
+      if (!club.sponsorId || club.sponsorStatus !== 'accepted') throw new Error('Confirm a teacher advisor before requesting deletion approval.')
+      const existing = store.deletionRequests.find((item) => item.clubId === id)
+      if (existing?.status === 'pending') throw new Error('A deletion request is already awaiting the teacher advisor.')
+      if (existing?.status === 'approved') throw new Error('The advisor approved deletion. Use the permanent delete action instead.')
+      const request: ClubDeletionRequest = {
+        id,
+        clubId: id,
+        clubName: club.name,
+        requestedById: currentLeader.id,
+        requestedByName: currentLeader.displayName,
+        status: 'pending',
+        createdAt: Date.now(),
+      }
+      mutate((draft) => {
+        draft.deletionRequests = draft.deletionRequests.filter((item) => item.clubId !== id)
+        draft.deletionRequests.push(request)
+      })
+    },
+
+    async respondToDeletionRequest(id, status: Extract<ClubDeletionStatus, 'approved' | 'declined'>, advisor) {
+      await wait()
+      if (advisor.role !== 'teacher') throw new Error('Only a teacher advisor can approve club deletion.')
+      mutate((store) => {
+        const club = store.clubs.find((item) => item.id === id)
+        const request = store.deletionRequests.find((item) => item.clubId === id)
+        if (!club || club.sponsorId !== advisor.id || club.sponsorStatus !== 'accepted') throw new Error('Only the accepted teacher advisor can review this request.')
+        if (!request || request.status !== 'pending') throw new Error('This deletion request has already been reviewed or does not exist.')
+        request.status = status
+        request.reviewedAt = Date.now()
+        request.reviewedById = advisor.id
+      })
+    },
+
     async delete(id) {
       await wait()
-      mutate((store) => {
-        store.clubs = store.clubs.filter((club) => club.id !== id)
-        store.memberships = store.memberships.filter((item) => item.clubId !== id)
-        store.announcements = store.announcements.filter((item) => item.clubId !== id)
-        store.events = store.events.filter((item) => item.clubId !== id)
-        store.sponsorRequests = store.sponsorRequests.filter((item) => item.clubId !== id)
-        store.officerInvitations = store.officerInvitations.filter((item) => item.clubId !== id)
+      const store = read()
+      const user = requireUser(store)
+      const club = store.clubs.find((item) => item.id === id)
+      if (!club) return
+      if (user.role !== 'admin' && store.deletionRequests.find((item) => item.clubId === id)?.status !== 'approved') {
+        throw new Error('The teacher advisor must approve deletion before this club can be deleted.')
+      }
+      mutate((draft) => {
+        draft.clubs = draft.clubs.filter((item) => item.id !== id)
+        draft.memberships = draft.memberships.filter((item) => item.clubId !== id)
+        draft.announcements = draft.announcements.filter((item) => item.clubId !== id)
+        draft.events = draft.events.filter((item) => item.clubId !== id)
+        draft.sponsorRequests = draft.sponsorRequests.filter((item) => item.clubId !== id)
+        draft.officerInvitations = draft.officerInvitations.filter((item) => item.clubId !== id)
+        draft.joinRequests = draft.joinRequests.filter((item) => item.clubId !== id)
+        draft.announcementReactions = draft.announcementReactions.filter((item) => item.clubId !== id)
+        draft.eventRsvps = draft.eventRsvps.filter((item) => item.clubId !== id)
+        draft.deletionRequests = draft.deletionRequests.filter((item) => item.clubId !== id)
       })
     },
   },

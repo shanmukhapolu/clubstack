@@ -2,6 +2,7 @@ import type {
   Announcement,
   AppUser,
   Club,
+  ClubDeletionRequest,
   ClubEvent,
   ClubCategory,
   Membership,
@@ -25,6 +26,7 @@ export interface DemoStore {
   joinRequests: ClubJoinRequest[]
   announcementReactions: AnnouncementReaction[]
   eventRsvps: EventRsvp[]
+  deletionRequests: ClubDeletionRequest[]
   currentUid: string | null
 }
 
@@ -600,6 +602,12 @@ export function createDemoStore(): DemoStore {
   const clubs: Club[] = seedClubs.map((club) => ({
     ...club,
     status: club.status ?? 'approved',
+    meetingFrequency: club.meetingDay === 'Flexible' ? 'custom' : 'weekly',
+    meetingOrdinal: 'first',
+    customMeetingSchedule: '',
+    prerequisites: '',
+    dues: '',
+    instagramHandle: '',
     contactEmail: `${club.name.toLowerCase().replace(/[^a-z]+/g, '.')}@northgate.edu`,
     leaderTitle: 'President',
     officers: [],
@@ -650,6 +658,7 @@ export function createDemoStore(): DemoStore {
     joinRequests: [],
     announcementReactions: [],
     eventRsvps: [],
+    deletionRequests: [],
     currentUid: null,
   }
 }

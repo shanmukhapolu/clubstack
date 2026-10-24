@@ -101,6 +101,20 @@ export interface OfficerInvitation {
   createdAt: number
 }
 
+export type ClubDeletionStatus = 'pending' | 'approved' | 'declined'
+
+export interface ClubDeletionRequest {
+  id: string
+  clubId: string
+  clubName: string
+  requestedById: string
+  requestedByName: string
+  status: ClubDeletionStatus
+  createdAt: number
+  reviewedAt?: number
+  reviewedById?: string
+}
+
 export interface ClubSponsorRequest {
   id: string
   clubId: string
@@ -119,6 +133,9 @@ export interface Club {
   description: string
   category: ClubCategory
   meetingDay: string
+  meetingFrequency?: 'weekly' | 'everyOtherWeek' | 'monthly' | 'custom'
+  meetingOrdinal?: 'first' | 'second' | 'third' | 'fourth' | 'last'
+  customMeetingSchedule?: string
   meetingTime: string
   location: string
   emoji: string
@@ -133,6 +150,9 @@ export interface Club {
   sponsorName: string
   sponsorStatus: SponsorRequestStatus | 'none'
   contactEmail: string
+  prerequisites?: string
+  dues?: string
+  instagramHandle?: string
   memberCount: number
   requiresApproval: boolean
   membersVisible: boolean
@@ -173,11 +193,17 @@ export interface ClubInput {
   description: string
   category: ClubCategory
   meetingDay: string
+  meetingFrequency?: 'weekly' | 'everyOtherWeek' | 'monthly' | 'custom'
+  meetingOrdinal?: 'first' | 'second' | 'third' | 'fourth' | 'last'
+  customMeetingSchedule?: string
   meetingTime: string
   location: string
   emoji: string
   color: string
   contactEmail: string
+  prerequisites?: string
+  dues?: string
+  instagramHandle?: string
   leaderTitle: string
   officers: ClubOfficer[]
   sponsorId: string

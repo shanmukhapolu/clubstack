@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   Check,
   Clock,
+  Save,
   Mail,
   MapPin,
   Megaphone,
@@ -14,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Flag,
+  Link2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
@@ -22,7 +24,8 @@ import { useClubFeed } from '../hooks/useClubFeed'
 import { api } from '../lib/backend'
 import { toDateTimeInput, defaultEventStart, fromDateTimeInput, upcoming } from '../lib/dates'
 import { friendlyError } from '../lib/helpers'
-import type { Announcement, Club, ClubEvent } from '../lib/types'
+import { CATEGORIES, MEETING_DAYS } from '../lib/types'
+import type { Announcement, Club, ClubCategory, ClubEvent } from '../lib/types'
 import { AnnouncementCard } from '../components/AnnouncementCard'
 import { EventRow } from '../components/EventRow'
 import {
@@ -35,6 +38,34 @@ import {
   Spinner,
   buttonStyles,
 } from '../components/ui'
+
+const ordinalLabels: Record<NonNullable<Club['meetingOrdinal']>, string> = {
+  first: 'First',
+  second: 'Second',
+  third: 'Third',
+  fourth: 'Fourth',
+  last: 'Last',
+}
+
+function describeClubSchedule(club: Club): string {
+  const frequency = club.meetingFrequency ?? (club.meetingDay === 'Flexible' ? 'custom' : 'weekly')
+  const ordinal = club.meetingOrdinal ?? 'first'
+  let schedule: string
+  if (frequency === 'custom') schedule = club.customMeetingSchedule || 'Flexible schedule'
+  else if (frequency === 'everyOtherWeek') schedule = `Every other ${club.meetingDay}`
+  else if (frequency === 'monthly') schedule = `${ordinalLabels[ordinal]} ${club.meetingDay} of every month`
+  else schedule = `Every ${club.meetingDay}`
+  return club.meetingTime ? `${schedule} · ${club.meetingTime}` : schedule
+}
+
+function cleanInstagramHandle(value: string): string {
+  return value.trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/\/?[?#].*$/, '')
+    .replace(/^@+/, '')
+    .replace(/\/$/, '')
+    .trim()
+}
 
 export function ClubPage() {
   const { clubId = '' } = useParams()
@@ -69,6 +100,23 @@ export function ClubPage() {
   const [eventEnd, setEventEnd] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const [aboutSaving, setAboutSaving] = useState(false)
+  const [aboutForm, setAboutForm] = useState({
+    name: '',
+    description: '',
+    category: 'Academic' as ClubCategory,
+    meetingFrequency: 'weekly' as Club['meetingFrequency'],
+    meetingOrdinal: 'first' as Club['meetingOrdinal'],
+    meetingDay: 'Monday',
+    customMeetingSchedule: '',
+    meetingTime: '',
+    location: '',
+    contactEmail: '',
+    prerequisites: '',
+    dues: '',
+    instagramHandle: '',
+  })
 
   useEffect(() => {
     if (!clubId) return
@@ -164,6 +212,80 @@ export function ClubPage() {
       notify(friendlyError(caught), 'error')
     } finally {
       setReporting(false)
+    }
+  }
+
+  function openAboutEditor() {
+    if (!club) return
+    setAboutForm({
+      name: club.name,
+      description: club.description,
+      category: club.category,
+      meetingFrequency: club.meetingFrequency ?? (club.meetingDay === 'Flexible' ? 'custom' : 'weekly'),
+      meetingOrdinal: club.meetingOrdinal ?? 'first',
+      meetingDay: club.meetingDay === 'Flexible' ? 'Monday' : club.meetingDay,
+      customMeetingSchedule: club.customMeetingSchedule ?? '',
+      meetingTime: club.meetingTime,
+      location: club.location,
+      contactEmail: club.contactEmail,
+      prerequisites: club.prerequisites ?? '',
+      dues: club.dues ?? '',
+      instagramHandle: club.instagramHandle ?? '',
+    })
+    setFormError(null)
+    setAboutOpen(true)
+  }
+
+  async function saveAbout(event: FormEvent) {
+    event.preventDefault()
+    if (!club) return
+    const name = aboutForm.name.trim()
+    const description = aboutForm.description.trim()
+    const contactEmail = aboutForm.contactEmail.trim()
+    const instagramHandle = cleanInstagramHandle(aboutForm.instagramHandle)
+    if (name.length < 3 || description.length < 20) {
+      setFormError('Club name must have at least 3 characters and the description at least 20.')
+      return
+    }
+    if (contactEmail && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail)) {
+      setFormError('Enter a valid club email address.')
+      return
+    }
+    if (instagramHandle && !/^[A-Za-z0-9._]{1,30}$/.test(instagramHandle)) {
+      setFormError('Enter an Instagram username, such as @roboticsclub.')
+      return
+    }
+    if (aboutForm.meetingFrequency === 'custom' && !aboutForm.customMeetingSchedule.trim()) {
+      setFormError('Describe the usual meeting schedule when Custom is selected.')
+      return
+    }
+    setAboutSaving(true)
+    setFormError(null)
+    try {
+      const patch = {
+        name,
+        description,
+        category: aboutForm.category,
+        meetingDay: aboutForm.meetingFrequency === 'custom' ? 'Flexible' : aboutForm.meetingDay,
+        meetingFrequency: aboutForm.meetingFrequency,
+        meetingOrdinal: aboutForm.meetingOrdinal,
+        customMeetingSchedule: aboutForm.customMeetingSchedule.trim(),
+        meetingTime: aboutForm.meetingTime.trim(),
+        location: aboutForm.location.trim(),
+        contactEmail,
+        prerequisites: aboutForm.prerequisites.trim(),
+        dues: aboutForm.dues.trim(),
+        instagramHandle,
+      }
+      await api.clubs.update(club.id, patch)
+      setClub((current) => current ? { ...current, ...patch } : current)
+      await refresh()
+      setAboutOpen(false)
+      notify('Club information saved.')
+    } catch (caught) {
+      setFormError(friendlyError(caught))
+    } finally {
+      setAboutSaving(false)
     }
   }
 
@@ -398,9 +520,7 @@ export function ClubPage() {
               {hasPrivateAccess && (club.membersVisible || canManage) && club.memberCount > 0 && <span className="inline-flex items-center gap-1.5 font-medium"><Users size={14} /> {club.memberCount} member{club.memberCount === 1 ? '' : 's'}</span>}
               <span className="inline-flex items-center gap-1.5">
                 <Clock size={14} />
-                {club.meetingDay === 'Flexible'
-                  ? 'Flexible meeting time'
-                  : `${club.meetingDay}s · ${club.meetingTime}`}
+                {describeClubSchedule(club)}
               </span>
               {club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
               {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
@@ -439,6 +559,24 @@ export function ClubPage() {
           <Flag size={14} /> Report a concern
         </Button>
       </div>
+
+      <section className="card mt-6 p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-[15px] font-bold">About</h2>
+          {canManage && <Button variant="secondary" size="sm" onClick={openAboutEditor}><Pencil size={14}/> Edit information</Button>}
+        </div>
+        <dl className="grid gap-x-6 gap-y-4 text-[12.5px] sm:grid-cols-2">
+          <div className="flex gap-2.5"><Clock size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual meetings</dt><dd className="mt-0.5 text-muted">{describeClubSchedule(club)}</dd></div></div>
+          <div className="flex gap-2.5"><MapPin size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div></div>
+          {club.sponsorName && <div className="flex gap-2.5"><ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div></div>}
+          {club.contactEmail && <div className="flex gap-2.5"><Mail size={15} className="mt-0.5 shrink-0 text-muted"/><div className="min-w-0"><dt className="font-semibold">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-brand-600 hover:underline">{club.contactEmail}</a></dd></div></div>}
+          {club.prerequisites && <div className="flex gap-2.5 sm:col-span-2"><Check size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Prerequisites</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.prerequisites}</dd></div></div>}
+          {club.dues && <div className="flex gap-2.5 sm:col-span-2"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club dues</dt><dd className="mt-0.5 whitespace-pre-line text-muted">{club.dues}</dd></div></div>}
+          {hasPrivateAccess && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Club leader</dt><dd className="mt-0.5 text-muted">{club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</dd></div></div>}
+          {hasPrivateAccess && (club.officers ?? []).length > 0 && <div className="flex gap-2.5"><Users size={15} className="mt-0.5 shrink-0 text-muted"/><div><dt className="font-semibold">Student officers</dt><dd className="mt-0.5 text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div></div>}
+          {club.instagramHandle && <div className="flex gap-2.5 sm:col-span-2"><Link2 size={15} className="mt-0.5 shrink-0 text-muted" /><div><dt className="font-semibold">Instagram</dt><dd className="mt-0.5"><a href={`https://www.instagram.com/${cleanInstagramHandle(club.instagramHandle)}/`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">@{cleanInstagramHandle(club.instagramHandle)}</a></dd></div></div>}
+        </dl>
+      </section>
 
       {hasPrivateAccess ? (
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.55fr_1fr] lg:gap-6">
@@ -520,61 +658,7 @@ export function ClubPage() {
             )}
           </section>
 
-          <section className="card p-4">
-            <h2 className="text-[15px] font-extrabold">About</h2>
-            <dl className="mt-3 space-y-3 text-[12.5px]">
-              <div className="flex gap-2.5">
-                <Clock size={15} className="mt-0.5 shrink-0 text-muted" />
-                <div>
-                  <dt className="font-semibold">Meets</dt>
-                  <dd className="text-muted">
-                    {club.meetingDay === 'Flexible'
-                      ? 'Flexible schedule'
-                      : `${club.meetingDay}s, ${club.meetingTime}`}
-                  </dd>
-                </div>
-              </div>
-              <div className="flex gap-2.5">
-                <MapPin size={15} className="mt-0.5 shrink-0 text-muted" />
-                <div>
-                  <dt className="font-semibold">Location</dt>
-                  <dd className="text-muted">{club.location || 'Ask the club leader'}</dd>
-                </div>
-              </div>
-              <div className="flex gap-2.5">
-                <Users size={15} className="mt-0.5 shrink-0 text-muted" />
-                <div>
-                  <dt className="font-semibold">Club leader</dt>
-                  <dd className="text-muted">{club.leaderName}</dd>
-                </div>
-              </div>
-              {club.sponsorName && (
-                <div className="flex gap-2.5">
-                  <ShieldCheck size={15} className="mt-0.5 shrink-0 text-muted" />
-                  <div><dt className="font-semibold">Teacher sponsor</dt><dd className="text-muted">{club.sponsorName}</dd></div>
-                </div>
-              )}
-              {(club.officers ?? []).length > 0 && (
-                <div className="flex gap-2.5">
-                  <Users size={15} className="mt-0.5 shrink-0 text-muted" />
-                  <div><dt className="font-semibold">Student officers</dt><dd className="text-muted">{club.officers.map((officer) => `${officer.displayName} · ${officer.title}`).join(', ')}</dd></div>
-                </div>
-              )}
-              {club.contactEmail && (
-                <div className="flex gap-2.5">
-                  <Mail size={15} className="mt-0.5 shrink-0 text-muted" />
-                  <div className="min-w-0">
-                    <dt className="font-semibold">Contact</dt>
-                    <dd className="truncate">
-                      <a href={`mailto:${club.contactEmail}`} className="text-brand-600 hover:underline">
-                        {club.contactEmail}
-                      </a>
-                    </dd>
-                  </div>
-                </div>
-              )}
-            </dl>
-          </section>
+
 
           {isAdmin && (
             <section className="card p-4">
@@ -613,7 +697,7 @@ export function ClubPage() {
               <dl className="mt-5 space-y-3 border-t border-line pt-4 text-[12.5px]">
                 {club.sponsorName && <div><dt className="font-semibold text-ink">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div>}
                 {club.contactEmail && <div><dt className="font-semibold text-ink">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-ink-soft underline decoration-line underline-offset-2 hover:text-ink">{club.contactEmail}</a></dd></div>}
-                <div><dt className="font-semibold text-ink">Usual schedule</dt><dd className="mt-0.5 text-muted">{club.meetingDay === 'Flexible' ? 'Flexible schedule' : `${club.meetingDay}s${club.meetingTime ? `, ${club.meetingTime}` : ''}`}</dd></div>
+                <div><dt className="font-semibold text-ink">Usual schedule</dt><dd className="mt-0.5 text-muted">{describeClubSchedule(club)}</dd></div>
                 <div><dt className="font-semibold text-ink">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div>
               </dl>
             </div>
@@ -629,6 +713,36 @@ export function ClubPage() {
           </div>
         </section>
       )}
+
+      <Modal
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        title="Edit club information"
+        description="These details appear on the club overview and in the public directory."
+      >
+        <form onSubmit={(event) => void saveAbout(event)} className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
+          <div><label className="label" htmlFor="about-name">Club name</label><input id="about-name" className="field" value={aboutForm.name} maxLength={80} onChange={(event) => setAboutForm({ ...aboutForm, name: event.target.value })} required/></div>
+          <div><label className="label" htmlFor="about-description">Description</label><textarea id="about-description" className="field min-h-24 resize-y" value={aboutForm.description} maxLength={600} onChange={(event) => setAboutForm({ ...aboutForm, description: event.target.value })} required/><p className="mt-1 text-right text-[11px] text-muted">{aboutForm.description.length}/600</p></div>
+          <div><label className="label" htmlFor="about-category">Category</label><select id="about-category" className="field" value={aboutForm.category} onChange={(event) => setAboutForm({ ...aboutForm, category: event.target.value as ClubCategory })}>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></div>
+          <div className="rounded-xl border border-line p-3.5">
+            <h3 className="mb-3 text-[13px] font-semibold">Usual meeting schedule</h3>
+            <div><label className="label" htmlFor="about-frequency">How often do you meet?</label><select id="about-frequency" className="field" value={aboutForm.meetingFrequency} onChange={(event) => setAboutForm({ ...aboutForm, meetingFrequency: event.target.value as Club['meetingFrequency'] })}><option value="weekly">Every week</option><option value="everyOtherWeek">Every other week</option><option value="monthly">Once a month</option><option value="custom">Custom schedule</option></select></div>
+            {aboutForm.meetingFrequency !== 'custom' && <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {aboutForm.meetingFrequency === 'monthly' && <div><label className="label" htmlFor="about-ordinal">Which week?</label><select id="about-ordinal" className="field" value={aboutForm.meetingOrdinal} onChange={(event) => setAboutForm({ ...aboutForm, meetingOrdinal: event.target.value as Club['meetingOrdinal'] })}>{(['first','second','third','fourth','last'] as const).map((ordinal) => <option key={ordinal} value={ordinal}>{ordinal[0].toUpperCase()+ordinal.slice(1)}</option>)}</select></div>}
+              <div><label className="label" htmlFor="about-weekday">Weekday</label><select id="about-weekday" className="field" value={aboutForm.meetingDay} onChange={(event) => setAboutForm({ ...aboutForm, meetingDay: event.target.value })}>{MEETING_DAYS.filter((day) => day !== 'Flexible').map((day) => <option key={day}>{day}</option>)}</select></div>
+            </div>}
+            {aboutForm.meetingFrequency === 'custom' && <div className="mt-3"><label className="label" htmlFor="about-custom-schedule">Describe your usual schedule</label><input id="about-custom-schedule" className="field" value={aboutForm.customMeetingSchedule} maxLength={120} placeholder="e.g. Varies around competition dates" onChange={(event) => setAboutForm({ ...aboutForm, customMeetingSchedule: event.target.value })} required/></div>}
+            <div className="mt-3"><label className="label" htmlFor="about-time">Usual meeting time</label><input id="about-time" className="field" value={aboutForm.meetingTime} maxLength={60} placeholder="e.g. 3:30–4:30 PM" onChange={(event) => setAboutForm({ ...aboutForm, meetingTime: event.target.value })}/></div>
+          </div>
+          <div><label className="label" htmlFor="about-location">Usual room or location</label><input id="about-location" className="field" value={aboutForm.location} maxLength={100} onChange={(event) => setAboutForm({ ...aboutForm, location: event.target.value })}/></div>
+          <div><label className="label" htmlFor="about-email">Club email</label><input id="about-email" type="email" className="field" value={aboutForm.contactEmail} maxLength={180} onChange={(event) => setAboutForm({ ...aboutForm, contactEmail: event.target.value })}/></div>
+          <div><label className="label" htmlFor="about-prerequisites">Club prerequisites <span className="font-normal text-muted">(optional)</span></label><textarea id="about-prerequisites" className="field min-h-20 resize-y" value={aboutForm.prerequisites} maxLength={1000} placeholder="e.g. No experience required; students must attend the safety orientation." onChange={(event) => setAboutForm({ ...aboutForm, prerequisites: event.target.value })}/></div>
+          <div><label className="label" htmlFor="about-dues">Club dues <span className="font-normal text-muted">(optional)</span></label><textarea id="about-dues" className="field min-h-20 resize-y" value={aboutForm.dues} maxLength={1000} placeholder="e.g. $15 annual dues; fee waivers available." onChange={(event) => setAboutForm({ ...aboutForm, dues: event.target.value })}/></div>
+          <div><label className="label" htmlFor="about-instagram">Instagram handle <span className="font-normal text-muted">(optional)</span></label><input id="about-instagram" className="field" value={aboutForm.instagramHandle} maxLength={100} placeholder="@yourclub" onChange={(event) => setAboutForm({ ...aboutForm, instagramHandle: event.target.value })}/></div>
+          {formError && <p role="alert" className="text-[12.5px] font-medium text-[#9c2f18]">{formError}</p>}
+          <div className="flex justify-end gap-2 border-t border-line pt-3"><Button type="button" variant="secondary" onClick={() => setAboutOpen(false)}>Cancel</Button><Button type="submit" loading={aboutSaving}><Save size={14}/> Save information</Button></div>
+        </form>
+      </Modal>
 
       <Modal
         open={announcementOpen}
