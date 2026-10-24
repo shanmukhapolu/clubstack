@@ -370,7 +370,7 @@ service cloud.firestore {
       ));
       allow update: if isAdmin()
         || (isLeader(resource.data.clubId)
-          && resource.data.stage == 'currentSponsorApproval'
+          && resource.data.stage in ['currentSponsorApproval','newSponsorApproval']
           && resource.data.status == 'declined'
           && request.resource.data.stage == 'currentSponsorApproval'
           && request.resource.data.status == 'pending'
