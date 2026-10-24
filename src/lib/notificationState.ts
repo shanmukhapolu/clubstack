@@ -74,11 +74,12 @@ export function getUnreadNotificationCount(uid: string): number {
 }
 
 export function syncKnownNotificationIds(uid: string, ids: string[]): void {
-  const known = new Set(ids)
+  // Keep notification history across temporary empty loads (for example while the
+  // clubs context is refreshing). Replacing this set or pruning read IDs here caused
+  // read notifications to become unread again after a reload.
+  const known = getKnownNotificationIds(uid)
+  ids.forEach((id) => known.add(id))
   writeSet(KNOWN_PREFIX + uid, known)
-  // Discard read markers for notifications no longer active, preventing unbounded growth.
-  const read = getReadNotificationIds(uid)
-  writeSet(READ_PREFIX + uid, new Set([...read].filter((id) => known.has(id))))
   notifyChange()
 }
 
