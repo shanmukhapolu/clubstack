@@ -255,17 +255,17 @@ export function ClubSettingsPage() {
   return (
     <div className="fade-in">
       <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px]"><Link to={`/clubs/${club.id}`} className="font-semibold text-muted hover:text-ink">{club.name}</Link><span className="text-muted">/</span><span className="font-semibold text-ink">Settings</span></div>
-      <nav aria-label="Club pages" className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
-        <Link to={`/clubs/${club.id}`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Overview</Link>
-        <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
-        <Link to={`/clubs/${club.id}/members`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Members</Link>
-        <span aria-current="page" className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
+      <nav aria-label="Club pages" className="mb-6 flex flex-wrap gap-2">
+        <Link to={`/clubs/${club.id}`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Overview</Link>
+        <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Meetings</Link>
+        <Link to={`/clubs/${club.id}/members`} className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[12px] font-semibold text-ink-soft transition-colors hover:bg-canvas">Members</Link>
+        <span aria-current="page" className="rounded-xl border border-ink bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Settings</span>
       </nav>
 
       <PageHeader eyebrow="Club controls" title="Settings." description="Manage member access, student officers, ownership, and club deletion. Public club information is edited from the overview page." />
 
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        <section className="card space-y-4 p-4 sm:p-5">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <section className="card space-y-4 p-5 sm:p-6">
           <div><h2 className="text-[15px] font-bold">Membership & privacy</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">These controls take effect as soon as you change them.</p></div>
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
             <input type="checkbox" className="mt-1 h-4 w-4 accent-brand-600" checked={requiresApproval} disabled={privacySaving} onChange={(event) => void savePrivacy({ requiresApproval: event.target.checked })}/>
@@ -279,7 +279,7 @@ export function ClubSettingsPage() {
         </section>
 
         {isLeader && (
-          <section className="card space-y-3 p-4 sm:p-5">
+          <section className="card space-y-4 p-5 sm:p-6">
             <div><h2 className="text-[15px] font-bold">Change teacher sponsor</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">The current sponsor must approve first. The new teacher will then receive a separate request to accept.</p></div>
             <p className="text-[12px] text-muted">Current sponsor: <span className="font-semibold text-ink">{club.sponsorName || 'Not assigned'}</span></p>
             {club.sponsorStatus !== 'accepted' ? <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">A sponsor must be accepted before you can request a change.</p> : <>
@@ -290,7 +290,7 @@ export function ClubSettingsPage() {
           </section>
         )}
 
-        <section className="card p-4 sm:p-5">
+        <section className="card p-5 sm:p-6">
           <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{(club.officers ?? []).length}</Badge></div>
           {(club.officers ?? []).length === 0 ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p> : (
             <div className="space-y-2">
@@ -311,7 +311,7 @@ export function ClubSettingsPage() {
           </div>
         </section>
 
-        <section className="card space-y-3 p-4 sm:p-5">
+        <section className="card space-y-4 p-5 sm:p-6">
           <div><h2 className="text-[15px] font-bold">Transfer club ownership</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Request an ownership transfer to an existing student officer. Ownership changes only after they accept.</p></div>
           {club.pendingLeaderTransfer && <div className="rounded-xl border border-line bg-canvas p-3"><p className="text-[12.5px] font-semibold">Ownership transfer pending</p><p className="mt-1 text-[11.5px] text-muted">Waiting for {club.pendingLeaderTransfer.toName} to accept or decline.</p></div>}
           {isLeader ? (club.officers.length > 0 ? <>
