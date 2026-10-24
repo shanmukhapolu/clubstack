@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/backend'
 import type { Announcement, Club } from '../lib/types'
 import { relativeTime } from '../lib/dates'
+import { Pin } from 'lucide-react'
 import { friendlyError } from '../lib/helpers'
 import { useToast } from '../context/ToastContext'
 import { Avatar, ClubMark } from './ui'
@@ -14,11 +15,13 @@ export function AnnouncementCard({
   club,
   canManage = false,
   onDelete,
+  onTogglePin,
 }: {
   announcement: Announcement
   club?: Club
   canManage?: boolean
   onDelete?: (announcement: Announcement) => void
+  onTogglePin?: (announcement: Announcement) => void
 }) {
   const { user } = useAuth()
   const { notify } = useToast()
@@ -52,7 +55,7 @@ export function AnnouncementCard({
   }
 
   return (
-    <article className="card p-4 sm:p-5">
+    <article className={`card p-4 sm:p-5 ${announcement.pinned ? 'border-brand-300 bg-brand-50/30' : ''}`}>
       <div className="flex items-center gap-2.5">
         {club ? (
           <Link to={`/clubs/${club.id}`} aria-label={club.name}>
@@ -62,6 +65,7 @@ export function AnnouncementCard({
           <Avatar name={announcement.authorName} size={34} />
         )}
         <div className="min-w-0 flex-1">
+          {announcement.pinned && <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-700"><Pin size={11}/> Pinned</span>}
           <div className="flex flex-wrap items-center gap-x-1.5 text-[12.5px] font-semibold">
             {club && (
               <Link to={`/clubs/${club.id}`} className="truncate hover:underline">
@@ -73,7 +77,8 @@ export function AnnouncementCard({
           </div>
           <p className="text-[11.5px] text-muted">{relativeTime(announcement.createdAt)}</p>
         </div>
-        {canManage && onDelete && (
+        {canManage && onTogglePin && <button type="button" onClick={() => onTogglePin(announcement)} className="rounded-lg p-1.5 text-muted hover:bg-canvas" title={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'} aria-label={announcement.pinned ? 'Unpin announcement' : 'Pin announcement'}><Pin size={14} className={announcement.pinned ? 'fill-current text-brand-600' : ''}/></button>}
+          {canManage && onDelete && (
           <button
             type="button"
             onClick={() => onDelete(announcement)}
