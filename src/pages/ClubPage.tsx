@@ -372,7 +372,7 @@ export function ClubPage() {
                       <span className="group-hover:hidden">Joined</span>
                       <span className="hidden group-hover:inline">Leave club</span>
                     </>
-                  ) : joinRequestStatus === 'pending' ? (
+                  ) : club.requiresApproval && joinRequestStatus === 'pending' ? (
                     <>Request pending</>
                   ) : (
                     <>
