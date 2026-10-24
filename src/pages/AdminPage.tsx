@@ -240,7 +240,7 @@ export function AdminPage() {
 
   async function deleteUser(target: AppUser) {
     if (target.id === user?.id) { notify('You cannot delete your own administrator account.', 'error'); return }
-    if (!window.confirm('Permanently erase ' + target.displayName + ' from ClubStack? Their profile, memberships, club roles, and related ClubStack records will be deleted. Firebase Authentication does not allow this app to delete another person's sign-in account without a trusted server or Firebase Console action, so that login record may remain.')) return
+    if (!window.confirm("Permanently erase " + target.displayName + " from ClubStack? Their profile, memberships, club roles, and related ClubStack records will be deleted. Firebase Authentication does not allow this app to delete another person's sign-in account without a trusted server or Firebase Console action, so that login record may remain.")) return
     setWorkingId(target.id)
     try {
       await api.users.deleteAccount(target.id)
