@@ -81,6 +81,11 @@ function toDirectoryData(data: Record<string, unknown>): Record<string, unknown>
     color: stringOr(data.color, '#8b7cff'),
     status: (['pending', 'approved', 'rejected'].includes(String(data.status)) ? data.status : 'pending') as ClubStatus,
     leaderName: stringOr(data.leaderName, ''),
+    sponsorName: stringOr(data.sponsorName, ''),
+    meetingDay: stringOr(data.meetingDay, 'Flexible'),
+    meetingTime: stringOr(data.meetingTime, ''),
+    location: stringOr(data.location, ''),
+    contactEmail: stringOr(data.contactEmail, ''),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
     createdAt: numberOr(data.createdAt),
@@ -293,12 +298,18 @@ export const firebaseApi: ClubStackApi = {
           getDocs(collection(db, 'clubDirectory')),
         ])
         const directories = new Map(directorySnapshot.docs.map((item) => [item.id, item.data()]))
-        const missing = privateSnapshot.docs.filter((item) => !directories.has(item.id))
-        for (let i = 0; i < missing.length; i += 400) {
+        // Keep the public-safe summary in sync for older clubs too, not only brand-new records.
+        const needsSync = privateSnapshot.docs.filter((item) => {
+          const existing = directories.get(item.id)
+          const expected = toDirectoryData(item.data())
+          return !existing || ['sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail', 'requiresApproval', 'membersVisible']
+            .some((key) => existing[key] !== expected[key])
+        })
+        for (let i = 0; i < needsSync.length; i += 400) {
           const batch = writeBatch(db)
-          for (const item of missing.slice(i, i + 400)) {
+          for (const item of needsSync.slice(i, i + 400)) {
             const directory = toDirectoryData(item.data())
-            batch.set(doc(db, 'clubDirectory', item.id), directory)
+            batch.set(doc(db, 'clubDirectory', item.id), directory, { merge: true })
             directories.set(item.id, directory)
           }
           await batch.commit()
@@ -419,7 +430,7 @@ export const firebaseApi: ClubStackApi = {
       if (!current.exists()) throw new Error('That club no longer exists.')
       const directory = await getDoc(directoryRef)
       if (!directory.exists()) await setDoc(directoryRef, toDirectoryData(current.data()))
-      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName'] as const
+      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail'] as const
       const privatePatch: Record<string, unknown> = {}
       const directoryPatch: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(patch)) {
