@@ -53,13 +53,16 @@ service cloud.firestore {
     function directoryFieldsValid(data) {
       return data.keys().hasOnly([
           'name', 'description', 'category', 'emoji', 'color', 'status',
-          'leaderName', 'requiresApproval', 'membersVisible', 'createdAt'
+          'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location',
+          'contactEmail', 'requiresApproval', 'membersVisible', 'createdAt'
         ])
         && data.name is string && data.name.size() >= 3
         && data.description is string && data.description.size() >= 20
         && data.category is string && data.emoji is string && data.color is string
         && data.status in ['pending', 'approved', 'rejected']
-        && data.leaderName is string
+        && data.leaderName is string && data.sponsorName is string
+        && data.meetingDay is string && data.meetingTime is string
+        && data.location is string && data.contactEmail is string
         && data.requiresApproval is bool && data.membersVisible is bool
         && data.createdAt is number;
     }
@@ -70,7 +73,12 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.emoji == request.resource.data.emoji
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.color == request.resource.data.color
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.status == request.resource.data.status
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName == request.resource.data.leaderName;
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName == request.resource.data.leaderName
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName == request.resource.data.sponsorName
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingDay == request.resource.data.meetingDay
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingTime == request.resource.data.meetingTime
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.location == request.resource.data.location
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.contactEmail == request.resource.data.contactEmail;
     }
 
     match /users/{userId} {
@@ -103,7 +111,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Public directory summaries intentionally contain no location, contact email, officer list, sponsor identifiers, or meeting schedule.
+    // Directory summaries expose stable club basics only; event dates, announcements, officer lists, and sponsor identifiers remain private.
     match /clubDirectory/{clubId} {
       allow read: if signedIn() && (
         resource.data.status == 'approved' || isAdmin() || isManager(clubId) || isMember(clubId) || isSponsorCandidate(clubId) || isPendingOfficerInvite(clubId)
@@ -115,10 +123,15 @@ service cloud.firestore {
         && directoryMirrorMatchesPrivate(clubId);
       allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
-          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName', 'requiresApproval', 'membersVisible'])
+          && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail', 'requiresApproval', 'membersVisible'])
           && directoryMirrorMatchesPrivate(clubId)
           && request.resource.data.requiresApproval is bool
-          && request.resource.data.membersVisible is bool);
+          && request.resource.data.membersVisible is bool)
+        || (isTeacher() && isSponsorCandidate(clubId)
+          && privateClub(clubId).sponsorStatus == 'pending'
+          && onlyChanged(['sponsorName'])
+          && request.resource.data.sponsorName is string
+          && directoryMirrorMatchesPrivate(clubId));
       allow delete: if isAdmin();
     }
 
@@ -187,7 +200,8 @@ service cloud.firestore {
 
     match /memberships/{membershipId} {
       allow read: if signedIn() && (
-        resource.data.uid == request.auth.uid || isAdmin() || isManager(resource.data.clubId)
+        membershipId.matches('^' + request.auth.uid + '_.+')
+        || resource.data.uid == request.auth.uid || isAdmin() || isManager(resource.data.clubId)
         || (isMember(resource.data.clubId)
           && get(/databases/$(database)/documents/clubDirectory/$(resource.data.clubId)).data.membersVisible == true)
       );
@@ -230,8 +244,10 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt is number
         && request.resource.data.keys().hasOnly(['clubId','clubName','uid','displayName','status','createdAt']);
+      // Allow a student to check their own deterministic request path even before that document exists.
       allow read: if isAdmin() || (signedIn() && (
-        resource.data.uid == request.auth.uid || isManager(resource.data.clubId)
+        requestId.matches('.*_' + request.auth.uid)
+        || resource.data.uid == request.auth.uid || isManager(resource.data.clubId)
       ));
       allow update: if (signedIn() && isManager(resource.data.clubId)
         && resource.data.status == 'pending'

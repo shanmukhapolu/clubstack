@@ -81,6 +81,11 @@ function toDirectoryData(data: Record<string, unknown>): Record<string, unknown>
     color: stringOr(data.color, '#8b7cff'),
     status: (['pending', 'approved', 'rejected'].includes(String(data.status)) ? data.status : 'pending') as ClubStatus,
     leaderName: stringOr(data.leaderName, ''),
+    sponsorName: stringOr(data.sponsorName, ''),
+    meetingDay: stringOr(data.meetingDay, 'Flexible'),
+    meetingTime: stringOr(data.meetingTime, ''),
+    location: stringOr(data.location, ''),
+    contactEmail: stringOr(data.contactEmail, ''),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
     createdAt: numberOr(data.createdAt),
@@ -293,12 +298,18 @@ export const firebaseApi: ClubStackApi = {
           getDocs(collection(db, 'clubDirectory')),
         ])
         const directories = new Map(directorySnapshot.docs.map((item) => [item.id, item.data()]))
-        const missing = privateSnapshot.docs.filter((item) => !directories.has(item.id))
-        for (let i = 0; i < missing.length; i += 400) {
+        // Keep the public-safe summary in sync for older clubs too, not only brand-new records.
+        const needsSync = privateSnapshot.docs.filter((item) => {
+          const existing = directories.get(item.id)
+          const expected = toDirectoryData(item.data())
+          return !existing || ['sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail', 'requiresApproval', 'membersVisible']
+            .some((key) => existing[key] !== expected[key])
+        })
+        for (let i = 0; i < needsSync.length; i += 400) {
           const batch = writeBatch(db)
-          for (const item of missing.slice(i, i + 400)) {
+          for (const item of needsSync.slice(i, i + 400)) {
             const directory = toDirectoryData(item.data())
-            batch.set(doc(db, 'clubDirectory', item.id), directory)
+            batch.set(doc(db, 'clubDirectory', item.id), directory, { merge: true })
             directories.set(item.id, directory)
           }
           await batch.commit()
@@ -419,7 +430,7 @@ export const firebaseApi: ClubStackApi = {
       if (!current.exists()) throw new Error('That club no longer exists.')
       const directory = await getDoc(directoryRef)
       if (!directory.exists()) await setDoc(directoryRef, toDirectoryData(current.data()))
-      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName'] as const
+      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail'] as const
       const privatePatch: Record<string, unknown> = {}
       const directoryPatch: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(patch)) {
@@ -587,16 +598,24 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async getReactionSummary(announcementId, clubId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
+      const db = requireDb()
+      const snapshot = await getDocs(query(collection(db, 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
       const counts: Record<string, number> = {}
+      const peopleByEmoji: Record<string, string[]> = {}
       let mine: string | null = null
-      for (const item of snapshot.docs) {
+      await Promise.all(snapshot.docs.map(async (item) => {
         const data = item.data()
         const emoji = stringOr(data.emoji, '')
-        if (emoji) counts[emoji] = (counts[emoji] ?? 0) + 1
-        if (data.uid === uid) mine = emoji || null
-      }
-      return { counts, mine }
+        const responderId = stringOr(data.uid, '')
+        if (!emoji || !responderId) return
+        counts[emoji] = (counts[emoji] ?? 0) + 1
+        const profile = await getDoc(doc(db, 'userDirectory', responderId))
+        const name = stringOr(profile.data()?.displayName, 'Member')
+        ;(peopleByEmoji[emoji] ??= []).push(name)
+        if (responderId === uid) mine = emoji
+      }))
+      for (const names of Object.values(peopleByEmoji)) names.sort((a, b) => a.localeCompare(b))
+      return { counts, mine, peopleByEmoji }
     },
 
     async setReaction(announcementId, clubId, uid, emoji) {
@@ -646,15 +665,26 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async getRsvpSummary(eventId, clubId, uid) {
-      const snapshot = await getDocs(query(collection(requireDb(), 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
-      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
-      for (const item of snapshot.docs) {
+      const db = requireDb()
+      const snapshot = await getDocs(query(collection(db, 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
+      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null, participants: [] }
+      await Promise.all(snapshot.docs.map(async (item) => {
         const data = item.data()
-        if (data.status === 'going') summary.going += 1
-        if (data.status === 'maybe') summary.maybe += 1
-        if (data.status === 'notGoing') summary.notGoing += 1
-        if (data.uid === uid) summary.mine = data.status as EventRsvpStatus
-      }
+        const status = data.status as EventRsvpStatus
+        if (status === 'going') summary.going += 1
+        if (status === 'maybe') summary.maybe += 1
+        if (status === 'notGoing') summary.notGoing += 1
+        const responderId = stringOr(data.uid, '')
+        if (responderId === uid) summary.mine = status
+        if (!responderId || !['going', 'maybe', 'notGoing'].includes(status)) return
+        const profile = await getDoc(doc(db, 'userDirectory', responderId))
+        summary.participants!.push({
+          uid: responderId,
+          displayName: stringOr(profile.data()?.displayName, 'Member'),
+          status,
+        })
+      }))
+      summary.participants!.sort((a, b) => a.displayName.localeCompare(b.displayName))
       return summary
     },
 
@@ -700,10 +730,15 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async create(club, teacher, requester) {
-      await updateDoc(doc(requireDb(), 'clubs', club.id), {
+      const db = requireDb()
+      const createdAt = Date.now()
+      const requestRef = doc(collection(db, 'clubSponsorRequests'))
+      const batch = writeBatch(db)
+      batch.update(doc(db, 'clubs', club.id), {
         sponsorId: teacher.id, sponsorName: teacher.displayName, sponsorStatus: 'pending',
       })
-      await addDoc(collection(requireDb(), 'clubSponsorRequests'), {
+      batch.update(doc(db, 'clubDirectory', club.id), { sponsorName: teacher.displayName })
+      batch.set(requestRef, {
         clubId: club.id,
         clubName: club.name,
         teacherId: teacher.id,
@@ -711,8 +746,9 @@ export const firebaseApi: ClubStackApi = {
         requestedById: requester.id,
         requestedByName: requester.displayName,
         status: 'pending' satisfies SponsorRequestStatus,
-        createdAt: Date.now(),
+        createdAt,
       })
+      await batch.commit()
     },
 
     async respond(requestId, status) {
@@ -721,12 +757,17 @@ export const firebaseApi: ClubStackApi = {
       const requestSnapshot = await getDoc(requestRef)
       if (!requestSnapshot.exists()) throw new Error('This sponsor request no longer exists.')
       const request = toSponsorRequest(requestSnapshot.id, requestSnapshot.data())
-      await updateDoc(requestRef, { status })
-      await updateDoc(doc(db, 'clubs', request.clubId), {
+      const batch = writeBatch(db)
+      batch.update(requestRef, { status })
+      batch.update(doc(db, 'clubs', request.clubId), {
         sponsorId: status === 'accepted' ? request.teacherId : '',
         sponsorName: status === 'accepted' ? request.teacherName : '',
         sponsorStatus: status,
       })
+      batch.update(doc(db, 'clubDirectory', request.clubId), {
+        sponsorName: status === 'accepted' ? request.teacherName : '',
+      })
+      await batch.commit()
     },
   },
 

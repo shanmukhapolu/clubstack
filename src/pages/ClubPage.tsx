@@ -396,13 +396,13 @@ export function ClubPage() {
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted">
               {hasPrivateAccess && (club.membersVisible || canManage) && club.memberCount > 0 && <span className="inline-flex items-center gap-1.5 font-medium"><Users size={14} /> {club.memberCount} member{club.memberCount === 1 ? '' : 's'}</span>}
-              {hasPrivateAccess && <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5">
                 <Clock size={14} />
                 {club.meetingDay === 'Flexible'
                   ? 'Flexible meeting time'
                   : `${club.meetingDay}s · ${club.meetingTime}`}
-              </span>}
-              {hasPrivateAccess && club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
+              </span>
+              {club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
               {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
             </div>
           </div>
@@ -607,8 +607,26 @@ export function ClubPage() {
 
       ) : (
         <section className="card mt-6 overflow-hidden p-5 sm:p-6">
-          <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck size={19}/></div><div><h2 className="text-[16px] font-extrabold">The rest of this club is for members</h2><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">Join to access meeting details, the member list, announcements, event RSVPs, and contact information. Private details are not loaded until you have access.</p></div></div>
-          <div aria-hidden="true" className="mt-5 space-y-3 select-none" style={{filter:'blur(5px)',opacity:0.45}}><div className="h-5 w-1/3 rounded-lg bg-canvas"/><div className="h-20 rounded-2xl bg-canvas"/><div className="grid gap-3 sm:grid-cols-2"><div className="h-24 rounded-2xl bg-canvas"/><div className="h-24 rounded-2xl bg-canvas"/></div></div>
+          <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-canvas text-ink-soft"><ShieldCheck size={18}/></div><div><h2 className="text-[16px] font-bold">Member-only activity</h2><p className="mt-1 text-[13px] leading-relaxed text-muted">Specific meetings, attendance, announcements, and the member list are reserved for members. The basic club details remain public.</p></div></div>
+              <dl className="mt-5 space-y-3 border-t border-line pt-4 text-[12.5px]">
+                {club.sponsorName && <div><dt className="font-semibold text-ink">Teacher sponsor</dt><dd className="mt-0.5 text-muted">{club.sponsorName}</dd></div>}
+                {club.contactEmail && <div><dt className="font-semibold text-ink">Club email</dt><dd className="mt-0.5 break-words"><a href={`mailto:${club.contactEmail}`} className="text-ink-soft underline decoration-line underline-offset-2 hover:text-ink">{club.contactEmail}</a></dd></div>}
+                <div><dt className="font-semibold text-ink">Usual schedule</dt><dd className="mt-0.5 text-muted">{club.meetingDay === 'Flexible' ? 'Flexible schedule' : `${club.meetingDay}s${club.meetingTime ? `, ${club.meetingTime}` : ''}`}</dd></div>
+                <div><dt className="font-semibold text-ink">Usual room</dt><dd className="mt-0.5 text-muted">{club.location || 'Ask the club leader'}</dd></div>
+              </dl>
+            </div>
+            <div className="relative min-h-[210px] overflow-hidden rounded-2xl border border-line bg-canvas/70 p-4">
+              <div aria-hidden="true" className="select-none space-y-3" style={{filter:'blur(2px)',opacity:0.68,maskImage:'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.78) 48%, transparent 100%)',WebkitMaskImage:'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.78) 48%, transparent 100%)'}}>
+                <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-white"/><div className="flex-1 space-y-1.5"><div className="h-2 w-2/5 rounded bg-ink/15"/><div className="h-2 w-1/4 rounded bg-ink/10"/></div></div>
+                <div className="rounded-xl border border-line/70 bg-white/80 p-3"><div className="h-3 w-1/3 rounded bg-ink/15"/><div className="mt-3 h-2 w-full rounded bg-ink/10"/><div className="mt-2 h-2 w-4/5 rounded bg-ink/10"/><div className="mt-2 h-2 w-2/3 rounded bg-ink/10"/></div>
+                <div className="rounded-xl border border-line/70 bg-white/80 p-3"><div className="h-3 w-2/5 rounded bg-ink/15"/><div className="mt-3 h-2 w-5/6 rounded bg-ink/10"/><div className="mt-2 h-2 w-3/5 rounded bg-ink/10"/></div>
+              </div>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-canvas/20 to-canvas/95"/>
+              <p className="absolute inset-x-4 bottom-4 text-center text-[11.5px] font-medium text-muted">Join to see club activity</p>
+            </div>
+          </div>
         </section>
       )}
 
