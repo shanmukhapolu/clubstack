@@ -114,7 +114,6 @@ function toDirectoryData(data: Record<string, unknown>): Record<string, unknown>
     instagramHandle: normalizeInstagramHandle(stringOr(data.instagramHandle, '')),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
-    pendingLeaderTransfer: data.pendingLeaderTransfer && typeof data.pendingLeaderTransfer === 'object' ? data.pendingLeaderTransfer as Club['pendingLeaderTransfer'] : null,
     hidden: data.hidden === true,
     createdAt: numberOr(data.createdAt),
   }
@@ -157,6 +156,8 @@ function toClub(id: string, data: Record<string, unknown>): Club {
     memberCount: numberOr(data.memberCount),
     requiresApproval: data.requiresApproval === true,
     membersVisible: data.membersVisible !== false,
+    pendingLeaderTransfer: data.pendingLeaderTransfer && typeof data.pendingLeaderTransfer === 'object' ? data.pendingLeaderTransfer as Club['pendingLeaderTransfer'] : null,
+    hidden: data.hidden === true,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -393,7 +394,7 @@ export const firebaseApi: ClubStackApi = {
           try { count = (await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id)))).size } catch { count = 0 }
         }
         return mergeClubData(id, privateData ?? {}, directory, count)
-      })).then((clubs) => clubs.sort((a, b) => b.createdAt - a.createdAt))
+      })).then((clubs) => clubs.filter((club) => role === 'admin' || !club.hidden || privateClubs.has(club.id)).sort((a, b) => b.createdAt - a.createdAt))
     },
 
     async get(id) {
