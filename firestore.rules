@@ -126,7 +126,12 @@ service cloud.firestore {
           && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName', 'sponsorName', 'meetingDay', 'meetingTime', 'location', 'contactEmail', 'requiresApproval', 'membersVisible'])
           && directoryMirrorMatchesPrivate(clubId)
           && request.resource.data.requiresApproval is bool
-          && request.resource.data.membersVisible is bool);
+          && request.resource.data.membersVisible is bool)
+        || (isTeacher() && isSponsorCandidate(clubId)
+          && privateClub(clubId).sponsorStatus == 'pending'
+          && onlyChanged(['sponsorName'])
+          && request.resource.data.sponsorName is string
+          && directoryMirrorMatchesPrivate(clubId));
       allow delete: if isAdmin();
     }
 
