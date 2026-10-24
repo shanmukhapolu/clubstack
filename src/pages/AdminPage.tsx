@@ -136,7 +136,7 @@ export function AdminPage() {
 
   async function openLeadershipEditor(target: Club) {
     setEditingClub(target)
-    setLeadershipForm({ leaderId: target.leaderId || '', leaderTitle: target.leaderTitle || 'President', sponsorId: target.sponsorId || '', officerIds: [...new Set([...(target.officerIds ?? []), ...(target.leaderId && (target.leaderTitle || 'President') !== 'Club Owner' ? [target.leaderId] : [])]], officerTitles: Object.fromEntries([...(target.officers ?? []).map(officer => [officer.uid, officer.title]), ...(target.leaderId && (target.leaderTitle || 'President') !== 'Club Owner' ? [[target.leaderId, target.leaderTitle || 'President']] : [])]) })
+    setLeadershipForm({ leaderId: target.leaderId || '', leaderTitle: target.leaderTitle || 'President', sponsorId: target.sponsorId || '', officerIds: [...new Set([...(target.officerIds ?? []), ...(target.leaderId && (target.leaderTitle || 'President') !== 'Club Owner' ? [target.leaderId] : [])])], officerTitles: Object.fromEntries([...(target.officers ?? []).map(officer => [officer.uid, officer.title]), ...(target.leaderId && (target.leaderTitle || 'President') !== 'Club Owner' ? [[target.leaderId, target.leaderTitle || 'President']] : [])]) })
     setClubMemberIds([])
     setClubMembersLoading(true)
     try { setClubMemberIds(await api.memberships.listMembers(target.id)) }
