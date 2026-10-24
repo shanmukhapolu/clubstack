@@ -189,14 +189,14 @@ export function AdminPage() {
       const officerIds = editingClub.officerIds.filter(id => id !== target.id)
       if (isLeader || isSponsor || officers.length !== editingClub.officers.length) {
         await api.clubs.update(editingClub.id, {
-          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null } : {}),
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'Club Owner', pendingLeaderTransfer: null } : {}),
           ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
           officers,
           officerIds,
         })
         setEditingClub(current => current ? {
           ...current,
-          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null } : {}),
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'Club Owner', pendingLeaderTransfer: null } : {}),
           ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
           officers,
           officerIds,
