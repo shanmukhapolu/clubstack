@@ -113,6 +113,10 @@ export function AppShell() {
         { to: '/admin/clubs', label: 'Clubs', icon: Building2 },
         { to: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
         { to: '/admin/security', label: 'Safety', icon: ShieldCheck },
+        { to: '/discover', label: 'Discover clubs', icon: Compass },
+        { to: '/clubs/new', label: 'Create a club', icon: Plus },
+        { to: '/calendar', label: 'School calendar', icon: CalendarDays },
+        { to: '/teacher', label: 'Teacher workspace', icon: Flag },
         { to: '/notifications', label: 'Notifications', icon: Bell },
       ]
     : isTeacher
