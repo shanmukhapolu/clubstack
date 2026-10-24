@@ -12,6 +12,7 @@ import { DiscoverPage } from './pages/DiscoverPage'
 import { ClubPage } from './pages/ClubPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { RoleWorkspacePage } from './pages/RoleWorkspacePage'
+import { AdminPage } from './pages/AdminPage'
 import { ClubSettingsPage } from './pages/ClubSettingsPage'
 import { ClubMeetingsPage } from './pages/ClubMeetingsPage'
 import { CreateClubPage } from './pages/CreateClubPage'
@@ -57,14 +58,13 @@ function RequireAuth() {
 
 function RequireStudent() {
   const { user } = useAuth()
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />
   if (user?.role === 'teacher') return <Navigate to="/teacher" replace />
   return <Outlet />
 }
 
 function RequireTeacher() {
   const { user } = useAuth()
-  if (user?.role !== 'teacher') return <Navigate to="/" replace />
+  if (user?.role !== 'teacher' && user?.role !== 'admin') return <Navigate to="/" replace />
   return <Outlet />
 }
 
@@ -105,7 +105,7 @@ export default function App() {
                     <Route path="teacher/reports" element={<RoleWorkspacePage />} />
                   </Route>
                   <Route element={<RequireAdmin />}>
-                    <Route path="admin" element={<RoleWorkspacePage />} />
+                    <Route path="admin" element={<AdminPage />} />
                     <Route path="admin/users" element={<RoleWorkspacePage />} />
                     <Route path="admin/clubs" element={<RoleWorkspacePage />} />
                     <Route path="admin/calendar" element={<RoleWorkspacePage />} />
