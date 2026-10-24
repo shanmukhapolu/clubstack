@@ -97,7 +97,7 @@ export function markAllNotificationsRead(uid: string): void {
 export function notificationIds(items: InboxState): string[] {
   return [
     ...items.invitations.filter((item) => item.status === 'pending').map((item) => `invitation:${item.id}`),
-    ...items.ownJoinRequests.map((item) => `own-join:${item.id}`),
+    ...items.ownJoinRequests.map((item) => `own-join:${item.id}:${item.status}`),
     ...items.sponsorRequests.filter((item) => item.status === 'pending').map((item) => `sponsor:${item.id}`),
     ...items.joinRequests.filter((item) => item.status === 'pending').map((item) => `join:${item.id}`),
     ...items.announcements.map((item) => `announcement:${item.id}`),
