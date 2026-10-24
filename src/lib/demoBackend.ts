@@ -767,6 +767,41 @@ export const demoApi: ClubStackApi = {
       })
       emit()
     },
+
+    async updateProfile(uid, input) {
+      await wait()
+      mutate((store) => {
+        store.users = store.users.map((user) => user.id === uid ? {
+          ...user,
+          displayName: input.displayName.trim(),
+          email: input.email.trim().toLowerCase(),
+          role: input.role,
+          grade: input.grade.trim() || undefined,
+        } : user)
+      })
+      emit()
+    },
+
+    async deleteAccount(uid) {
+      await wait()
+      const store = read()
+      if (store.clubs.some((club) => club.leaderId === uid || club.sponsorId === uid)) {
+        throw new Error('Reassign this user’s club ownership and teacher sponsorship before deleting the account.')
+      }
+      mutate((draft) => {
+        draft.users = draft.users.filter((user) => user.id !== uid)
+        draft.memberships = draft.memberships.filter((item) => item.uid !== uid)
+        draft.joinRequests = draft.joinRequests.filter((item) => item.uid !== uid)
+        draft.officerInvitations = draft.officerInvitations.filter((item) => item.invitedUserId !== uid && item.invitedById !== uid)
+        draft.clubs = draft.clubs.map((club) => ({
+          ...club,
+          officers: (club.officers ?? []).filter((officer) => officer.uid !== uid),
+          officerIds: (club.officerIds ?? []).filter((id) => id !== uid),
+        }))
+        if (draft.currentUid === uid) draft.currentUid = null
+      })
+      emit()
+    },
   },
 
   demo: {
