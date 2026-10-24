@@ -669,7 +669,7 @@ export const demoApi: ClubStackApi = {
         const request = store.sponsorRequests.find((item) => item.id === requestId)
         if (!request) throw new Error('This sponsor request no longer exists.')
         if (request.stage === 'currentSponsorApproval') {
-          if (currentUser(store)?.id !== request.previousSponsorId throw new Error('Only the current sponsor can approve this change.')
+          if (currentUser(store)?.id !== request.previousSponsorId) throw new Error('Only the current sponsor can approve this change.')
           if (status === 'declined') { request.status = 'declined'; return }
           request.stage = 'newSponsorApproval'
           return
