@@ -778,7 +778,7 @@ export function ClubPage() {
 
       <Modal
         open={announcementOpen}
-        onClose={() => setAnnouncementOpen(false)}
+        onClose={() => { setAnnouncementOpen(false); setEditingAnnouncement(null); setFormError(null) }}
         title={editingAnnouncement ? 'Edit announcement' : 'New announcement'}
         description={editingAnnouncement ? 'Update the title or message for club members.' : `Post an update to everyone following ${club.name}.`}
       >
