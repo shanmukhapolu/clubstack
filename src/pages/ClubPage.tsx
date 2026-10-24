@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -716,8 +717,8 @@ export function ClubPage() {
         </section>
       )}
 
-      {aboutOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+      {aboutOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex justify-end">
           <button type="button" aria-label="Close edit club information" className="absolute inset-0 bg-ink/40" onClick={() => setAboutOpen(false)} />
           <aside role="dialog" aria-modal="true" aria-labelledby="about-sidebar-title" className="relative flex h-full w-full max-w-xl flex-col border-l border-line bg-surface shadow-2xl">
             <header className="flex items-start justify-between gap-4 border-b border-line p-5">
@@ -747,7 +748,8 @@ export function ClubPage() {
           <div className="flex justify-end gap-2 border-t border-line pt-3"><Button type="button" variant="secondary" onClick={() => setAboutOpen(false)}>Cancel</Button><Button type="submit" loading={aboutSaving}><Save size={14}/> Save information</Button></div>
         </form>
           </aside>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <Modal
