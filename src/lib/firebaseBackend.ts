@@ -486,8 +486,17 @@ export const firebaseApi: ClubStackApi = {
         dues: stringOr(currentData.dues, ''),
         instagramHandle: normalizeInstagramHandle(stringOr(currentData.instagramHandle, '')),
       }
-      for (const [key, value] of Object.entries(defaults)) {
-        if (currentData[key] === undefined && privatePatch[key] === undefined) privatePatch[key] = value
+      const aboutFieldsChanged = [
+        'name', 'description', 'category', 'meetingDay', 'meetingFrequency',
+        'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location',
+        'contactEmail', 'prerequisites', 'dues', 'instagramHandle',
+      ].some((key) => Object.prototype.hasOwnProperty.call(patch, key))
+      // A control-only change should not alter legacy private fields: doing so
+      // would make the narrow officer/privacy update rule reject the save.
+      if (aboutFieldsChanged) {
+        for (const [key, value] of Object.entries(defaults)) {
+          if (currentData[key] === undefined && privatePatch[key] === undefined) privatePatch[key] = value
+        }
       }
       const projectedPrivate = { ...currentData, ...privatePatch }
       const directoryPatch = {
@@ -504,9 +513,21 @@ export const firebaseApi: ClubStackApi = {
 
     async setStatus(id, status) {
       const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const directoryRef = doc(db, 'clubDirectory', id)
+      const snapshot = await getDoc(clubRef)
+      if (!snapshot.exists()) throw new Error('That club no longer exists.')
+      const projectedPrivate = { ...snapshot.data(), status }
+      const directorySnapshot = await getDoc(directoryRef)
+      const existingDirectory = directorySnapshot.exists() ? directorySnapshot.data() : {}
+      const completeDirectory = {
+        ...toDirectoryData(projectedPrivate),
+        requiresApproval: existingDirectory.requiresApproval === true,
+        membersVisible: existingDirectory.membersVisible !== false,
+      }
       const batch = writeBatch(db)
-      batch.update(doc(db, 'clubs', id), { status })
-      batch.update(doc(db, 'clubDirectory', id), { status })
+      batch.update(clubRef, { status })
+      batch.set(directoryRef, completeDirectory, { merge: true })
       await batch.commit()
     },
 
@@ -522,8 +543,6 @@ export const firebaseApi: ClubStackApi = {
       }
       const target = (Array.isArray(data.officers) ? data.officers : []).find((officer) => officer && typeof officer === 'object' && (officer as Record<string, unknown>).uid === newLeaderId) as Record<string, unknown> | undefined
       if (!target) throw new Error('The selected officer record could not be found.')
-      const roleProfile = await getDoc(doc(db, 'users', newLeaderId))
-      if (!roleProfile.exists() || roleProfile.data().role !== 'student') throw new Error('The new club leader must be a student account.')
       const officers = (Array.isArray(data.officers) ? data.officers : []).filter((officer) => {
         const person = officer as Record<string, unknown>
         return person.uid !== newLeaderId && person.uid !== currentLeader.id
@@ -594,6 +613,11 @@ export const firebaseApi: ClubStackApi = {
       const profile = await getDoc(doc(db, 'users', authUid))
       const isAdministrator = profile.data()?.role === 'admin'
       if (!isAdministrator) {
+        const clubSnapshot = await getDoc(doc(db, 'clubs', id))
+        if (!clubSnapshot.exists()) throw new Error('That club no longer exists.')
+        if (clubSnapshot.data().leaderId !== authUid) {
+          throw new Error('Only the club leader can complete an advisor-approved deletion.')
+        }
         const approval = await getDoc(doc(db, 'clubDeletionRequests', id))
         if (!approval.exists() || approval.data().status !== 'approved') {
           throw new Error('The teacher advisor must approve deletion before this club can be deleted.')
