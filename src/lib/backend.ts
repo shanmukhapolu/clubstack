@@ -38,6 +38,7 @@ export interface ClubsApi {
   get(id: string): Promise<Club | null>
   create(input: ClubInput, leader: AppUser): Promise<string>
   update(id: string, patch: Partial<Club>): Promise<void>
+  removeOfficer(id: string, officerId: string): Promise<void>
   setStatus(id: string, status: ClubStatus): Promise<void>
   transferOwnership(id: string, newLeaderId: string, currentLeader: AppUser): Promise<void>
   respondToOwnershipTransfer(id: string, accept: boolean, currentUser: AppUser): Promise<void>
@@ -61,6 +62,7 @@ export interface MembershipsApi {
 export interface AnnouncementsApi {
   listForClubs(clubIds: string[]): Promise<Announcement[]>
   create(clubId: string, input: { title: string; body: string }, author: AppUser): Promise<void>
+  setPinned(id: string, pinned: boolean): Promise<void>
   getReactionSummary(announcementId: string, clubId: string, uid: string): Promise<ReactionSummary>
   setReaction(announcementId: string, clubId: string, uid: string, emoji: string | null): Promise<void>
   remove(id: string): Promise<void>
@@ -71,9 +73,10 @@ export interface EventsApi {
   listForClubs(clubIds: string[]): Promise<ClubEvent[]>
   create(
     clubId: string,
-    input: { title: string; description: string; location: string; startAt: number; endAt: number | null },
+    input: { title: string; description: string; location: string; startAt: number; endAt: number | null; type?: ClubEvent['type']; attendance?: ClubEvent['attendance'] },
     author: AppUser,
   ): Promise<void>
+  update(id: string, input: { title: string; description: string; location: string; startAt: number; endAt: number | null; type?: ClubEvent['type']; attendance?: ClubEvent['attendance'] }): Promise<void>
   getRsvpSummary(eventId: string, clubId: string, uid: string): Promise<RsvpSummary>
   setRsvp(eventId: string, clubId: string, uid: string, status: EventRsvpStatus): Promise<void>
   remove(id: string): Promise<void>
@@ -89,6 +92,7 @@ export interface ModerationApi {
 export interface SponsorRequestsApi {
   listForTeacher(teacherId: string): Promise<ClubSponsorRequest[]>
   create(club: Club, teacher: AppUser, requester: AppUser): Promise<void>
+  requestChange(club: Club, teacher: AppUser, requester: AppUser): Promise<void>
   respond(requestId: string, status: Extract<SponsorRequestStatus, 'accepted' | 'declined'>): Promise<void>
 }
 
