@@ -156,6 +156,8 @@ export interface Club {
   memberCount: number
   requiresApproval: boolean
   membersVisible: boolean
+  pendingLeaderTransfer?: { fromId: string; fromName: string; toId: string; toName: string; createdAt: number } | null
+  hidden?: boolean
   createdAt: number
 }
 
