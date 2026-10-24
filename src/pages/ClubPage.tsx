@@ -421,17 +421,6 @@ export function ClubPage() {
     }
   }
 
-  async function handleAdminStatus(status: Club['status']) {
-    if (!club) return
-    try {
-      await api.clubs.setStatus(club.id, status)
-      setClub({ ...club, status })
-      await refresh()
-      notify(status === 'approved' ? 'Club approved.' : 'Club rejected.')
-    } catch (caught) {
-      notify(friendlyError(caught), 'error')
-    }
-  }
 
   return (
     <div className="fade-in">
@@ -567,11 +556,6 @@ export function ClubPage() {
           <Button variant="secondary" size="sm" onClick={() => setEventOpen(true)}>
             <CalendarPlus size={15} /> Add meeting
           </Button>
-          {isAdmin && club.status !== 'approved' && (
-            <Button variant="lime" size="sm" onClick={() => void handleAdminStatus('approved')}>
-              <Check size={15} /> Approve club
-            </Button>
-          )}
         </div>
       )}
 
@@ -663,32 +647,6 @@ export function ClubPage() {
 
 
 
-          {isAdmin && (
-            <section className="card p-4">
-              <h2 className="text-[15px] font-extrabold">Admin actions</h2>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                Status: <span className="font-semibold text-ink">{club.status}</span>
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  variant="lime"
-                  size="sm"
-                  onClick={() => void handleAdminStatus('approved')}
-                  disabled={club.status === 'approved'}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => void handleAdminStatus('rejected')}
-                  disabled={club.status === 'rejected'}
-                >
-                  Reject
-                </Button>
-              </div>
-            </section>
-          )}
         </aside>
       </div>
 
