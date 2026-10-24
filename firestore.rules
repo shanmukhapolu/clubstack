@@ -113,7 +113,7 @@ service cloud.firestore {
         && privateClubExists(clubId)
         && (isAdmin() || get(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId == request.auth.uid)
         && directoryMirrorMatchesPrivate(clubId);
-      allow update: if isAdmin()
+      allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
           && onlyChanged(['name', 'description', 'category', 'emoji', 'color', 'leaderName', 'requiresApproval', 'membersVisible'])
           && directoryMirrorMatchesPrivate(clubId)
@@ -152,7 +152,7 @@ service cloud.firestore {
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
-      allow update: if isAdmin()
+      allow update: if (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (isLeader(clubId)
           && onlyChanged(['name','description','category','meetingDay','meetingTime','location','emoji','color','contactEmail','leaderTitle'])
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
