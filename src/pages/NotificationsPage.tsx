@@ -166,7 +166,7 @@ export function NotificationsPage() {
               <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold"><Clock size={17} /> Your membership requests</h2>
               <div className="space-y-2">
                 {items.ownJoinRequests.map((item) => {
-                  const id = `own-join:${item.id}`
+                  const id = `own-join:${item.id}:${item.status}`
                   return (
                     <article key={item.id} data-unread={!readIds.has(id)} onClick={() => markAsRead(id)} className={cardClass(id, 'flex items-start gap-3 p-4')}>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-ink-soft"><Users size={18} /></div>
