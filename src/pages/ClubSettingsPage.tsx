@@ -163,7 +163,7 @@ export function ClubSettingsPage() {
       const updated = await api.clubs.get(club.id)
       setClub(updated)
       await refresh()
-      notify(`Ownership transferred to ${target.displayName}.`)
+      notify(`Ownership transfer request sent to ${target.displayName}. They must accept it before ownership changes.`)
     } catch (caught) {
       notify(friendlyError(caught), 'error')
     } finally {
@@ -271,10 +271,11 @@ export function ClubSettingsPage() {
         </section>
 
         <section className="card space-y-3 p-4 sm:p-5">
-          <div><h2 className="text-[15px] font-bold">Transfer club ownership</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Transfer the club to an existing student officer. Your account will remain an officer, but the new leader will control ownership settings.</p></div>
+          <div><h2 className="text-[15px] font-bold">Transfer club ownership</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Request an ownership transfer to an existing student officer. Ownership changes only after they accept.</p></div>
+          {club.pendingLeaderTransfer && <div className="rounded-xl border border-line bg-canvas p-3"><p className="text-[12.5px] font-semibold">Ownership transfer pending</p><p className="mt-1 text-[11.5px] text-muted">Waiting for {club.pendingLeaderTransfer.toName} to accept or decline.</p></div>}
           {isLeader ? (club.officers.length > 0 ? <>
             <div><label className="label" htmlFor="ownership-target">New club leader</label><select id="ownership-target" className="field" value={transferTargetId} onChange={(event) => setTransferTargetId(event.target.value)}><option value="">Select an officer…</option>{club.officers.map((officer) => <option key={officer.uid} value={officer.uid}>{officer.displayName} · {officer.title}</option>)}</select></div>
-            <Button variant="secondary" disabled={!transferTargetId || busy} loading={busy} onClick={() => void transferOwnership()}><Crown size={15}/> Transfer ownership</Button>
+            <Button variant="secondary" disabled={!transferTargetId || busy || !!club.pendingLeaderTransfer} loading={busy} onClick={() => void transferOwnership()}><Crown size={15}/> Request ownership transfer</Button>
           </> : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Invite a student officer and have them accept the invitation before transferring ownership.</p>) : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Only the current club leader can transfer ownership.</p>}
         </section>
 
