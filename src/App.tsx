@@ -106,10 +106,10 @@ export default function App() {
                   </Route>
                   <Route element={<RequireAdmin />}>
                     <Route path="admin" element={<AdminPage />} />
-                    <Route path="admin/users" element={<RoleWorkspacePage />} />
-                    <Route path="admin/clubs" element={<RoleWorkspacePage />} />
+                    <Route path="admin/users" element={<AdminPage />} />
+                    <Route path="admin/clubs" element={<AdminPage />} />
                     <Route path="admin/calendar" element={<RoleWorkspacePage />} />
-                    <Route path="admin/security" element={<RoleWorkspacePage />} />
+                    <Route path="admin/security" element={<AdminPage />} />
                   </Route>
                 </Route>
               </Route>
