@@ -41,7 +41,7 @@ exports.adminManageUser = onCall({ region: 'us-central1' }, async (request) => {
     if (displayName.length < 2 || displayName.length > 80) {
       throw new HttpsError('invalid-argument', 'Display name must contain 2 to 80 characters.')
     }
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new HttpsError('invalid-argument', 'Enter a valid email address.')
     }
     if (!['student', 'teacher', 'admin'].includes(role)) {
