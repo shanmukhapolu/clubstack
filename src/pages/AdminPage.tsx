@@ -158,23 +158,6 @@ export function AdminPage() {
     finally { setWorkingId(null) }
   }
 
-  async function setUserRole(target: AppUser, role: Role) {
-    setWorkingId(target.id)
-    try {
-      await api.users.setRole(target.id, role)
-      setUsers((current) =>
-        current.map((candidate) =>
-          candidate.id === target.id ? { ...candidate, role } : candidate,
-        ),
-      )
-      notify(`${target.displayName} is now ${role === 'admin' ? 'an admin' : role === 'teacher' ? 'a teacher/advisor' : 'a student'}.`)
-    } catch (caught) {
-      notify(friendlyError(caught), 'error')
-    } finally {
-      setWorkingId(null)
-    }
-  }
-
   async function setReportStatus(report: ModerationReport, status: ReportStatus) {
     setWorkingId(report.id)
     try {
