@@ -659,6 +659,14 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => stringOr(item.data().uid, '')).filter(Boolean)
     },
 
+    async removeMember(clubId, uid) {
+      const db = requireDb()
+      const actor = requireAuth().currentUser?.uid
+      if (!actor) throw new Error('You must be signed in to manage club members.')
+      if (actor === uid) throw new Error('Use Leave club to remove yourself.')
+      await deleteDoc(doc(db, 'memberships', `${uid}_${clubId}`))
+    },
+
     async listRequestsForClub(clubId) {
       const snapshot = await getDocs(query(collection(requireDb(), 'clubJoinRequests'), where('clubId', '==', clubId)))
       return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as ClubJoinRequest).sort(byNewest)
