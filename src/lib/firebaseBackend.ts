@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -15,7 +16,6 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import type { Firestore } from 'firebase/firestore'
-import { getFunctions, httpsCallable } from 'firebase/functions'
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -258,9 +258,16 @@ export const firebaseApi: ClubStackApi = {
         }
 
         const profileRef = doc(db, 'users', firebaseUser.uid)
+        const disabledRef = doc(db, 'disabledUsers', firebaseUser.uid)
         const profileCreationBelongsToSignup = accountCreationInProgress
         void (async () => {
           try {
+            const disabled = await getDoc(disabledRef)
+            if (disabled.exists()) {
+              await firebaseSignOut(auth)
+              if (!cancelled) callback(null)
+              return
+            }
             const existing = await getDoc(profileRef)
             if (!existing.exists() && !profileCreationBelongsToSignup) {
               await setDoc(profileRef, {
@@ -1153,15 +1160,103 @@ export const firebaseApi: ClubStackApi = {
     },
 
     async updateProfile(uid, input) {
-      const functions = getFunctions(requireAuth().app)
-      const manageUser = httpsCallable(functions, 'adminManageUser')
-      await manageUser({ action: 'update', uid, ...input })
+      const db = requireDb()
+      const profileRef = doc(db, 'users', uid)
+      const directoryRef = doc(db, 'userDirectory', uid)
+      const profile = await getDoc(profileRef)
+      if (!profile.exists()) throw new Error('This user profile no longer exists.')
+      const batch = writeBatch(db)
+      batch.update(profileRef, {
+        displayName: input.displayName.trim(),
+        email: input.email.trim().toLowerCase(),
+        role: input.role,
+        ...(input.grade.trim() ? { grade: input.grade.trim() } : { grade: deleteField() }),
+      })
+      batch.set(directoryRef, {
+        displayName: input.displayName.trim(),
+        role: input.role,
+        createdAt: numberOr(profile.data().createdAt),
+        nameLower: input.displayName.trim().toLocaleLowerCase(),
+      }, { merge: true })
+      await batch.commit()
+      // The Firebase client SDK cannot change another user's Auth email. This updates
+      // the ClubStack profile email only; the user's sign-in email remains unchanged.
     },
 
     async deleteAccount(uid) {
-      const functions = getFunctions(requireAuth().app)
-      const manageUser = httpsCallable(functions, 'adminManageUser')
-      await manageUser({ action: 'delete', uid })
+      const db = requireDb()
+      const actorUid = requireAuth().currentUser?.uid
+      if (!actorUid) throw new Error('You must be signed in to manage user accounts.')
+      if (actorUid === uid) throw new Error('You cannot delete your own administrator account.')
+      const profileRef = doc(db, 'users', uid)
+      const profile = await getDoc(profileRef)
+      if (!profile.exists()) throw new Error('This user profile no longer exists.')
+
+      const [memberships, joinRequests, invited, sentInvites, reports, reactions, rsvps, sponsorRequests, deletionRequests, clubsAsLeader, clubsAsSponsor, clubsAsOfficer] = await Promise.all([
+        getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
+        getDocs(query(collection(db, 'clubJoinRequests'), where('uid', '==', uid))),
+        getDocs(query(collection(db, 'officerInvitations'), where('invitedUserId', '==', uid))),
+        getDocs(query(collection(db, 'officerInvitations'), where('invitedById', '==', uid))),
+        getDocs(query(collection(db, 'moderationReports'), where('reporterId', '==', uid))),
+        getDocs(query(collection(db, 'announcementReactions'), where('uid', '==', uid))),
+        getDocs(query(collection(db, 'eventRsvps'), where('uid', '==', uid))),
+        getDocs(query(collection(db, 'clubSponsorRequests'), where('requestedById', '==', uid))),
+        getDocs(query(collection(db, 'clubDeletionRequests'), where('requestedById', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
+      ])
+
+      const related = [
+        ...memberships.docs, ...joinRequests.docs, ...invited.docs, ...sentInvites.docs,
+        ...reports.docs, ...reactions.docs, ...rsvps.docs, ...sponsorRequests.docs, ...deletionRequests.docs,
+      ]
+      for (let offset = 0; offset < related.length; offset += 400) {
+        const batch = writeBatch(db)
+        related.slice(offset, offset + 400).forEach(item => batch.delete(item.ref))
+        await batch.commit()
+      }
+
+      const affectedClubs = new Map<string, { ref: typeof clubsAsLeader.docs[number]['ref']; data: Record<string, unknown> }>()
+      for (const snapshot of [clubsAsLeader, clubsAsSponsor, clubsAsOfficer]) {
+        for (const item of snapshot.docs) affectedClubs.set(item.id, { ref: item.ref, data: item.data() })
+      }
+      const clubEntries = [...affectedClubs.entries()]
+      for (let offset = 0; offset < clubEntries.length; offset += 200) {
+        const batch = writeBatch(db)
+        for (const [clubId, entry] of clubEntries.slice(offset, offset + 200)) {
+          const wasLeader = entry.data.leaderId === uid
+          const wasSponsor = entry.data.sponsorId === uid
+          const officers = Array.isArray(entry.data.officers)
+            ? entry.data.officers.filter(item => !!item && typeof item === 'object' && (item as Record<string, unknown>).uid !== uid)
+            : []
+          const officerIds = Array.isArray(entry.data.officerIds)
+            ? entry.data.officerIds.filter(id => id !== uid)
+            : []
+          const patch: Record<string, unknown> = { officers, officerIds }
+          if (wasLeader) Object.assign(patch, { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null })
+          if (wasSponsor) Object.assign(patch, { sponsorId: '', sponsorName: '', sponsorStatus: 'none' })
+          batch.update(entry.ref, patch)
+          const directoryRef = doc(db, 'clubDirectory', clubId)
+          const directory = await getDoc(directoryRef)
+          if (directory.exists()) {
+            batch.set(directoryRef, {
+              ...(wasLeader ? { leaderName: 'Unassigned' } : {}),
+              ...(wasSponsor ? { sponsorName: '' } : {}),
+            }, { merge: true })
+          }
+        }
+        await batch.commit()
+      }
+
+      const batch = writeBatch(db)
+      batch.set(doc(db, 'disabledUsers', uid), { uid, disabledAt: Date.now(), disabledBy: actorUid })
+      batch.delete(doc(db, 'userDirectory', uid))
+      batch.delete(profileRef)
+      await batch.commit()
+      // Firebase Auth does not allow the client SDK to delete another user's Auth
+      // record. The disabledUsers tombstone prevents this account from re-entering
+      // ClubStack even though its Firebase Authentication record still exists.
     },
   },
 }
