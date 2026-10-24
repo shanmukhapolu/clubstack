@@ -355,17 +355,28 @@ try {
     await assertSucceeds(deleteDoc(doc(leader, 'clubs', 'club-accepted-sponsor-one')))
   })
 
-  await check('current club leader can transfer ownership to an existing student officer', async () => {
-    const batch = writeBatch(leader)
-    batch.update(doc(leader, 'clubs', 'club-visible'), {
+  await check('ownership transfer requires the invited officer to accept', async () => {
+    await assertFails(updateDoc(doc(leader, 'clubs', 'club-visible'), {
       leaderId: 'member-visible',
       leaderName: 'Visible Club Member',
       leaderTitle: 'President',
       officers: [{ uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'Former President' }],
       officerIds: ['leader'],
+    }))
+    await assertSucceeds(updateDoc(doc(leader, 'clubs', 'club-visible'), {
+      pendingLeaderTransfer: { fromId: 'leader', fromName: 'Club Leader', toId: 'member-visible', toName: 'Visible Club Member', createdAt: 11 },
+    }))
+    const acceptance = writeBatch(member)
+    acceptance.update(doc(member, 'clubs', 'club-visible'), {
+      leaderId: 'member-visible',
+      leaderName: 'Visible Club Member',
+      leaderTitle: 'President',
+      officers: [{ uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'Former President' }],
+      officerIds: ['leader'],
+      pendingLeaderTransfer: null,
     })
-    batch.update(doc(leader, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' })
-    await assertSucceeds(batch.commit())
+    acceptance.update(doc(member, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' })
+    await assertSucceeds(acceptance.commit())
     await assertSucceeds(getDoc(doc(member, 'clubs', 'club-visible')))
   })
 
