@@ -337,7 +337,7 @@ export const firebaseApi: ClubStackApi = {
         const needsSync = privateSnapshot.docs.filter((item) => {
           const existing = directories.get(item.id)
           const expected = toDirectoryData(item.data())
-          return !existing || ['sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible']
+          return !existing || ['sponsorName', 'meetingDay', 'meetingFrequency', 'meetingOrdinal', 'customMeetingSchedule', 'meetingTime', 'location', 'contactEmail', 'prerequisites', 'dues', 'instagramHandle', 'requiresApproval', 'membersVisible', 'hidden']
             .some((key) => existing[key] !== expected[key])
         })
         for (let i = 0; i < needsSync.length; i += 400) {
