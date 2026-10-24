@@ -1255,7 +1255,7 @@ export const firebaseApi: ClubStackApi = {
             ? entry.data.officerIds.filter(id => id !== uid)
             : []
           const patch: Record<string, unknown> = { officers, officerIds }
-          if (wasLeader) Object.assign(patch, { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null })
+          if (wasLeader) Object.assign(patch, { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'Club Owner', pendingLeaderTransfer: null })
           if (wasSponsor) Object.assign(patch, { sponsorId: '', sponsorName: '', sponsorStatus: 'none' })
           batch.update(entry.ref, patch)
           const directoryRef = doc(db, 'clubDirectory', clubId)
