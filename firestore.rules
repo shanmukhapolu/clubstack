@@ -158,7 +158,7 @@ service cloud.firestore {
         || resource.data.get('officerIds', []).hasAny([request.auth.uid])
         // A teacher who was invited to sponsor this club must be able to read the
         // pending club document so the accept/decline transaction can complete.
-        || (resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus in ['pending', 'accepted'])
+        || (resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus == 'accepted')
       );
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
