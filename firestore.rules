@@ -365,7 +365,7 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)).data.sponsorStatus == 'pending')
         );
       allow read: if isAdmin() || (signedIn() && (
-        resource.data.teacherId == request.auth.uid || resource.data.previousSponsorId == request.auth.uid
+        resource.data.teacherId == request.auth.uid || resource.data.get('previousSponsorId', '') == request.auth.uid
         || resource.data.requestedById == request.auth.uid || isManager(resource.data.clubId)
       ));
       allow update: if isAdmin()
