@@ -44,15 +44,18 @@ export function ClubPage() {
   const navigate = useNavigate()
 
   const [club, setClub] = useState<Club | null>(() => clubs.find((item) => item.id === clubId) ?? null)
+  const joined = isJoined(clubId)
+  const hasPrivateAccess = !!(user && (joined || user.role === 'admin' || (club && (club.leaderId === user.id || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id)))))
   const [missing, setMissing] = useState(false)
   const [hasPendingOfficerInvite, setHasPendingOfficerInvite] = useState(false)
+  const [joinRequestStatus, setJoinRequestStatus] = useState<'pending' | 'approved' | 'declined' | null>(null)
   const [busy, setBusy] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('Safety concern')
   const [reportDetails, setReportDetails] = useState('')
   const { announcements, events, loading: feedLoading, refresh: refreshFeed } = useClubFeed(
-    clubId ? [clubId] : [],
+    clubId && hasPrivateAccess ? [clubId] : [],
   )
 
   const [announcementOpen, setAnnouncementOpen] = useState(false)
@@ -99,16 +102,18 @@ export function ClubPage() {
       return
     }
     let active = true
-    void api.officerInvitations.listForUser(user.id).then(invitations => {
-      if (active) setHasPendingOfficerInvite(invitations.some(item => item.clubId === clubId && item.status === 'pending'))
+    void Promise.all([api.officerInvitations.listForUser(user.id), api.memberships.listRequestsForUser(user.id)]).then(([invitations, requests]) => {
+      if (!active) return
+      setHasPendingOfficerInvite(invitations.some(item => item.clubId === clubId && item.status === 'pending'))
+      const latest = requests.filter(item => item.clubId === clubId).sort((a, b) => b.createdAt - a.createdAt)[0]
+      setJoinRequestStatus(latest?.status ?? null)
     }).catch(() => {
-      if (active) setHasPendingOfficerInvite(false)
+      if (active) { setHasPendingOfficerInvite(false); setJoinRequestStatus(null) }
     })
     return () => { active = false }
   }, [clubId, user?.id, user?.role])
 
   const upcomingEvents = useMemo(() => upcoming(events), [events])
-  const joined = isJoined(clubId)
 
   if (!user) return null
 
@@ -172,10 +177,16 @@ export function ClubPage() {
     try {
       if (joined) {
         await leave(club.id)
+        setJoinRequestStatus(null)
         notify(`You left ${club.name}.`)
       } else {
         await join(club.id)
-        notify(`You joined ${club.name}!`)
+        if (club.requiresApproval) {
+          setJoinRequestStatus('pending')
+          notify(`Your request to join ${club.name} was sent for approval.`)
+        } else {
+          notify(`You joined ${club.name}.`)
+        }
       }
     } catch (caught) {
       notify(friendlyError(caught), 'error')
@@ -361,9 +372,11 @@ export function ClubPage() {
                       <span className="group-hover:hidden">Joined</span>
                       <span className="hidden group-hover:inline">Leave club</span>
                     </>
+                  ) : club.requiresApproval && joinRequestStatus === 'pending' ? (
+                    <>Request pending</>
                   ) : (
                     <>
-                      <Plus size={16} /> Join club
+                      <Plus size={16} /> {club.requiresApproval ? 'Request to join' : 'Join club'}
                     </>
                   )}
                 </Button>
@@ -382,23 +395,15 @@ export function ClubPage() {
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted">
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <Users size={14} /> {club.memberCount} member{club.memberCount === 1 ? '' : 's'}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
+              {hasPrivateAccess && (club.membersVisible || canManage) && club.memberCount > 0 && <span className="inline-flex items-center gap-1.5 font-medium"><Users size={14} /> {club.memberCount} member{club.memberCount === 1 ? '' : 's'}</span>}
+              {hasPrivateAccess && <span className="inline-flex items-center gap-1.5">
                 <Clock size={14} />
                 {club.meetingDay === 'Flexible'
                   ? 'Flexible meeting time'
                   : `${club.meetingDay}s · ${club.meetingTime}`}
-              </span>
-              {club.location && (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin size={14} /> {club.location}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1.5">
-                <Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}
-              </span>
+              </span>}
+              {hasPrivateAccess && club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
+              {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
             </div>
           </div>
         </div>
@@ -407,6 +412,7 @@ export function ClubPage() {
       <nav aria-label="Club pages" className="mt-4 flex flex-wrap gap-2 rounded-2xl border border-line bg-surface p-1.5">
         <Link to={`/clubs/${club.id}`} className="rounded-xl bg-ink px-3.5 py-2 text-[12px] font-semibold text-white">Overview</Link>
         <Link to={`/clubs/${club.id}/meetings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Meetings</Link>
+        {hasPrivateAccess && <Link to={`/clubs/${club.id}/members`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Members</Link>}
         {canManage && <Link to={`/clubs/${club.id}/settings`} className="rounded-xl px-3.5 py-2 text-[12px] font-semibold text-ink-soft hover:bg-canvas">Settings</Link>}
       </nav>
 
@@ -434,6 +440,7 @@ export function ClubPage() {
         </Button>
       </div>
 
+      {hasPrivateAccess ? (
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.55fr_1fr] lg:gap-6">
         <section>
           <div className="mb-3 flex items-center justify-between">
@@ -597,6 +604,13 @@ export function ClubPage() {
           )}
         </aside>
       </div>
+
+      ) : (
+        <section className="card mt-6 overflow-hidden p-5 sm:p-6">
+          <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck size={19}/></div><div><h2 className="text-[16px] font-extrabold">The rest of this club is for members</h2><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">Join to access meeting details, the member list, announcements, event RSVPs, and contact information. Private details are not loaded until you have access.</p></div></div>
+          <div aria-hidden="true" className="mt-5 space-y-3 select-none" style={{filter:'blur(5px)',opacity:0.45}}><div className="h-5 w-1/3 rounded-lg bg-canvas"/><div className="h-20 rounded-2xl bg-canvas"/><div className="grid gap-3 sm:grid-cols-2"><div className="h-24 rounded-2xl bg-canvas"/><div className="h-24 rounded-2xl bg-canvas"/></div></div>
+        </section>
+      )}
 
       <Modal
         open={announcementOpen}

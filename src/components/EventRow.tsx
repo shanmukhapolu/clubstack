@@ -1,6 +1,10 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Clock, MapPin, Trash2 } from 'lucide-react'
-import type { Club, ClubEvent } from '../lib/types'
+import type { Club, ClubEvent, EventRsvpStatus, RsvpSummary } from '../lib/types'
+import { useAuth } from '../context/AuthContext'
+import { useClubs } from '../context/ClubsContext'
+import { api } from '../lib/backend'
 import { formatTimeRange, isToday } from '../lib/dates'
 import { ClubMark } from './ui'
 
@@ -15,8 +19,27 @@ export function EventRow({
   canManage?: boolean
   onDelete?: (event: ClubEvent) => void
 }) {
+  const { user } = useAuth()
+  const { isJoined } = useClubs()
+  const [rsvp, setRsvp] = useState<RsvpSummary>({ going: 0, maybe: 0, notGoing: 0, mine: null })
+  const [rsvpBusy, setRsvpBusy] = useState(false)
   const date = new Date(event.startAt)
   const past = event.startAt < Date.now()
+  const canRsvp = !!(user && user.role === 'student' && isJoined(event.clubId) && !past)
+
+  useEffect(() => {
+    if (!user) return
+    let active = true
+    void api.events.getRsvpSummary(event.id, event.clubId, user.id).then(summary => { if (active) setRsvp(summary) }).catch(() => undefined)
+    return () => { active = false }
+  }, [event.id, user?.id])
+
+  async function updateRsvp(status: EventRsvpStatus) {
+    if (!user || rsvpBusy) return
+    setRsvpBusy(true)
+    try { await api.events.setRsvp(event.id, event.clubId, user.id, status); setRsvp(await api.events.getRsvpSummary(event.id, event.clubId, user.id)) }
+    finally { setRsvpBusy(false) }
+  }
 
   return (
     <div className={`flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5 ${past ? 'opacity-55' : ''}`} style={club ? { borderLeft: `4px solid ${club.color}` } : undefined}>
@@ -58,6 +81,8 @@ export function EventRow({
           )}
         </div>
 
+        {(user && (isJoined(event.clubId) || user.role === 'admin' || canManage)) && <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted"><span className="font-semibold">Estimated attendance</span><span>{rsvp.going} going</span><span>· {rsvp.maybe} maybe</span></div>}
+        {canRsvp && <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`RSVP for ${event.title}`}>{([['going','Going'],['maybe','Maybe'],['notGoing','Can’t go']] as [EventRsvpStatus,string][]).map(([status,label])=><button key={status} type="button" disabled={rsvpBusy} onClick={() => void updateRsvp(status)} aria-pressed={rsvp.mine === status} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rsvp.mine === status ? 'border-brand-300 bg-brand-50 text-brand-800' : 'border-line text-ink-soft hover:bg-canvas'}`}>{label}</button>)}</div>}
         {club && (
           <Link
             to={`/clubs/${club.id}`}

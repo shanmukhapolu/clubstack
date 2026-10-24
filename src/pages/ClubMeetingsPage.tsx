@@ -27,7 +27,8 @@ export function ClubMeetingsPage() {
   const [club,setClub]=useState<Club|null>(fromContext)
   const [clubLoading,setClubLoading]=useState(!fromContext)
   const [hasPendingOfficerInvite,setHasPendingOfficerInvite]=useState(false)
-  const { events,loading,refresh:refreshFeed }=useClubFeed(clubId?[clubId]:[])
+  const hasPrivateAccess = !!(user && club && (isJoined(club.id) || user.role === 'admin' || club.leaderId === user.id || (club.sponsorId === user.id && club.sponsorStatus === 'accepted') || (club.officerIds ?? []).includes(user.id)))
+  const { events,loading,refresh:refreshFeed }=useClubFeed(clubId && hasPrivateAccess ? [clubId] : [])
   const [view,setView]=useState<'calendar'|'list'>('calendar')
   const [month,setMonth]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1))
   const [selectedDate,setSelectedDate]=useState(()=>startOfDay(new Date()))
@@ -104,6 +105,7 @@ export function ClubMeetingsPage() {
 
   if(!user||clubLoading)return <Spinner label="Loading club meetings"/>
   if(!club||!canView)return <div className="rounded-2xl border border-line bg-surface p-6 text-center"><p className="text-[14px] font-bold">Club meetings unavailable</p><p className="mt-1 text-[12px] text-muted">This club may not be public yet, or the link may be out of date.</p><Link to="/discover" className="mt-3 inline-block text-[12px] font-semibold text-brand-600 hover:underline">Browse clubs</Link></div>
+  if (!hasPrivateAccess) return <div className="fade-in"><div className="mb-3 flex items-center gap-2 text-[12px]"><Link to={`/clubs/${club.id}`} className="font-semibold text-muted">{club.name}</Link><span className="text-muted">/</span><span className="font-semibold">Meetings</span></div><PageHeader eyebrow="Club meetings" title="Members-only schedule." description="Meeting times, locations, and event details are available after you join this club."/><section className="card p-5 sm:p-6"><div aria-hidden="true" className="space-y-3" style={{filter:"blur(5px)",opacity:0.45}}><div className="h-5 w-1/3 rounded-lg bg-canvas"/><div className="h-28 rounded-2xl bg-canvas"/><div className="h-20 rounded-2xl bg-canvas"/></div><p className="mt-4 text-[13px] leading-relaxed text-muted">Join the club to see its upcoming meetings and RSVP. Actual event records remain protected by database rules.</p><Link to={`/clubs/${club.id}`} className="mt-3 inline-flex text-[12px] font-bold text-brand-600 hover:underline">Return to club overview</Link></section></div>
 
   return <div className="fade-in">
     <div className="mb-4 flex flex-wrap items-center gap-3"><ClubMark club={club} size={42}/><div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600">Club meetings</p><h1 className="text-[25px] font-extrabold">{club.name}</h1></div>{canManage&&<Button size="sm" onClick={()=>setAddOpen(open=>!open)}><CalendarPlus size={15}/>{addOpen?'Close form':'Add meeting'}</Button>}</div>

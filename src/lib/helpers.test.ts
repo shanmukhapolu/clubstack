@@ -24,6 +24,8 @@ function club(overrides: Partial<Club>): Club {
     sponsorStatus: 'none',
     contactEmail: 'chess@school.edu',
     memberCount: 12,
+    requiresApproval: false,
+    membersVisible: true,
     createdAt: 1,
     ...overrides,
   }

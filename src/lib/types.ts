@@ -36,6 +36,50 @@ export type SponsorRequestStatus = 'pending' | 'accepted' | 'declined'
 
 export type OfficerInvitationStatus = 'pending' | 'accepted' | 'declined'
 
+export type JoinRequestStatus = 'pending' | 'approved' | 'declined'
+
+export interface ClubJoinRequest {
+  id: string
+  clubId: string
+  clubName: string
+  uid: string
+  displayName: string
+  status: JoinRequestStatus
+  createdAt: number
+}
+
+export interface AnnouncementReaction {
+  id: string
+  announcementId: string
+  clubId: string
+  uid: string
+  emoji: string
+  createdAt: number
+}
+
+export interface ReactionSummary {
+  counts: Record<string, number>
+  mine: string | null
+}
+
+export type EventRsvpStatus = 'going' | 'maybe' | 'notGoing'
+
+export interface EventRsvp {
+  id: string
+  eventId: string
+  clubId: string
+  uid: string
+  status: EventRsvpStatus
+  updatedAt: number
+}
+
+export interface RsvpSummary {
+  going: number
+  maybe: number
+  notGoing: number
+  mine: EventRsvpStatus | null
+}
+
 export interface OfficerInvitation {
   id: string
   clubId: string
@@ -82,6 +126,8 @@ export interface Club {
   sponsorStatus: SponsorRequestStatus | 'none'
   contactEmail: string
   memberCount: number
+  requiresApproval: boolean
+  membersVisible: boolean
   createdAt: number
 }
 

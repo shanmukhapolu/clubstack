@@ -5,7 +5,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   limit,
   onSnapshot,
   query,
@@ -37,6 +36,10 @@ import type {
   ClubInput,
   ClubStatus,
   ClubSponsorRequest,
+  ClubJoinRequest,
+  JoinRequestStatus,
+  EventRsvpStatus,
+  RsvpSummary,
   SponsorRequestStatus,
   Membership,
   ModerationReport,
@@ -69,6 +72,26 @@ function toUser(id: string, data: Record<string, unknown>): AppUser {
   }
 }
 
+function toDirectoryData(data: Record<string, unknown>): Record<string, unknown> {
+  return {
+    name: stringOr(data.name, 'Untitled club'),
+    description: stringOr(data.description, ''),
+    category: stringOr(data.category, 'Other'),
+    emoji: stringOr(data.emoji, '🎒'),
+    color: stringOr(data.color, '#8b7cff'),
+    status: (['pending', 'approved', 'rejected'].includes(String(data.status)) ? data.status : 'pending') as ClubStatus,
+    leaderName: stringOr(data.leaderName, ''),
+    requiresApproval: data.requiresApproval === true,
+    membersVisible: data.membersVisible !== false,
+    createdAt: numberOr(data.createdAt),
+  }
+}
+
+function mergeClubData(id: string, privateData: Record<string, unknown>, directoryData?: Record<string, unknown>, memberCount = 0): Club {
+  const merged = directoryData ? { ...privateData, ...directoryData } : privateData
+  return toClub(id, { ...merged, memberCount, requiresApproval: directoryData?.requiresApproval === true, membersVisible: directoryData?.membersVisible !== false })
+}
+
 function toClub(id: string, data: Record<string, unknown>): Club {
   return {
     id,
@@ -93,6 +116,8 @@ function toClub(id: string, data: Record<string, unknown>): Club {
     sponsorStatus: (['pending', 'accepted', 'declined', 'none'].includes(String(data.sponsorStatus)) ? data.sponsorStatus : 'none') as Club['sponsorStatus'],
     contactEmail: stringOr(data.contactEmail, ''),
     memberCount: numberOr(data.memberCount),
+    requiresApproval: data.requiresApproval === true,
+    membersVisible: data.membersVisible !== false,
     createdAt: numberOr(data.createdAt),
   }
 }
@@ -256,22 +281,108 @@ export const firebaseApi: ClubStackApi = {
 
   clubs: {
     async list() {
-      const snapshot = await getDocs(collection(requireDb(), 'clubs'))
-      return snapshot.docs.map((item) => toClub(item.id, item.data()))
+      const db = requireDb()
+      const uid = requireAuth().currentUser?.uid
+      if (!uid) return []
+      const profile = await getDoc(doc(db, 'users', uid))
+      const role = profile.exists() ? profile.data().role : 'student'
+
+      if (role === 'admin') {
+        const [privateSnapshot, directorySnapshot] = await Promise.all([
+          getDocs(collection(db, 'clubs')),
+          getDocs(collection(db, 'clubDirectory')),
+        ])
+        const directories = new Map(directorySnapshot.docs.map((item) => [item.id, item.data()]))
+        const missing = privateSnapshot.docs.filter((item) => !directories.has(item.id))
+        for (let i = 0; i < missing.length; i += 400) {
+          const batch = writeBatch(db)
+          for (const item of missing.slice(i, i + 400)) {
+            const directory = toDirectoryData(item.data())
+            batch.set(doc(db, 'clubDirectory', item.id), directory)
+            directories.set(item.id, directory)
+          }
+          await batch.commit()
+        }
+        const clubs = await Promise.all(privateSnapshot.docs.map(async (item) => {
+          const members = await getDocs(query(collection(db, 'memberships'), where('clubId', '==', item.id)))
+          return mergeClubData(item.id, item.data(), directories.get(item.id), members.size)
+        }))
+        return clubs.sort((a, b) => b.createdAt - a.createdAt)
+      }
+
+      const [directorySnapshot, membershipSnapshot, leaderSnapshot, officerSnapshot, sponsorSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'clubDirectory'), where('status', '==', 'approved'))),
+        getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
+        getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
+        getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid), where('sponsorStatus', '==', 'accepted'))),
+      ])
+      const directories = new Map(directorySnapshot.docs.map((item) => [item.id, item.data()]))
+      const privateClubs = new Map<string, Record<string, unknown>>()
+      for (const snapshot of [leaderSnapshot, officerSnapshot, sponsorSnapshot]) snapshot.docs.forEach((item) => privateClubs.set(item.id, item.data()))
+
+      const memberIds = membershipSnapshot.docs.map((item) => stringOr(item.data().clubId, '')).filter(Boolean)
+      await Promise.all(memberIds.filter((id) => !privateClubs.has(id)).map(async (id) => {
+        try {
+          const snapshot = await getDoc(doc(db, 'clubs', id))
+          if (snapshot.exists()) privateClubs.set(id, snapshot.data())
+        } catch {
+          // A stale membership cannot block the rest of the directory.
+        }
+      }))
+      await Promise.all([...privateClubs.keys()].filter((id) => !directories.has(id)).map(async (id) => {
+        try {
+          const snapshot = await getDoc(doc(db, 'clubDirectory', id))
+          if (snapshot.exists()) directories.set(id, snapshot.data())
+        } catch {
+          // Legacy private records remain viewable to their authorized members.
+        }
+      }))
+
+      const ids = new Set([...directories.keys(), ...privateClubs.keys()])
+      return Promise.all([...ids].map(async (id) => {
+        const privateData = privateClubs.get(id)
+        const directory = directories.get(id)
+        let count = 0
+        if (privateData && (directory?.membersVisible !== false || role === 'admin' || privateData.leaderId === uid || (Array.isArray(privateData.officerIds) && privateData.officerIds.includes(uid)) || privateData.sponsorId === uid)) {
+          try { count = (await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id)))).size } catch { count = 0 }
+        }
+        return mergeClubData(id, privateData ?? {}, directory, count)
+      })).then((clubs) => clubs.sort((a, b) => b.createdAt - a.createdAt))
     },
 
     async get(id) {
-      const snapshot = await getDoc(doc(requireDb(), 'clubs', id))
-      return snapshot.exists() ? toClub(snapshot.id, snapshot.data()) : null
+      const db = requireDb()
+      let directory: Record<string, unknown> | undefined
+      try {
+        const directorySnapshot = await getDoc(doc(db, 'clubDirectory', id))
+        if (directorySnapshot.exists()) directory = directorySnapshot.data()
+      } catch {
+        // Pending previews are available to their owners and managers only.
+      }
+      try {
+        const privateSnapshot = await getDoc(doc(db, 'clubs', id))
+        if (privateSnapshot.exists()) {
+          let count = 0
+          try {
+            const members = await getDocs(query(collection(db, 'memberships'), where('clubId', '==', id)))
+            count = members.size
+          } catch {
+            // If the membership list is hidden, the count is hidden too.
+          }
+          return mergeClubData(id, privateSnapshot.data(), directory, count)
+        }
+      } catch {
+        // Public previews intentionally contain no private club details.
+      }
+      return directory ? mergeClubData(id, {}, directory, 0) : null
     },
 
     async create(input: ClubInput, leader: AppUser) {
       const db = requireDb()
       const clubRef = doc(collection(db, 'clubs'))
       const createdAt = Date.now()
-
-      // The club is written first so the membership rule can read it.
-      await setDoc(clubRef, {
+      const privateData = {
         ...input,
         status: 'pending' satisfies ClubStatus,
         leaderId: leader.id,
@@ -282,42 +393,55 @@ export const firebaseApi: ClubStackApi = {
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
-        memberCount: 0,
         createdAt,
-      })
-
-      // The leader automatically becomes the first member.
+      }
+      await setDoc(clubRef, privateData)
+      await setDoc(doc(db, 'clubDirectory', clubRef.id), toDirectoryData(privateData))
       const batch = writeBatch(db)
-      batch.set(doc(db, 'memberships', `${leader.id}_${clubRef.id}`), {
-        uid: leader.id,
-        clubId: clubRef.id,
-        joinedAt: createdAt,
-      })
-      batch.update(clubRef, { memberCount: 1 })
+      batch.set(doc(db, 'memberships', `${leader.id}_${clubRef.id}`), { uid: leader.id, clubId: clubRef.id, joinedAt: createdAt })
       await batch.commit()
 
       if (input.sponsorId) {
         await addDoc(collection(db, 'clubSponsorRequests'), {
-          clubId: clubRef.id,
-          clubName: input.name,
-          teacherId: input.sponsorId,
-          teacherName: input.sponsorName,
-          requestedById: leader.id,
-          requestedByName: leader.displayName,
-          status: 'pending' satisfies SponsorRequestStatus,
-          createdAt,
+          clubId: clubRef.id, clubName: input.name, teacherId: input.sponsorId, teacherName: input.sponsorName,
+          requestedById: leader.id, requestedByName: leader.displayName,
+          status: 'pending' satisfies SponsorRequestStatus, createdAt,
         })
       }
-
       return clubRef.id
     },
 
     async update(id, patch: Partial<Club>) {
-      await updateDoc(doc(requireDb(), 'clubs', id), { ...patch })
+      const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const directoryRef = doc(db, 'clubDirectory', id)
+      const current = await getDoc(clubRef)
+      if (!current.exists()) throw new Error('That club no longer exists.')
+      const directory = await getDoc(directoryRef)
+      if (!directory.exists()) await setDoc(directoryRef, toDirectoryData(current.data()))
+      const directoryKeys = ['name', 'description', 'category', 'emoji', 'color', 'status', 'leaderName'] as const
+      const privatePatch: Record<string, unknown> = {}
+      const directoryPatch: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(patch)) {
+        if (key === 'memberCount') continue
+        if (key === 'requiresApproval' || key === 'membersVisible') directoryPatch[key] = value
+        else if ((directoryKeys as readonly string[]).includes(key)) {
+          privatePatch[key] = value
+          directoryPatch[key] = value
+        } else privatePatch[key] = value
+      }
+      const batch = writeBatch(db)
+      if (Object.keys(privatePatch).length) batch.update(clubRef, privatePatch)
+      if (Object.keys(directoryPatch).length) batch.update(directoryRef, directoryPatch)
+      await batch.commit()
     },
 
     async setStatus(id, status) {
-      await updateDoc(doc(requireDb(), 'clubs', id), { status })
+      const db = requireDb()
+      const batch = writeBatch(db)
+      batch.update(doc(db, 'clubs', id), { status })
+      batch.update(doc(db, 'clubDirectory', id), { status })
+      await batch.commit()
     },
 
     async delete(id) {
@@ -329,19 +453,21 @@ export const firebaseApi: ClubStackApi = {
         getDocs(query(collection(db, 'clubSponsorRequests'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'moderationReports'), where('clubId', '==', id))),
         getDocs(query(collection(db, 'officerInvitations'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'clubJoinRequests'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'announcementReactions'), where('clubId', '==', id))),
+        getDocs(query(collection(db, 'eventRsvps'), where('clubId', '==', id))),
       ])
       const batch = writeBatch(db)
       related.flatMap((snapshot) => snapshot.docs).forEach((item) => batch.delete(item.ref))
       batch.delete(doc(db, 'clubs', id))
+      batch.delete(doc(db, 'clubDirectory', id))
       await batch.commit()
     },
   },
 
   memberships: {
     async listMine(uid) {
-      const snapshot = await getDocs(
-        query(collection(requireDb(), 'memberships'), where('uid', '==', uid)),
-      )
+      const snapshot = await getDocs(query(collection(requireDb(), 'memberships'), where('uid', '==', uid)))
       return snapshot.docs.map((item) => (item.data() as Membership).clubId)
     },
 
@@ -350,25 +476,76 @@ export const firebaseApi: ClubStackApi = {
       return snapshot.docs.map((item) => stringOr(item.data().uid, '')).filter(Boolean)
     },
 
+    async listRequestsForClub(clubId) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'clubJoinRequests'), where('clubId', '==', clubId)))
+      return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as ClubJoinRequest).sort(byNewest)
+    },
+
+    async listRequestsForUser(uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'clubJoinRequests'), where('uid', '==', uid)))
+      return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as ClubJoinRequest).sort(byNewest)
+    },
+
+    async respondToRequest(requestId, status) {
+      const db = requireDb()
+      const requestRef = doc(db, 'clubJoinRequests', requestId)
+      const snapshot = await getDoc(requestRef)
+      if (!snapshot.exists()) throw new Error('This membership request no longer exists.')
+      const data = snapshot.data()
+      if (data.status !== 'pending') throw new Error('This request has already been answered.')
+      if (status === 'declined') {
+        await updateDoc(requestRef, { status })
+        return
+      }
+      const uid = stringOr(data.uid, '')
+      const clubId = stringOr(data.clubId, '')
+      if (!uid || !clubId) throw new Error('This request is missing a student or club.')
+      await runTransaction(db, async (transaction) => {
+        const [latest, membership] = await Promise.all([
+          transaction.get(requestRef),
+          transaction.get(doc(db, 'memberships', `${uid}_${clubId}`)),
+        ])
+        if (!latest.exists() || latest.data().status !== 'pending') throw new Error('This request has already been answered.')
+        transaction.update(requestRef, { status: 'approved' })
+        if (!membership.exists()) transaction.set(doc(db, 'memberships', `${uid}_${clubId}`), { uid, clubId, joinedAt: Date.now() })
+      })
+    },
+
     async join(clubId) {
       const db = requireDb()
       const uid = requireAuth().currentUser?.uid
       if (!uid) throw new Error('You must be signed in to join a club.')
+      const profile = await getDoc(doc(db, 'users', uid))
+      if (profile.data()?.role !== 'student') throw new Error('Only student accounts can join clubs.')
+      const directoryRef = doc(db, 'clubDirectory', clubId)
+      const directory = await getDoc(directoryRef)
+      if (!directory.exists() || directory.data().status !== 'approved') throw new Error('This club is not open for joining yet.')
+      const membershipRef = doc(db, 'memberships', `${uid}_${clubId}`)
+      if ((await getDoc(membershipRef)).exists()) return
+
+      if (directory.data().requiresApproval === true) {
+        const requestRef = doc(db, 'clubJoinRequests', `${clubId}_${uid}`)
+        const oldRequest = await getDoc(requestRef)
+        if (oldRequest.exists() && oldRequest.data().status === 'pending') return
+        if (oldRequest.exists() && oldRequest.data().status === 'declined') {
+          await updateDoc(requestRef, { status: 'pending', createdAt: Date.now() })
+          return
+        }
+        await setDoc(requestRef, {
+          clubId, clubName: stringOr(directory.data().name, 'Club'), uid,
+          displayName: stringOr(profile.data()?.displayName, 'Student'),
+          status: 'pending' satisfies JoinRequestStatus, createdAt: Date.now(),
+        })
+        return
+      }
 
       await runTransaction(db, async (transaction) => {
-        const clubRef = doc(db, 'clubs', clubId)
-        const clubSnapshot = await transaction.get(clubRef)
-        if (!clubSnapshot.exists()) throw new Error('That club no longer exists.')
-        if (clubSnapshot.data().status !== 'approved') {
-          throw new Error('This club is waiting for approval, so you cannot join yet.')
-        }
-
-        const membershipRef = doc(db, 'memberships', `${uid}_${clubId}`)
+        const latest = await transaction.get(directoryRef)
         const membership = await transaction.get(membershipRef)
+        if (!latest.exists() || latest.data().status !== 'approved') throw new Error('This club is not open for joining.')
         if (membership.exists()) return
-
+        if (latest.data().requiresApproval === true) throw new Error('This club now requires approval. Refresh and request to join.')
         transaction.set(membershipRef, { uid, clubId, joinedAt: Date.now() })
-        transaction.update(clubRef, { memberCount: increment(1) })
       })
     },
 
@@ -376,20 +553,10 @@ export const firebaseApi: ClubStackApi = {
       const db = requireDb()
       const uid = requireAuth().currentUser?.uid
       if (!uid) throw new Error('You must be signed in to leave a club.')
-
+      const membershipRef = doc(db, 'memberships', `${uid}_${clubId}`)
       await runTransaction(db, async (transaction) => {
-        const membershipRef = doc(db, 'memberships', `${uid}_${clubId}`)
         const membership = await transaction.get(membershipRef)
-        if (!membership.exists()) return
-
-        const clubRef = doc(db, 'clubs', clubId)
-        const clubSnapshot = await transaction.get(clubRef)
-        transaction.delete(membershipRef)
-        if (clubSnapshot.exists()) {
-          transaction.update(clubRef, {
-            memberCount: Math.max(0, numberOr(clubSnapshot.data().memberCount) - 1),
-          })
-        }
+        if (membership.exists()) transaction.delete(membershipRef)
       })
     },
   },
@@ -419,6 +586,25 @@ export const firebaseApi: ClubStackApi = {
       })
     },
 
+    async getReactionSummary(announcementId, clubId, uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'announcementReactions'), where('announcementId', '==', announcementId), where('clubId', '==', clubId)))
+      const counts: Record<string, number> = {}
+      let mine: string | null = null
+      for (const item of snapshot.docs) {
+        const data = item.data()
+        const emoji = stringOr(data.emoji, '')
+        if (emoji) counts[emoji] = (counts[emoji] ?? 0) + 1
+        if (data.uid === uid) mine = emoji || null
+      }
+      return { counts, mine }
+    },
+
+    async setReaction(announcementId, clubId, uid, emoji) {
+      const ref = doc(requireDb(), 'announcementReactions', `${announcementId}_${uid}`)
+      if (!emoji) { await deleteDoc(ref); return }
+      await setDoc(ref, { announcementId, clubId, uid, emoji, createdAt: Date.now() })
+    },
+
     async remove(id) {
       await deleteDoc(doc(requireDb(), 'announcements', id))
     },
@@ -426,8 +612,11 @@ export const firebaseApi: ClubStackApi = {
 
   events: {
     async listAll() {
-      const snapshot = await getDocs(collection(requireDb(), 'events'))
-      return snapshot.docs.map((item) => toEvent(item.id, item.data())).sort(byStart)
+      const db = requireDb()
+      const ids = await readablePrivateClubIds()
+      if (!ids.length) return []
+      const groups = await Promise.all(chunk(ids).map((group) => getDocs(query(collection(db, 'events'), where('clubId', 'in', group)))))
+      return groups.flatMap((snapshot) => snapshot.docs.map((item) => toEvent(item.id, item.data()))).sort(byStart)
     },
 
     async listForClubs(clubIds) {
@@ -454,6 +643,23 @@ export const firebaseApi: ClubStackApi = {
         createdBy: author.id,
         createdAt: Date.now(),
       })
+    },
+
+    async getRsvpSummary(eventId, clubId, uid) {
+      const snapshot = await getDocs(query(collection(requireDb(), 'eventRsvps'), where('eventId', '==', eventId), where('clubId', '==', clubId)))
+      const summary: RsvpSummary = { going: 0, maybe: 0, notGoing: 0, mine: null }
+      for (const item of snapshot.docs) {
+        const data = item.data()
+        if (data.status === 'going') summary.going += 1
+        if (data.status === 'maybe') summary.maybe += 1
+        if (data.status === 'notGoing') summary.notGoing += 1
+        if (data.uid === uid) summary.mine = data.status as EventRsvpStatus
+      }
+      return summary
+    },
+
+    async setRsvp(eventId, clubId, uid, status) {
+      await setDoc(doc(requireDb(), 'eventRsvps', `${eventId}_${uid}`), { eventId, clubId, uid, status, updatedAt: Date.now() })
     },
 
     async remove(id) {
@@ -574,11 +780,7 @@ export const firebaseApi: ClubStackApi = {
       const alreadyMember = membershipsSnapshot.docs.some(item => item.data().clubId === invitation.clubId)
       const batch = writeBatch(db)
       batch.update(invitationRef, { status })
-      batch.update(clubRef, {
-        officers: nextOfficers,
-        officerIds: nextIds,
-        ...(!alreadyMember ? { memberCount: increment(1) } : {}),
-      })
+      batch.update(clubRef, { officers: nextOfficers, officerIds: nextIds })
       if (!alreadyMember) {
         batch.set(doc(db, 'memberships', `${uid}_${invitation.clubId}`), {
           uid,
@@ -638,6 +840,28 @@ export const firebaseApi: ClubStackApi = {
       }, { merge: true })
     },
   },
+}
+
+async function readablePrivateClubIds(): Promise<string[]> {
+  const db = requireDb()
+  const uid = requireAuth().currentUser?.uid
+  if (!uid) return []
+  const profile = await getDoc(doc(db, 'users', uid))
+  if (profile.data()?.role === 'admin') {
+    const snapshot = await getDocs(collection(db, 'clubs'))
+    return snapshot.docs.map((item) => item.id)
+  }
+  const [memberships, leaders, officers, sponsors] = await Promise.all([
+    getDocs(query(collection(db, 'memberships'), where('uid', '==', uid))),
+    getDocs(query(collection(db, 'clubs'), where('leaderId', '==', uid))),
+    getDocs(query(collection(db, 'clubs'), where('officerIds', 'array-contains', uid))),
+    getDocs(query(collection(db, 'clubs'), where('sponsorId', '==', uid), where('sponsorStatus', '==', 'accepted'))),
+  ])
+  const ids = new Set<string>()
+  memberships.docs.forEach((item) => ids.add(stringOr(item.data().clubId, '')))
+  for (const snapshot of [leaders, officers, sponsors]) snapshot.docs.forEach((item) => ids.add(item.id))
+  ids.delete('')
+  return [...ids]
 }
 
 function byStart(a: ClubEvent, b: ClubEvent): number {
