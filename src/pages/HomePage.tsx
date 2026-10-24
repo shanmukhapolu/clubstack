@@ -1,69 +1,49 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Bell, CalendarDays, Compass, ShieldCheck, Users, Sparkles, Check } from 'lucide-react'
+
+const features = [
+  { icon: Compass, number: '01', title: 'Find your people', body: 'Explore school clubs by interest, see what each group does, and find the next step to join.' },
+  { icon: CalendarDays, number: '02', title: 'Know what is happening', body: 'Keep meeting dates, locations, callouts, and workshops together in one clear calendar.' },
+  { icon: Bell, number: '03', title: 'Stay in the loop', body: 'Read pinned announcements and see important changes without hunting through old messages.' },
+  { icon: ShieldCheck, number: '04', title: 'Make leadership simpler', body: 'Give officers and advisors the right tools for memberships, schedules, and club information.' },
+]
 
 export function HomePage() {
   return (
-    <div className="min-h-screen bg-white text-ink">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5 sm:px-8">
-          <Link to="/" className="text-[17px] font-extrabold tracking-tight">ClubStack</Link>
-          <Link to="/login" className="text-[13px] font-semibold text-ink-soft transition-colors hover:text-ink">Sign in</Link>
+    <div className="min-h-screen overflow-hidden bg-canvas text-ink">
+      <header className="relative z-10 border-b border-line/80 bg-white/85 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link to="/" className="flex items-center gap-2.5 text-[17px] font-extrabold tracking-tight"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-black text-white shadow-sm">C.</span>ClubStack</Link>
+          <nav className="flex items-center gap-5"><a href="#features" className="hidden text-[13px] font-semibold text-muted hover:text-ink sm:inline">Explore</a><Link to="/login" className="rounded-xl border border-line bg-white px-4 py-2.5 text-[13px] font-bold transition hover:border-brand-300 hover:bg-brand-50">Sign in</Link></nav>
         </div>
       </header>
-
       <main>
-        <section className="mx-auto max-w-5xl px-5 pb-20 pt-20 sm:px-8 sm:pb-28 sm:pt-28">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Club management for your school</p>
-          <h1 className="mt-5 max-w-2xl text-[42px] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[58px]">
-            School clubs, in one place.
-          </h1>
-          <p className="mt-5 max-w-xl text-[15px] leading-7 text-ink-soft sm:text-[16px]">
-            Find clubs, keep up with announcements, and organize meetings without chasing information across different places.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link to="/login" className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-ink-soft">
-              Open ClubStack <ArrowRight size={15} />
-            </Link>
-            <a href="#features" className="rounded-lg border border-line px-4 py-3 text-[13px] font-semibold text-ink-soft transition-colors hover:bg-canvas">
-              Learn more
-            </a>
+        <section className="relative px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-20">
+          <div className="pointer-events-none absolute -right-24 -top-20 h-80 w-80 rounded-full bg-brand-200/50 blur-3xl" />
+          <div className="pointer-events-none absolute -left-20 top-40 h-64 w-64 rounded-full bg-[#d9d2ff]/55 blur-3xl" />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
+            <div className="reveal">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.13em] text-brand-700"><Sparkles size={13}/> Your school, more connected</span>
+              <h1 className="mt-6 max-w-2xl text-[44px] font-extrabold leading-[1.02] tracking-[-0.055em] sm:text-[64px] lg:text-[72px]">Every club.<br/><span className="text-brand-600">One place.</span></h1>
+              <p className="mt-6 max-w-xl text-[15px] leading-7 text-ink-soft sm:text-[17px]">Find a group that feels like yours, keep up with what matters, and make running a club less complicated.</p>
+              <div className="mt-8 flex flex-wrap items-center gap-3"><Link to="/login" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[13px] font-bold text-white shadow-lg shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700">Get started <ArrowRight size={15}/></Link><a href="#features" className="rounded-xl border border-line bg-white/80 px-5 py-3.5 text-[13px] font-bold text-ink-soft transition hover:border-brand-200 hover:bg-white">See what you can do</a></div>
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[12px] font-medium text-muted"><span className="inline-flex items-center gap-1.5"><Check size={14} className="text-brand-600"/> Club discovery</span><span className="inline-flex items-center gap-1.5"><Check size={14} className="text-brand-600"/> Meetings and events</span><span className="inline-flex items-center gap-1.5"><Check size={14} className="text-brand-600"/> Shared updates</span></div>
+            </div>
+            <div className="reveal reveal-delay relative mx-auto w-full max-w-lg">
+              <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-brand-200/70 via-white to-[#e6dcff]/70 blur-sm"/>
+              <div className="relative rounded-[2rem] border border-white/80 bg-white p-4 shadow-lift sm:p-5">
+                <div className="flex items-center justify-between border-b border-line pb-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">Your club space</p><p className="mt-1 text-[18px] font-extrabold">A little more organized.</p></div><span className="rounded-xl bg-brand-50 p-2.5 text-brand-700"><Users size={19}/></span></div>
+                <div className="mt-4 rounded-2xl bg-brand-50/80 p-4"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#d9d2ff] text-xl">🤖</span><div className="min-w-0 flex-1"><p className="text-[13px] font-extrabold">Robotics Collective</p><p className="mt-0.5 text-[11px] text-muted">STEM · 24 members</p></div><span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-brand-700">Joined</span></div><div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-xl border border-white bg-white p-3"><CalendarDays size={15} className="text-brand-600"/><p className="mt-2 text-[11px] font-bold">Build night</p><p className="mt-1 text-[10px] text-muted">Thursday · 3:30 PM</p></div><div className="rounded-xl border border-white bg-white p-3"><Bell size={15} className="text-brand-600"/><p className="mt-2 text-[11px] font-bold">Pinned update</p><p className="mt-1 text-[10px] text-muted">Room changed to C-110</p></div></div></div>
+                <div className="mt-3 flex items-center gap-3 rounded-2xl border border-line p-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0eaff] text-brand-700"><ShieldCheck size={17}/></span><div><p className="text-[12px] font-bold">Clear roles, fewer loose ends</p><p className="mt-0.5 text-[10.5px] text-muted">Students, officers, advisors, and admins</p></div></div>
+              </div>
+            </div>
           </div>
         </section>
-
-        <section id="features" className="border-y border-line bg-canvas/50">
-          <div className="mx-auto grid max-w-5xl gap-0 px-5 sm:grid-cols-3 sm:px-8">
-            <article className="border-b border-line py-6 sm:border-b-0 sm:border-r sm:pr-6">
-              <h2 className="text-[14px] font-semibold">Discover clubs</h2>
-              <p className="mt-2 max-w-xs text-[12.5px] leading-relaxed text-muted">Browse school groups and find the details you need to get involved.</p>
-            </article>
-            <article className="border-b border-line py-6 sm:border-b-0 sm:px-6 sm:last:border-r">
-              <h2 className="text-[14px] font-semibold">Keep everything together</h2>
-              <p className="mt-2 max-w-xs text-[12.5px] leading-relaxed text-muted">See announcements, meeting information, and attendance in one workspace.</p>
-            </article>
-            <article className="py-6 sm:pl-6">
-              <h2 className="text-[14px] font-semibold">Make club work easier</h2>
-              <p className="mt-2 max-w-xs text-[12.5px] leading-relaxed text-muted">Give students, officers, advisors, and school administrators tools that fit their roles.</p>
-            </article>
-          </div>
-        </section>
-
-        <section className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-12 sm:px-8">
-          <div>
-            <h2 className="text-[19px] font-bold tracking-tight">Ready to get organized?</h2>
-            <p className="mt-1 text-[12.5px] text-muted">Sign in to see your clubs and updates.</p>
-          </div>
-          <Link to="/login" className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink hover:underline">
-            Get started <ArrowRight size={15} />
-          </Link>
-        </section>
+        <section className="px-5 py-5 sm:px-8"><div className="reveal mx-auto grid max-w-6xl gap-3 rounded-[2rem] border border-brand-100 bg-white p-5 shadow-card sm:grid-cols-3 sm:p-7"><div className="px-2 py-2 sm:border-r sm:border-line"><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-brand-600">Discover</p><p className="mt-2 text-[16px] font-extrabold">Find your next thing</p><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Browse interests, details, and ways to get involved.</p></div><div className="px-2 py-2 sm:border-r sm:border-line sm:px-5"><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-brand-600">Coordinate</p><p className="mt-2 text-[16px] font-extrabold">Know the plan</p><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Keep meetings and event details easy to find.</p></div><div className="px-2 py-2 sm:px-5"><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-brand-600">Connect</p><p className="mt-2 text-[16px] font-extrabold">Keep everyone updated</p><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Share announcements and see changes in one feed.</p></div></div></section>
+        <section id="features" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24"><div className="reveal max-w-2xl"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600">Made for school clubs</p><h2 className="mt-3 text-[32px] font-extrabold leading-tight tracking-tight sm:text-[43px]">Less time chasing details.<br/><span className="text-brand-600">More time doing the thing.</span></h2><p className="mt-4 text-[14px] leading-7 text-muted">The small details that make clubs work should not be scattered across five different places.</p></div><div className="mt-9 grid gap-4 sm:grid-cols-2">{features.map(({icon:Icon,number,title,body},index)=><article key={number} className={`reveal rounded-[1.6rem] border border-line bg-white p-6 shadow-card transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lift sm:p-7 ${index%2?'reveal-delay':''}`}><div className="flex items-start justify-between"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-700"><Icon size={20}/></span><span className="text-[11px] font-bold tracking-[0.12em] text-muted/70">{number}</span></div><h3 className="mt-5 text-[17px] font-extrabold">{title}</h3><p className="mt-2 max-w-md text-[13px] leading-6 text-muted">{body}</p></article>)}</div></section>
+        <section className="px-5 pb-20 sm:px-8 sm:pb-24"><div className="reveal relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-brand-900 px-6 py-10 text-white sm:px-12 sm:py-14"><div className="pointer-events-none absolute -right-8 -top-20 h-64 w-64 rounded-full bg-brand-500/40 blur-3xl"/><div className="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center"><div><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-200">Start with your school</p><h2 className="mt-3 max-w-xl text-[29px] font-extrabold leading-tight sm:text-[38px]">Your next club is closer than you think.</h2><p className="mt-3 max-w-lg text-[13px] leading-6 text-white/75">Sign in to explore clubs, check your schedule, and see what is happening next.</p></div><Link to="/login" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3.5 text-[13px] font-extrabold text-brand-900 transition hover:bg-brand-50">Open ClubStack <ArrowRight size={15}/></Link></div></div></section>
       </main>
-
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-5 py-5 text-[11.5px] text-muted sm:px-8">
-          <span className="font-semibold text-ink-soft">ClubStack</span>
-          <span>School clubs, organized.</span>
-        </div>
-      </footer>
+      <footer className="border-t border-line bg-white"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-5 py-6 text-[11.5px] text-muted sm:px-8"><span className="font-extrabold text-ink">ClubStack</span><span>School clubs, organized.</span><Link to="/login" className="font-semibold text-brand-700 hover:underline">Sign in <ArrowRight size={12} className="inline"/></Link></div></footer>
     </div>
   )
 }
