@@ -146,7 +146,7 @@ export function AdminPage() {
     const officerIds = [...new Set(leadershipForm.officerIds)].filter(id => id !== leader?.id)
     const officers: ClubOfficer[] = officerIds.flatMap(id => {
       const person = users.find(item => item.id === id && item.role === 'student')
-      return person ? [{ uid: person.id, displayName: person.displayName, email: person.email, title: 'Officer' }] : []
+      return person ? [{ uid: person.id, displayName: person.displayName, email: person.email, title: editingClub?.officers.find(officer => officer.uid === person.id)?.title || 'Officer' }] : []
     })
     if (leadershipForm.leaderId && !leader) { notify('Choose a valid student as club owner.', 'error'); return }
     if (leadershipForm.sponsorId && !sponsor) { notify('Choose a valid teacher as sponsor.', 'error'); return }
@@ -178,6 +178,31 @@ export function AdminPage() {
     setWorkingId(target.id)
     try {
       await api.memberships.removeMember(editingClub.id, target.id)
+      const isLeader = editingClub.leaderId === target.id
+      const isSponsor = editingClub.sponsorId === target.id
+      const officers = editingClub.officers.filter(officer => officer.uid !== target.id)
+      const officerIds = editingClub.officerIds.filter(id => id !== target.id)
+      if (isLeader || isSponsor || officers.length !== editingClub.officers.length) {
+        await api.clubs.update(editingClub.id, {
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null } : {}),
+          ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
+          officers,
+          officerIds,
+        })
+        setEditingClub(current => current ? {
+          ...current,
+          ...(isLeader ? { leaderId: '', leaderName: 'Unassigned', leaderTitle: 'President', pendingLeaderTransfer: null } : {}),
+          ...(isSponsor ? { sponsorId: '', sponsorName: '', sponsorStatus: 'none' as const } : {}),
+          officers,
+          officerIds,
+        } : null)
+        setLeadershipForm(current => ({
+          ...current,
+          ...(isLeader ? { leaderId: '', leaderTitle: 'President' } : {}),
+          ...(isSponsor ? { sponsorId: '' } : {}),
+          officerIds,
+        }))
+      }
       setClubMemberIds(current => current.filter(id => id !== target.id))
       notify(target.displayName + ' removed from ' + editingClub.name + '.')
       await refresh()
@@ -210,13 +235,13 @@ export function AdminPage() {
 
   async function deleteUser(target: AppUser) {
     if (target.id === user?.id) { notify('You cannot delete your own administrator account.', 'error'); return }
-    if (!window.confirm(`Permanently delete ${target.displayName}’s account? This cannot be undone.`)) return
+    if (!window.confirm('Remove ' + target.displayName + ' from ClubStack? They will be blocked from signing back in to the app, but their Firebase Authentication login record remains because this app does not use Cloud Functions.')) return
     setWorkingId(target.id)
     try {
       await api.users.deleteAccount(target.id)
       setUsers(current => current.filter(person => person.id !== target.id))
       setEditingUser(null)
-      notify(`${target.displayName}’s account was deleted.`)
+      notify(target.displayName + ' was removed from ClubStack.')
     } catch (caught) { notify(friendlyError(caught), 'error') }
     finally { setWorkingId(null) }
   }
@@ -477,7 +502,7 @@ export function AdminPage() {
               <div className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7">
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"><Avatar name={editingUser.displayName} size={46}/><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{editingUser.displayName}</p><p className="truncate text-xs text-slate-500">User ID · {editingUser.id}</p></div></div>
                 <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">Display name</span><input autoFocus required minLength={2} maxLength={80} value={userForm.displayName} onChange={event => setUserForm(current => ({...current, displayName: event.target.value}))} className="field h-11 w-full rounded-xl border-slate-200 focus:border-slate-400 focus:ring-slate-200"/></label>
-                <label className="block"><span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700"><Mail size={13}/> Email address</span><input required type="email" value={userForm.email} onChange={event => setUserForm(current => ({...current, email: event.target.value}))} className="field h-11 w-full rounded-xl border-slate-200 focus:border-slate-400 focus:ring-slate-200"/><span className="mt-1.5 block text-[11px] leading-relaxed text-slate-500">This updates the email shown in ClubStack. The Firebase sign-in email cannot be changed for another user without a privileged backend.</span></label>
+                <label className="block"><span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700"><Mail size={13}/> Email address</span><input required type="email" value={userForm.email} onChange={event => setUserForm(current => ({...current, email: event.target.value}))} className="field h-11 w-full rounded-xl border-slate-200 focus:border-slate-400 focus:ring-slate-200"/><span className="mt-1.5 block text-[11px] leading-relaxed text-slate-500">This updates the email shown in ClubStack. The Firebase sign-in email stays unchanged because Cloud Functions are not enabled.</span></label>
                 <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">Account role</span><select value={userForm.role} disabled={editingUser.id === user.id} onChange={event => setUserForm(current => ({...current, role: event.target.value as Role}))} className="field h-11 w-full rounded-xl border-slate-200 focus:border-slate-400 focus:ring-slate-200 disabled:opacity-60"><option value="student">Student</option><option value="teacher">Teacher / Advisor</option><option value="admin">Administrator</option></select>{editingUser.id === user.id && <span className="mt-1.5 block text-[11px] text-slate-500">You cannot change your own administrator role.</span>}</label>
                 <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-700">Grade (optional)</span><input maxLength={30} value={userForm.grade} onChange={event => setUserForm(current => ({...current, grade: event.target.value}))} placeholder="e.g. 11" className="field h-11 w-full rounded-xl border-slate-200 focus:border-slate-400 focus:ring-slate-200"/></label>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[11.5px] leading-relaxed text-slate-600"><UserRound size={14} className="mr-1.5 inline-block"/> Changes to roles affect what this account can access throughout ClubStack.</div>
