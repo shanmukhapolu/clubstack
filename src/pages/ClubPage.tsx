@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   Users,
   Pencil,
-  Trash2,
   Flag,
   Link2,
   X,
@@ -436,19 +435,6 @@ export function ClubPage() {
       notify(friendlyError(caught), 'error')
     }
   }
-
-  async function handleDeleteClub() {
-    if (!club || !window.confirm(`Permanently delete ${club.name} and its club data? This cannot be undone.`)) return
-    try {
-      await api.clubs.delete(club.id)
-      await refresh()
-      notify(`${club.name} deleted.`)
-      navigate(isAdmin ? '/admin' : '/')
-    } catch (caught) {
-      notify(friendlyError(caught), 'error')
-    }
-  }
-
 
   return (
     <div className="fade-in">
