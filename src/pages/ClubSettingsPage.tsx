@@ -40,7 +40,13 @@ export function ClubSettingsPage() {
       if (found) {
         setRequiresApproval(found.requiresApproval)
         setMembersVisible(found.membersVisible)
-        const request = await api.clubs.getDeletionRequest(found.id).catch(() => null)
+        const canReadRequest = !!(user && (
+          user.role === 'admin'
+          || found.leaderId === user.id
+          || (found.officerIds ?? []).includes(user.id)
+          || (found.sponsorId === user.id && found.sponsorStatus === 'accepted')
+        ))
+        const request = canReadRequest ? await api.clubs.getDeletionRequest(found.id).catch(() => null) : null
         if (active) setDeletionRequest(request)
       }
       setLoading(false)
@@ -51,7 +57,7 @@ export function ClubSettingsPage() {
       }
     })
     return () => { active = false }
-  }, [clubId, notify])
+  }, [clubId, notify, user?.id, user?.role])
 
   const isAdmin = user?.role === 'admin'
   const isLeader = !!(user && club && club.leaderId === user.id)
