@@ -200,11 +200,11 @@ export function ClubSettingsPage() {
     const directTransfer = isAcceptedAdvisor || isAdmin
     const target = directTransfer ? selectedOwnershipStudent : club.officers.find(officer => officer.uid === transferTargetId)
     if (!target) return
-    if (target.id === user.id || target.uid === user.id || target.id === club.leaderId || target.uid === club.leaderId) {
+    const targetId = directTransfer ? (target as AppUser).id : (target as ClubOfficer).uid
+    if (targetId === user.id || targetId === club.leaderId) {
       notify('Choose a different student.', 'error')
       return
     }
-    const targetId = 'id' in target ? target.id : target.uid
     const targetName = target.displayName
     if (!window.confirm(directTransfer
       ? `Transfer platform ownership of ${club.name} to ${targetName} now? They will be added to student officers if needed, and the current leader will remain an officer.`
@@ -225,7 +225,7 @@ export function ClubSettingsPage() {
         const targetExisting = existingOfficers.find(officer => officer.uid === targetId)
         const officers = [
           ...existingOfficers.filter(officer => officer.uid !== targetId),
-          { uid: targetId, displayName: targetName, email: 'email' in target ? target.email : '', title: targetExisting?.title || 'Officer' },
+          { uid: targetId, displayName: targetName, email: target.email, title: targetExisting?.title || 'Officer' },
         ]
         const officerIds = [...new Set([...(club.officerIds ?? []), ...(club.leaderId ? [club.leaderId] : []), targetId])]
         const leaderTitle = officers.find(officer => officer.uid === targetId)?.title || 'Officer'
