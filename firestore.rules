@@ -206,7 +206,7 @@ service cloud.firestore {
         )
         || (
           onlyChanged(['officers','officerIds','leaderTitle','pendingLeaderTransfer'])
-          && (resource.data.leaderId == request.auth.uid || isSponsor(clubId))
+          && (resource.data.leaderId == request.auth.uid || (isTeacher() && resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus == 'accepted'))
           && request.resource.data.officerIds is list
           && request.resource.data.officers is list
           && request.resource.data.officerIds.hasAny([resource.data.leaderId])
