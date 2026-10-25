@@ -260,11 +260,11 @@ service cloud.firestore {
               && resource.data.get('pendingLeaderTransfer', null) == null
               && pendingTransferFrom(request.resource.data) == request.auth.uid
               && pendingTransferTo(request.resource.data) is string
-              && request.pendingTransferTo(resource.data) != request.auth.uid
-              && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.toId])
+              && pendingTransferTo(request.resource.data) != request.auth.uid
+              && resource.data.get('officerIds', []).hasAny([pendingTransferTo(request.resource.data)])
             )
             || (
-              resource.data.get('pendingLeaderTransfer', null) != null && resource.data.pendingLeaderTransfer.toId == request.auth.uid
+              pendingTransferTo(resource.data) == request.auth.uid
               && request.resource.data.pendingLeaderTransfer == null
             )
 
