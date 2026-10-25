@@ -147,7 +147,10 @@ service cloud.firestore {
         && privateClubExists(clubId)
         && (isAdmin() || isManager(clubId))
         && directoryMirrorMatchesPrivate(clubId);
-      allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
+      allow update: if (isSponsor(clubId)
+          && onlyChanged(['leaderName'])
+          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
+        || (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
           && directoryFieldsValid(request.resource.data)
           && directoryMirrorMatchesPrivate(clubId))
@@ -200,7 +203,21 @@ service cloud.firestore {
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
-      allow update: if (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
+      allow update: if (isSponsor(clubId)
+          && onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
+          && request.resource.data.leaderId is string
+          && request.resource.data.leaderId.size() > 0
+          && get(/databases/$(database)/documents/users/$(request.resource.data.leaderId)).data.role == 'student'
+          && request.resource.data.officerIds is list
+          && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
+          && request.resource.data.officers is list
+          && request.resource.data.pendingLeaderTransfer == null)
+        || (isSponsor(clubId)
+          && onlyChanged(['officers','officerIds','leaderTitle'])
+          && request.resource.data.officerIds is list
+          && request.resource.data.officers is list
+          && request.resource.data.officerIds.hasAny([resource.data.leaderId]))
+        || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (isLeader(clubId)
           && onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
@@ -242,20 +259,8 @@ service cloud.firestore {
           && request.resource.data.officerIds.hasAny([request.auth.uid])
           && request.resource.data.officerIds.hasAny([resource.data.leaderId])
           && request.resource.data.pendingLeaderTransfer == null)
-        || (isSponsor(clubId)
-          && onlyChanged(['officers','officerIds','leaderTitle'])
-          && request.resource.data.officerIds is list
-          && request.resource.data.officers is list
-          && request.resource.data.officerIds.hasAny([resource.data.leaderId])) 
-        || (isSponsor(clubId)
-          && onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && request.resource.data.leaderId is string
-          && request.resource.data.leaderId.size() > 0
-          && get(/databases/$(database)/documents/users/$(request.resource.data.leaderId)).data.role == 'student'
-          && request.resource.data.officerIds is list
-          && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
-          && request.resource.data.officers is list
-          && request.resource.data.pendingLeaderTransfer == null)
+
+
         || (isLeader(clubId)
           && onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
           && request.resource.data.sponsorId is string
