@@ -228,29 +228,29 @@ service cloud.firestore {
           && (
             (
               resource.data.leaderId == request.auth.uid
-              && resource.data.get('pendingLeaderTransfer', null) == null
-              && request.resource.data.get('pendingLeaderTransfer', null) is map && request.resource.data.pendingLeaderTransfer.get('fromId', '') == request.auth.uid
+              && (!('pendingLeaderTransfer' in resource.data.keys()) || resource.data.pendingLeaderTransfer == null)
+              && ('pendingLeaderTransfer' in request.resource.data.keys()) && request.resource.data.pendingLeaderTransfer is map && request.resource.data.pendingLeaderTransfer.get('fromId', '') == request.auth.uid
               && request.resource.data.pendingLeaderTransfer.get('toId', '') is string
               && request.resource.data.pendingLeaderTransfer.get('toId', '') != request.auth.uid
               && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.get('toId', '')])
             )
             || (
-              resource.data.get('pendingLeaderTransfer', null) is map && resource.data.pendingLeaderTransfer.get('toId', '') == request.auth.uid
-              && request.resource.data.get('pendingLeaderTransfer', null) == null
+              ('pendingLeaderTransfer' in resource.data.keys()) && resource.data.pendingLeaderTransfer is map && resource.data.pendingLeaderTransfer.get('toId', '') == request.auth.uid
+              && request.(!('pendingLeaderTransfer' in resource.data.keys()) || resource.data.pendingLeaderTransfer == null)
             )
 
           )
         )
         || (
           onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && resource.data.get('pendingLeaderTransfer', null) is map && resource.data.pendingLeaderTransfer.get('toId', '') == request.auth.uid
+          && ('pendingLeaderTransfer' in resource.data.keys()) && resource.data.pendingLeaderTransfer is map && resource.data.pendingLeaderTransfer.get('toId', '') == request.auth.uid
           && resource.data.leaderId == resource.data.pendingLeaderTransfer.get('fromId', '')
           && resource.data.get('officerIds', []).hasAny([request.auth.uid])
           && request.resource.data.leaderId == request.auth.uid
           && request.resource.data.leaderTitle is string
           && request.resource.data.officerIds.hasAny([request.auth.uid])
           && request.resource.data.officerIds.hasAny([resource.data.leaderId])
-          && request.resource.data.get('pendingLeaderTransfer', null) == null
+          && request.(!('pendingLeaderTransfer' in resource.data.keys()) || resource.data.pendingLeaderTransfer == null)
         )
         || (
           onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
