@@ -189,8 +189,8 @@ export const demoApi: ClubStackApi = {
         leaderId: leader.id,
         leaderName: leader.displayName,
         leaderTitle: input.leaderTitle || 'President',
-        officers: [],
-        officerIds: [],
+        officers: [{ uid: leader.id, displayName: leader.displayName, email: leader.email, title: input.leaderTitle || 'President' }],
+        officerIds: [leader.id],
         sponsorId: input.sponsorId ?? '',
         sponsorName: input.sponsorName ?? '',
         sponsorStatus: input.sponsorId ? 'pending' : 'none',
@@ -247,6 +247,19 @@ export const demoApi: ClubStackApi = {
       mutate((store) => updateClub(store, id, { status }))
     },
 
+    async transferOwnershipDirect(id, leaderId, leaderName, leaderTitle, officers, officerIds) {
+      await wait()
+      const store = read()
+      const actor = requireUser(store)
+      const club = store.clubs.find((item) => item.id === id)
+      const target = store.users.find((person) => person.id === leaderId)
+      if (!club || !(actor.role === 'admin' || (club.sponsorId === actor.id && club.sponsorStatus === 'accepted'))) {
+        throw new Error('Only an accepted teacher advisor or administrator can transfer ownership directly.')
+      }
+      if (!target || target.role !== 'student') throw new Error('Choose a valid student account.')
+      mutate((draft) => updateClub(draft, id, { leaderId, leaderName, leaderTitle, officers, officerIds, pendingLeaderTransfer: null }))
+    },
+
     async transferOwnership(id, newLeaderId, currentLeader) {
       await wait()
       const store = read()
@@ -274,8 +287,12 @@ export const demoApi: ClubStackApi = {
         leaderId: currentUser.id,
         leaderName: currentUser.displayName,
         leaderTitle: 'President',
-        officers: [...club.officers.filter((officer) => officer.uid !== currentUser.id && officer.uid !== transfer.fromId), { uid: transfer.fromId, displayName: transfer.fromName, email: '', title: 'Former President' }],
-        officerIds: [...new Set(club.officerIds.filter((uid) => uid !== currentUser.id).concat(transfer.fromId))],
+        officers: [
+          ...club.officers.filter((officer) => officer.uid !== currentUser.id && officer.uid !== transfer.fromId),
+          { ...target, title: target.title || 'Officer' },
+          { uid: transfer.fromId, displayName: transfer.fromName, email: '', title: 'Officer' },
+        ],
+        officerIds: [...new Set([...club.officerIds, currentUser.id, transfer.fromId])],
         pendingLeaderTransfer: null,
       }))
     },
