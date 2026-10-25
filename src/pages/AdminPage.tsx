@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   Check,
@@ -28,12 +28,12 @@ import type { AppUser, Club, ClubOfficer, ClubStatus, ModerationReport, ReportSt
 import { PageHeader } from '../components/PageHeader'
 import { Avatar, Badge, Button, ClubMark, Spinner } from '../components/ui'
 
-export function AdminPage() {
+type AdminPageView = 'home' | 'people' | 'clubs' | 'reports'
+
+function AdminPage({ page }: { page: AdminPageView }) {
   const { user } = useAuth()
-  const { pathname } = useLocation()
   const { clubs, loading: clubsLoading, refresh } = useClubs()
   const { notify } = useToast()
-  const page = pathname === '/admin' ? 'home' : pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs'
   const [peopleRoleTab, setPeopleRoleTab] = useState<Role>('student')
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
@@ -520,3 +520,9 @@ function StatusBadge({ status }: { status: ClubStatus }) {
   if (status === 'pending') return <Badge tone="warn">Pending</Badge>
   return <Badge tone="muted">Rejected</Badge>
 }
+
+
+export function AdminHomePage() { return <AdminPage page="home" /> }
+export function AdminUsersPage() { return <AdminPage page="people" /> }
+export function AdminClubsPage() { return <AdminPage page="clubs" /> }
+export function AdminSafetyPage() { return <AdminPage page="reports" /> }
