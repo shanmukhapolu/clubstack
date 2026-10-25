@@ -160,15 +160,9 @@ service cloud.firestore {
           && directoryFieldsValid(request.resource.data)
           && isManager(clubId)
           && directoryMirrorMatchesPrivate(clubId))
-        || (isTeacher()
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorId == request.auth.uid
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorStatus == 'accepted'
-          && onlyChanged(['leaderName'])
-          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
-        || (signedIn()
-          && userRole() == 'student'
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId == request.auth.uid
-          && onlyChanged(['leaderName'])
+        || (onlyChanged(['leaderName'])
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId is string
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId != get(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId
           && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
         || (isTeacher() && isSponsorCandidate(clubId)
           && privateClub(clubId).sponsorStatus == 'pending'
