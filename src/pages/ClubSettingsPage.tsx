@@ -198,15 +198,16 @@ export function ClubSettingsPage() {
   async function transferOwnership() {
     if (!club || !user) return
     const directTransfer = isAcceptedAdvisor || isAdmin
-    const target = directTransfer
-      ? selectedOwnershipStudent
-      : club.officers.find(officer => officer.uid === transferTargetId)
-    if (!target) return
-    if (!directTransfer && !isLeader) return
-    if (!window.confirm(`Transfer platform ownership of ${club.name} to ${target.displayName}? Their club officer title will be preserved, or set to Officer if they do not already hold a role.`)) return
+    const targetName = directTransfer
+      ? selectedOwnershipStudent?.displayName
+      : club.officers.find(officer => officer.uid === transferTargetId)?.displayName
+    if (!targetName || (!directTransfer && !isLeader)) return
+    if (!window.confirm(`Transfer platform ownership of ${club.name} to ${targetName}? Their current officer title will be preserved, or set to Officer if they do not already hold a role.`)) return
     setBusy(true)
     try {
       if (directTransfer) {
+        const target = selectedOwnershipStudent
+        if (!target) return
         const existing = club.officers.find(officer => officer.uid === target.id)
         const officer: ClubOfficer = { uid: target.id, displayName: target.displayName, email: target.email, title: existing?.title || 'Officer' }
         const officers = [...club.officers.filter(item => item.uid !== target.id), officer]
@@ -225,6 +226,8 @@ export function ClubSettingsPage() {
         setOwnershipResults([])
         notify(`Platform ownership transferred to ${target.displayName}.`)
       } else {
+        const target = club.officers.find(officer => officer.uid === transferTargetId)
+        if (!target) return
         await api.clubs.transferOwnership(club.id, target.uid, user)
         const updated = await api.clubs.get(club.id)
         setClub(updated)
