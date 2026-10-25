@@ -149,7 +149,7 @@ service cloud.firestore {
           && request.resource.data.leaderName == privateClub(clubId).leaderName)
         || (onlyChanged(['sponsorName'])
           && signedIn()
-          && request.resource.data.sponsorName == privateClub(clubId).sponsorName););
+          && request.resource.data.sponsorName == privateClub(clubId).sponsorName));
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
