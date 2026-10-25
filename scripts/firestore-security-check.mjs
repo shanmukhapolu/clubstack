@@ -355,6 +355,20 @@ try {
     await assertSucceeds(deleteDoc(doc(leader, 'clubs', 'club-accepted-sponsor-one')))
   })
 
+  await check('accepted teacher can transfer platform ownership directly to any student', async () => {
+    const teacherBatch = writeBatch(acceptedAdvisor)
+    teacherBatch.update(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
+      leaderId: 'student-outsider',
+      leaderName: 'Student Outsider',
+      leaderTitle: 'Officer',
+      officers: [{ uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' }],
+      officerIds: ['student-outsider'],
+      pendingLeaderTransfer: null,
+    })
+    teacherBatch.update(doc(acceptedAdvisor, 'clubDirectory', 'club-accepted-sponsor-one'), { leaderName: 'Student Outsider' })
+    await assertSucceeds(teacherBatch.commit())
+  })
+
   await check('ownership transfer requires the invited officer to accept', async () => {
     await assertFails(updateDoc(doc(leader, 'clubs', 'club-visible'), {
       leaderId: 'member-visible',
@@ -370,9 +384,12 @@ try {
     acceptance.update(doc(member, 'clubs', 'club-visible'), {
       leaderId: 'member-visible',
       leaderName: 'Visible Club Member',
-      leaderTitle: 'President',
-      officers: [{ uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'Former President' }],
-      officerIds: ['leader'],
+      leaderTitle: 'Officer',
+      officers: [
+        { uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'President' },
+        { uid: 'member-visible', displayName: 'Visible Club Member', email: 'member.visible@example.test', title: 'Officer' },
+      ],
+      officerIds: ['leader', 'member-visible'],
       pendingLeaderTransfer: null,
     })
     acceptance.update(doc(member, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' })
