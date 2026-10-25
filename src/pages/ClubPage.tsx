@@ -529,7 +529,6 @@ export function ClubPage() {
                 {describeClubSchedule(club)}
               </span>
               {club.location && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {club.location}</span>}
-              {hasPrivateAccess && <span className="inline-flex items-center gap-1.5"><Megaphone size={14} /> Led by {club.leaderName}{club.leaderTitle ? ` · ${club.leaderTitle}` : ''}</span>}
             </div>
           </div>
         </div>
