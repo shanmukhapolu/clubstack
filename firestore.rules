@@ -203,8 +203,8 @@ service cloud.firestore {
           && request.resource.data.officerIds is list
           && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
           && request.resource.data.officers is list
-          && request.resource.data.pendingLeaderTransfer == null)
-        || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
+          && request.resource.data.pendingLeaderTransfer == null);
+      allow update: if (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (
           onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
           && (resource.data.leaderId == request.auth.uid || isSponsor(clubId) || isOfficer(clubId))
