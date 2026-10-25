@@ -8,8 +8,8 @@ service cloud.firestore {
         ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'student')
         : '';
     }
-    function isAdmin() { return signedIn() && userRole() == 'admin'; }
-    function isTeacher() { return signedIn() && userRole() == 'teacher'; }
+    function isAdmin() { return userRole() == 'admin'; }
+    function isTeacher() { return userRole() == 'teacher'; }
     function privateClubExists(clubId) {
       return exists(/databases/$(database)/documents/clubs/$(clubId));
     }
@@ -20,15 +20,13 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + clubId));
     }
     function isLeader(clubId) {
-      return signedIn() && privateClubExists(clubId) && privateClub(clubId).leaderId == request.auth.uid;
+      return signedIn() && privateClub(clubId).leaderId == request.auth.uid;
     }
     function isOfficer(clubId) {
-      return signedIn() && privateClubExists(clubId)
-        && privateClub(clubId).get('officerIds', []).hasAny([request.auth.uid]);
+      return signedIn() && privateClub(clubId).get('officerIds', []).hasAny([request.auth.uid]);
     }
     function isSponsor(clubId) {
-      return signedIn() && privateClubExists(clubId)
-        && privateClub(clubId).sponsorId == request.auth.uid
+      return signedIn() && privateClub(clubId).sponsorId == request.auth.uid
         && privateClub(clubId).sponsorStatus == 'accepted';
     }
     function isSponsorCandidate(clubId) {
