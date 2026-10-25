@@ -6,6 +6,7 @@ import type {
   ClubDeletionStatus,
   ClubEvent,
   ClubInput,
+  ClubOfficer,
   ClubStatus,
   ClubSponsorRequest,
   ClubJoinRequest,
@@ -41,6 +42,7 @@ export interface ClubsApi {
   removeOfficer(id: string, officerId: string): Promise<void>
   setStatus(id: string, status: ClubStatus): Promise<void>
   transferOwnership(id: string, newLeaderId: string, currentLeader: AppUser): Promise<void>
+  transferOwnershipDirect(id: string, leaderId: string, leaderName: string, leaderTitle: string, officers: ClubOfficer[], officerIds: string[]): Promise<void>
   respondToOwnershipTransfer(id: string, accept: boolean, currentUser: AppUser): Promise<void>
   getDeletionRequest(id: string): Promise<ClubDeletionRequest | null>
   requestDeletion(id: string, currentLeader: AppUser): Promise<void>
