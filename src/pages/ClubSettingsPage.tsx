@@ -229,14 +229,7 @@ export function ClubSettingsPage() {
         ]
         const officerIds = [...new Set([...(club.officerIds ?? []), ...(club.leaderId ? [club.leaderId] : []), targetId])]
         const leaderTitle = officers.find(officer => officer.uid === targetId)?.title || 'Officer'
-        await api.clubs.update(club.id, {
-          leaderId: targetId,
-          leaderName: targetName,
-          leaderTitle,
-          officers,
-          officerIds,
-          pendingLeaderTransfer: null,
-        })
+        await api.clubs.transferOwnershipDirect(club.id, targetId, targetName, leaderTitle, officers, officerIds)
         setClub(current => current ? { ...current, leaderId: targetId, leaderName: targetName, leaderTitle, officers, officerIds, pendingLeaderTransfer: null } : null)
         setSelectedOwnershipStudent(null)
         setOwnershipSearch('')
