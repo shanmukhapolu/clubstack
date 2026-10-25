@@ -193,7 +193,6 @@ service cloud.firestore {
         && request.resource.data.sponsorStatus in ['pending', 'none'];
       allow update: if (resource.data.sponsorId == request.auth.uid
           && resource.data.sponsorStatus == 'accepted'
-          && onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
           && request.resource.data.leaderId is string
           && request.resource.data.leaderId != resource.data.leaderId
           && request.resource.data.leaderName is string
