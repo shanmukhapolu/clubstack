@@ -43,7 +43,7 @@ export function AdminPage() {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null)
   const [userForm, setUserForm] = useState({ displayName: '', email: '', role: 'student' as Role, grade: '' })
   const [editingClub, setEditingClub] = useState<Club | null>(null)
-  const [leadershipForm, setLeadershipForm] = useState({ leaderId: '', leaderTitle: 'President', sponsorId: '', officerIds: [] as string[], officerTitles: {} as Record<string, string> })
+  const [leadershipForm, setLeadershipForm] = useState({ leaderId: '', leaderTitle: 'Officer', sponsorId: '', officerIds: [] as string[], officerTitles: {} as Record<string, string> })
   const [clubMemberIds, setClubMemberIds] = useState<string[]>([])
   const [clubMembersLoading, setClubMembersLoading] = useState(false)
 
@@ -146,7 +146,7 @@ export function AdminPage() {
     const officerIds = [...new Set([...leadershipForm.officerIds, ...(leadershipForm.leaderId ? [leadershipForm.leaderId] : [])])]
     const officers: ClubOfficer[] = officerIds.flatMap(id => {
       const person = users.find(item => item.id === id && item.role === 'student')
-      return person ? [{ uid: person.id, displayName: person.displayName, email: person.email, title: person.id === leader?.id ? (leadershipForm.leaderTitle.trim() || 'President') : (leadershipForm.officerTitles[person.id] || editingClub?.officers.find(officer => officer.uid === person.id)?.title || 'Officer') }] : []
+      return person ? [{ uid: person.id, displayName: person.displayName, email: person.email, title: person.id === leader?.id ? (leadershipForm.leaderTitle.trim() || 'Officer') : (leadershipForm.officerTitles[person.id] || editingClub?.officers.find(officer => officer.uid === person.id)?.title || 'Officer') }] : []
     })
     if (leadershipForm.leaderId && !leader) { notify('Choose a valid student as club owner.', 'error'); return }
     if (leadershipForm.sponsorId && !sponsor) { notify('Choose a valid teacher as sponsor.', 'error'); return }
@@ -463,7 +463,7 @@ export function AdminPage() {
             <div className="flex items-start justify-between border-b border-slate-200 px-5 py-5 sm:px-7"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Platform administration</p><h2 id="leadership-editor-title" className="mt-1 text-xl font-extrabold tracking-tight text-slate-950">Manage club leadership</h2><p className="mt-1 text-[12px] text-slate-500">{editingClub.name} · changes take effect immediately</p></div><button type="button" onClick={() => setEditingClub(null)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-900" aria-label="Close sidebar"><X size={17}/></button></div>
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-6 sm:px-7">
               <section className="space-y-3"><h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><Crown size={15} className="text-amber-600"/> Platform owner</h3>
-                <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Student</span><select value={leadershipForm.leaderId} onChange={event => setLeadershipForm(current => ({...current, leaderId: event.target.value}))} className="field h-11 w-full rounded-xl border-slate-200"><option value="">No owner assigned</option>{users.filter(person => person.role === 'student').sort((a,b) => a.displayName.localeCompare(b.displayName)).map(person => <option key={person.id} value={person.id}>{person.displayName} · {person.email}</option>)}</select></label>
+                <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Student</span><select value={leadershipForm.leaderId} onChange={event => setLeadershipForm(current => ({...current, leaderId: event.target.value, leaderTitle: current.officerTitles[event.target.value] || editingClub?.officers.find(officer => officer.uid === event.target.value)?.title || 'Officer', officerIds: event.target.value ? [...new Set([...current.officerIds, event.target.value])] : current.officerIds}))} className="field h-11 w-full rounded-xl border-slate-200"><option value="">No owner assigned</option>{users.filter(person => person.role === 'student').sort((a,b) => a.displayName.localeCompare(b.displayName)).map(person => <option key={person.id} value={person.id}>{person.displayName} · {person.email}</option>)}</select></label>
                 <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Leadership role</span><input maxLength={50} value={leadershipForm.leaderTitle} onChange={event => setLeadershipForm(current => ({...current, leaderTitle: event.target.value}))} placeholder="e.g. President" className="field h-11 w-full rounded-xl border-slate-200"/></label>
               </section>
               <section className="space-y-3 border-t border-slate-200 pt-5"><h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><GraduationCap size={16} className="text-slate-600"/> Teacher sponsor</h3>
