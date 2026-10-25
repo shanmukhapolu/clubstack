@@ -358,9 +358,6 @@ try {
   await check('accepted teacher can initiate an ownership transfer to any student', async () => {
     const teacherBatch = writeBatch(acceptedAdvisor)
     teacherBatch.update(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
-      leaderId: 'leader',
-      leaderName: 'Club Leader',
-      leaderTitle: 'President',
       officers: [
         { uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'President' },
         { uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' },
