@@ -352,7 +352,7 @@ export function ClubSettingsPage() {
         )}
 
         <section className="card p-5 sm:p-6">
-          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{new Set([...(club.officers ?? []).map(item => item.uid), ...(club.leaderId ? [club.leaderId] : [])]).size}</Badge></div>
+          <div className="mb-3 flex items-center justify-between gap-2"><div><h2 className="text-[15px] font-bold">Student officers</h2><p className="mt-1 text-[11.5px] text-muted">Manage each student’s actual club role. Accepted teacher advisors can update roles directly.</p></div><Badge>{new Set([...(club.officers ?? []).map(item => item.uid), ...(club.leaderId ? [club.leaderId] : [])]).size}</Badge></div>
           {(club.officers ?? []).length === 0 && !club.leaderId ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p> : (
             <div className="space-y-2">
               {[...(club.officers ?? []), ...(club.leaderId && !(club.officers ?? []).some(item => item.uid === club.leaderId) ? [{ uid: club.leaderId, displayName: club.leaderName || 'Club owner', email: '', title: club.leaderTitle && club.leaderTitle !== 'Club Owner' ? club.leaderTitle : 'Officer' }] : [])].map((officer) => <div key={officer.uid} className="flex items-center gap-3 rounded-xl border border-line p-3">
