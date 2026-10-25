@@ -356,16 +356,16 @@ try {
   })
 
   await check('accepted teacher can initiate an ownership transfer to any student', async () => {
-    const teacherBatch = writeBatch(acceptedAdvisor)
-    teacherBatch.update(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
+    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
       officers: [
         { uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'President' },
         { uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' },
       ],
       officerIds: ['leader', 'student-outsider'],
+    }))
+    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
       pendingLeaderTransfer: { fromId: 'leader', fromName: 'Club Leader', toId: 'student-outsider', toName: 'Student Outsider', createdAt: 12 },
-    })
-    await assertSucceeds(teacherBatch.commit())
+    }))
   })
 
   await check('ownership transfer requires the invited officer to accept', async () => {
