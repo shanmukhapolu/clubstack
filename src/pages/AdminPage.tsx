@@ -28,18 +28,13 @@ import type { AppUser, Club, ClubOfficer, ClubStatus, ModerationReport, ReportSt
 import { PageHeader } from '../components/PageHeader'
 import { Avatar, Badge, Button, ClubMark, Spinner } from '../components/ui'
 
-type Tab = 'clubs' | 'people' | 'reports'
-
 export function AdminPage() {
   const { user } = useAuth()
   const { pathname } = useLocation()
   const { clubs, loading: clubsLoading, refresh } = useClubs()
   const { notify } = useToast()
-  const [tab, setTab] = useState<Tab>(pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs')
-
-  useEffect(() => {
-    setTab(pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs')
-  }, [pathname])
+  const page = pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs'
+  const [peopleRoleTab, setPeopleRoleTab] = useState<Role>('student')
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
   const [reports, setReports] = useState<ModerationReport[]>([])
@@ -148,7 +143,7 @@ export function AdminPage() {
     if (!editingClub) return
     const leader = users.find(person => person.id === leadershipForm.leaderId && person.role === 'student')
     const sponsor = users.find(person => person.id === leadershipForm.sponsorId && person.role === 'teacher')
-    const officerIds = [...new Set(leadershipForm.officerIds)]
+    const officerIds = [...new Set([...leadershipForm.officerIds, ...(leadershipForm.leaderId ? [leadershipForm.leaderId] : [])])]
     const officers: ClubOfficer[] = officerIds.flatMap(id => {
       const person = users.find(item => item.id === id && item.role === 'student')
       return person ? [{ uid: person.id, displayName: person.displayName, email: person.email, title: person.id === leader?.id ? (leadershipForm.leaderTitle.trim() || 'President') : (leadershipForm.officerTitles[person.id] || editingClub?.officers.find(officer => officer.uid === person.id)?.title || 'Officer') }] : []
@@ -268,8 +263,8 @@ export function AdminPage() {
     <div className="fade-in">
       <PageHeader
         eyebrow="Admin console"
-        title="Keep ClubStack healthy."
-        description="Approve new club pages, manage who can administer the platform, and keep an eye on the directory."
+        title={page === 'people' ? 'People.' : page === 'reports' ? 'Safety and reports.' : pathname === '/admin/calendar' ? 'Platform calendar.' : 'Club administration.'}
+        description={page === 'people' ? 'Manage student, teacher, and administrator accounts.' : page === 'reports' ? 'Review moderation reports and resolve platform safety concerns.' : pathname === '/admin/calendar' ? 'Review events across ClubStack.' : 'Review club submissions, manage existing clubs, and edit club leadership directly.'}
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3.5">
@@ -291,26 +286,7 @@ export function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-6 inline-flex w-full max-w-xs rounded-full border border-line bg-surface p-1">
-        {([
-          { key: 'clubs', label: 'Club approvals' },
-          { key: 'people', label: 'People' },
-          { key: 'reports', label: 'Reports' },
-        ] as { key: Tab; label: string }[]).map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setTab(item.key)}
-            className={`flex-1 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
-              tab === item.key ? 'bg-ink text-white' : 'text-ink-soft hover:bg-canvas'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'clubs' ? (
+      {page === 'clubs' ? (
         <div className="mt-5 space-y-6">
           <section>
             <h2 className="mb-2.5 flex items-center gap-2 text-[15px] font-extrabold">
@@ -419,13 +395,16 @@ export function AdminPage() {
             </div>
           </section>
         </div>
-      ) : tab === 'people' ? (
+      ) : page === 'people' ? (
         <section className="mt-5">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-[15px] font-extrabold">People</h2><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Edit profile details and access levels, remove someone from one club without deleting their account, or erase their ClubStack data.</p></div><Badge>{users.length} users</Badge></div>
+          <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-line bg-surface p-1" aria-label="Filter users by account role">
+            {([{value:"student",label:"Students"},{value:"teacher",label:"Teachers"},{value:"admin",label:"Admins"}] as {value:Role;label:string}[]).map(item => <button key={item.value} type="button" onClick={() => setPeopleRoleTab(item.value)} className={"rounded-xl px-3 py-2 text-[12px] font-semibold " + (peopleRoleTab === item.value ? "bg-ink text-white" : "text-ink-soft hover:bg-canvas")}>{item.label} <span className="ml-1 opacity-75">{users.filter(person => person.role === item.value).length}</span></button>)}
+          </div>
           {usersLoading ? <Spinner label="Loading people" /> : (
             <div className="overflow-hidden rounded-2xl border border-line bg-surface">
               <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_90px] gap-3 border-b border-line bg-canvas/60 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted sm:grid"><span>Person</span><span>Role</span><span>Joined</span><span className="text-right">Manage</span></div>
-              {users.map(person => {
+              {users.filter(person => person.role === peopleRoleTab).map(person => {
                 const isSelf = person.id === user.id
                 return <div key={person.id} className="grid grid-cols-1 gap-2.5 border-b border-line px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_130px_120px_90px] sm:items-center">
                   <div className="flex min-w-0 items-center gap-2.5"><Avatar name={person.displayName} size={36}/><div className="min-w-0"><p className="truncate text-[13px] font-bold">{person.displayName}{isSelf && <span className="ml-1.5 text-[11px] font-medium text-muted">(you)</span>}</p><p className="truncate text-[11.5px] text-muted">{person.email}</p></div></div>
@@ -434,7 +413,7 @@ export function AdminPage() {
                   <div className="flex items-center gap-2 sm:justify-end"><button type="button" onClick={() => openUserEditor(person)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 text-[11.5px] font-semibold text-ink-soft transition hover:border-slate-300 hover:bg-slate-50 hover:text-ink" aria-label={`Edit ${person.displayName}`}><Pencil size={13}/> Edit</button>{!isSelf && <button type="button" onClick={() => void deleteUser(person)} disabled={workingId === person.id} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50" title={`Delete ${person.displayName}`} aria-label={`Delete ${person.displayName}`}><Trash2 size={14}/></button>}</div>
                 </div>
               })}
-              {users.length === 0 && <div className="flex items-center gap-3 px-4 py-6 text-[13px] text-muted"><Users size={18}/> No people have signed up yet.</div>}
+              {users.filter(person => person.role === peopleRoleTab).length === 0 && <div className="flex items-center gap-3 px-4 py-6 text-[13px] text-muted"><Users size={18}/> No {peopleRoleTab === "admin" ? "administrators" : peopleRoleTab === "teacher" ? "teachers" : "students"} found.</div>}
             </div>
           )}
         </section>
