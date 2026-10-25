@@ -259,7 +259,7 @@ service cloud.firestore {
               && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
               && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
               && request.resource.data.sponsorId == request.auth.uid
-              && request.resource.data.sponsorStatus == 'accepted')); 
+              && request.resource.data.sponsorStatus == 'accepted'))); 
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
