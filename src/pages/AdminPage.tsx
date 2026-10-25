@@ -263,7 +263,7 @@ function AdminPage({ page }: { page: AdminPageView }) {
     <div className="fade-in">
       <PageHeader
         eyebrow="Admin console"
-        title={page === 'home' ? 'Admin overview.' : page === 'people' ? 'People.' : page === 'reports' ? 'Safety and reports.' : 'Club administration.'}
+        title={page === 'home' ? 'Admin overview.' : page === 'people' ? 'Members.' : page === 'reports' ? 'Safety and reports.' : 'Club administration.'}
         description={page === 'home' ? 'A central overview of platform activity and direct links to each admin workspace.' : page === 'people' ? 'Manage student, teacher, and administrator accounts.' : page === 'reports' ? 'Review moderation reports and resolve platform safety concerns.' : 'Review club submissions, manage existing clubs, and edit club leadership directly.'}
       />
 
@@ -290,7 +290,7 @@ function AdminPage({ page }: { page: AdminPageView }) {
 
       {page === 'home' ? (
         <section className="mt-5 grid gap-3 sm:grid-cols-2">
-          {[{to:'/admin/clubs',title:'Manage clubs',description:'Review submissions, edit leadership, change sponsors, and remove clubs.'},{to:'/admin/users',title:'Manage people',description:'Separate lists for students, teachers, and administrators.'},{to:'/admin/calendar',title:'Platform calendar',description:'Review events across the platform.'},{to:'/admin/security',title:'Safety and reports',description:'Review reports and update their status.'}].map(item => <Link key={item.to} to={item.to} className="card block p-5 transition hover:-translate-y-0.5 hover:border-brand-300"><h2 className="text-[14px] font-bold">{item.title}</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">{item.description}</p><span className="mt-3 inline-block text-[12px] font-semibold text-brand-700">Open page →</span></Link>)}
+          {[{to:'/admin/clubs',title:'Manage clubs',description:'Review submissions, edit leadership, change sponsors, and remove clubs.'},{to:'/admin/members',title:'Manage members',description:'Separate lists for students, teachers, and administrators.'},{to:'/admin/calendar',title:'Platform calendar',description:'Review events across the platform.'},{to:'/admin/security',title:'Safety and reports',description:'Review reports and update their status.'}].map(item => <Link key={item.to} to={item.to} className="card block p-5 transition hover:-translate-y-0.5 hover:border-brand-300"><h2 className="text-[14px] font-bold">{item.title}</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">{item.description}</p><span className="mt-3 inline-block text-[12px] font-semibold text-brand-700">Open page →</span></Link>)}
           <div className="card p-5 sm:col-span-2"><h2 className="text-[14px] font-bold">Platform snapshot</h2><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p className="text-[22px] font-extrabold">{clubs.length}</p><p className="text-[11px] text-muted">Club pages</p></div><div><p className="text-[22px] font-extrabold">{pendingClubs.length}</p><p className="text-[11px] text-muted">Awaiting approval</p></div><div><p className="text-[22px] font-extrabold">{users.length}</p><p className="text-[11px] text-muted">Accounts</p></div><div><p className="text-[22px] font-extrabold">{reports.filter(report => report.status === 'open').length}</p><p className="text-[11px] text-muted">Open reports</p></div></div></div>
         </section>
       ) : page === 'clubs' ? (
@@ -404,7 +404,7 @@ function AdminPage({ page }: { page: AdminPageView }) {
         </div>
       ) : page === 'people' ? (
         <section className="mt-5">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-[15px] font-extrabold">People</h2><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Edit profile details and access levels, remove someone from one club without deleting their account, or erase their ClubStack data.</p></div><Badge>{users.length} users</Badge></div>
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-[15px] font-extrabold">Members</h2><p className="mt-1 text-[12.5px] leading-relaxed text-muted">Edit profile details and access levels, remove someone from one club without deleting their account, or erase their ClubStack data.</p></div><Badge>{users.length} users</Badge></div>
           <div className="mb-4 flex flex-wrap gap-1 rounded-2xl border border-line bg-surface p-1" aria-label="Filter users by account role">
             {([{value:"student",label:"Students"},{value:"teacher",label:"Teachers"},{value:"admin",label:"Admins"}] as {value:Role;label:string}[]).map(item => <button key={item.value} type="button" onClick={() => setPeopleRoleTab(item.value)} className={"rounded-xl px-3 py-2 text-[12px] font-semibold " + (peopleRoleTab === item.value ? "bg-ink text-white" : "text-ink-soft hover:bg-canvas")}>{item.label} <span className="ml-1 opacity-75">{users.filter(person => person.role === item.value).length}</span></button>)}
           </div>
