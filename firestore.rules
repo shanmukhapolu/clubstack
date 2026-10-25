@@ -147,8 +147,19 @@ service cloud.firestore {
         && directoryMirrorMatchesPrivate(clubId);
       allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
+          && onlyChanged(['name','description','category','emoji','color','status','sponsorName','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','contactEmail','prerequisites','dues','instagramHandle','requiresApproval','membersVisible','hidden','createdAt'])
           && directoryFieldsValid(request.resource.data)
           && directoryMirrorMatchesPrivate(clubId))
+        || (isTeacher()
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorStatus == 'accepted'
+          && onlyChanged(['leaderName'])
+          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
+        || (signedIn()
+          && userRole() == 'student'
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId == request.auth.uid
+          && onlyChanged(['leaderName'])
+          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
         || (isTeacher() && isSponsorCandidate(clubId)
           && privateClub(clubId).sponsorStatus == 'pending'
           && onlyChanged(['sponsorName'])
