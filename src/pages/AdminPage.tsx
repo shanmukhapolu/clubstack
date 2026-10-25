@@ -156,7 +156,7 @@ export function AdminPage() {
       const patch = {
         leaderId: leader?.id ?? '',
         leaderName: leader?.displayName ?? 'Unassigned',
-        leaderTitle: leader && officerIds.includes(leader.id) ? (leadershipForm.leaderTitle.trim() || 'President') : 'Club Owner',
+        leaderTitle: leader && officerIds.includes(leader.id) ? (leadershipForm.leaderTitle.trim() || 'Officer') : 'Club Owner',
         sponsorId: sponsor?.id ?? '',
         sponsorName: sponsor?.displayName ?? '',
         sponsorStatus: sponsor ? 'accepted' as const : 'none' as const,
