@@ -240,7 +240,7 @@ export function ClubSettingsPage() {
 
   async function updateOfficerTitle(officer: ClubOfficer, title: string) {
     if (!club || (!isAcceptedAdvisor && !isAdmin && !isLeader) || !title.trim()) return
-    const officers = club.officers.map(item => item.uid === officer.uid ? { ...item, title: title.trim() } : item)
+    const officers = [...club.officers.filter(item => item.uid !== officer.uid), { ...officer, title: title.trim() }]
     try {
       await api.clubs.update(club.id, {
         officers,
@@ -344,8 +344,8 @@ export function ClubSettingsPage() {
         )}
 
         <section className="card p-5 sm:p-6">
-          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{(club.officers ?? []).length}</Badge></div>
-          {(club.officers ?? []).length === 0 ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p> : (
+          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{new Set([...(club.officers ?? []).map(item => item.uid), ...(club.leaderId ? [club.leaderId] : [])]).size}</Badge></div>
+          {(club.officers ?? []).length === 0 && !club.leaderId ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p> : (
             <div className="space-y-2">
               {[...(club.officers ?? []), ...(club.leaderId && !(club.officers ?? []).some(item => item.uid === club.leaderId) ? [{ uid: club.leaderId, displayName: club.leaderName || 'Club owner', email: '', title: club.leaderTitle || 'Officer' }] : [])].map((officer) => <div key={officer.uid} className="flex items-center gap-3 rounded-xl border border-line p-3">
                 <div className="min-w-0 flex-1"><p className="text-[13px] font-semibold">{officer.displayName}{officer.uid === club.leaderId ? <span className="ml-2 text-[10px] font-semibold text-muted">Club owner</span> : null}</p>
