@@ -241,14 +241,14 @@ service cloud.firestore {
         )
         || (
           onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && pendingTransferTo(resource.data) == request.auth.uid
+          && resource.data.get('pendingLeaderTransfer', null) is map && resource.data.pendingLeaderTransfer.get('toId', '') == request.auth.uid
           && resource.data.leaderId == resource.data.pendingLeaderTransfer.get('fromId', '')
           && resource.data.get('officerIds', []).hasAny([request.auth.uid])
           && request.resource.data.leaderId == request.auth.uid
           && request.resource.data.leaderTitle is string
           && request.resource.data.officerIds.hasAny([request.auth.uid])
           && request.resource.data.officerIds.hasAny([resource.data.leaderId])
-          && request.resource.data.pendingLeaderTransfer == null
+          && request.resource.data.get('pendingLeaderTransfer', null) == null
         )
         || (
           onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
