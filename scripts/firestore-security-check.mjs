@@ -356,7 +356,7 @@ try {
   })
 
   await check('accepted teacher can transfer platform ownership directly to any student', async () => {
-    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
+    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-two'), {
       leaderId: 'student-outsider',
       leaderName: 'Student Outsider',
       leaderTitle: 'Officer',
@@ -367,10 +367,10 @@ try {
       officerIds: ['leader', 'student-outsider'],
       pendingLeaderTransfer: null,
     }))
-    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubDirectory', 'club-accepted-sponsor-one'), {
+    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubDirectory', 'club-accepted-sponsor-two'), {
       leaderName: 'Student Outsider',
     }))
-    const updated = await getDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'))
+    const updated = await getDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-two'))
     if (updated.data()?.leaderId !== 'student-outsider') throw new Error('Teacher transfer did not update platform ownership.')
   })
 
