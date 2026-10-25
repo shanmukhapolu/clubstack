@@ -114,6 +114,7 @@ export default function App() {
                   <Route element={<RequireAdmin />}>
                     <Route path="admin" element={<AdminHomePage />} />
                     <Route path="admin/users" element={<AdminUsersPage />} />
+                    <Route path="admin/members" element={<AdminUsersPage />} />
                     <Route path="admin/clubs" element={<AdminClubsPage />} />
                     <Route path="admin/calendar" element={<CalendarPage />} />
                     <Route path="admin/security" element={<AdminSafetyPage />} />
