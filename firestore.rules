@@ -140,12 +140,11 @@ service cloud.firestore {
               && isManager(clubId)
               && directoryMirrorMatchesPrivate(clubId))))
         || (onlyChanged(['leaderName'])
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId is string
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId != get(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId
-          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
+          && (isAdmin() || isLeader(clubId) || isSponsor(clubId))
+          && request.resource.data.leaderName == privateClub(clubId).leaderName)
         || (onlyChanged(['sponsorName'])
           && signedIn()
-          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName);
+          && request.resource.data.sponsorName == privateClub(clubId).sponsorName);
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
