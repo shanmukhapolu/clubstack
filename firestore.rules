@@ -204,25 +204,36 @@ service cloud.firestore {
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
-      allow update: if (isTeacher()
+      allow update: if (
+          isTeacher()
           && resource.data.sponsorId == request.auth.uid
           && resource.data.sponsorStatus == 'accepted'
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status','memberCount','createdAt','sponsorId','sponsorName','sponsorStatus'])
-          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId'])
-            || (request.resource.data.leaderId is string
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId'])
+            || (
+              request.resource.data.leaderId is string
               && request.resource.data.leaderId.size() > 0
               && get(/databases/$(database)/documents/users/$(request.resource.data.leaderId)).data.role == 'student'
               && request.resource.data.officerIds is list
-              && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])))
-          || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
-        || (onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
-          && (resource.data.leaderId == request.auth.uid || isSponsor(clubId) || isOfficer(clubId)))
-        || (onlyChanged(['officers','officerIds','leaderTitle'])
+              && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
+            )
+          )
+        )
+        || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
+        || (
+          onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
+          && (resource.data.leaderId == request.auth.uid || isSponsor(clubId) || isOfficer(clubId))
+        )
+        || (
+          onlyChanged(['officers','officerIds','leaderTitle'])
           && (resource.data.leaderId == request.auth.uid || isSponsor(clubId))
           && request.resource.data.officerIds is list
           && request.resource.data.officers is list
-          && request.resource.data.officerIds.hasAny([resource.data.leaderId]))
-        || (signedIn()
+          && request.resource.data.officerIds.hasAny([resource.data.leaderId])
+        )
+        || (
+          signedIn()
           && userRole() == 'student'
           && onlyChanged(['officers','officerIds'])
           && !resource.data.get('officerIds', []).hasAny([request.auth.uid])
@@ -230,42 +241,62 @@ service cloud.firestore {
           && request.resource.data.officerIds.hasAny([request.auth.uid])
           && request.resource.data.officerIds.hasAll(resource.data.get('officerIds', []))
           && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.status == 'accepted'
-          && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid)
-        || (onlyChanged(['pendingLeaderTransfer'])
-          && ((resource.data.leaderId == request.auth.uid
-            && resource.data.get('pendingLeaderTransfer', null) == null
-            && request.resource.data.pendingLeaderTransfer.fromId == request.auth.uid
-            && request.resource.data.pendingLeaderTransfer.toId is string
-            && request.resource.data.pendingLeaderTransfer.toId != request.auth.uid
-            && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.toId]))
-            || (resource.data.get('pendingLeaderTransfer', {}).toId == request.auth.uid
-              && request.resource.data.pendingLeaderTransfer == null)))
-        || (onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && ((resource.data.get('pendingLeaderTransfer', {}).toId == request.auth.uid
-            && resource.data.leaderId == resource.data.pendingLeaderTransfer.fromId
-            && resource.data.get('officerIds', []).hasAny([request.auth.uid])
-            && request.resource.data.leaderId == request.auth.uid
-            && request.resource.data.leaderTitle is string
-            && request.resource.data.officerIds.hasAny([request.auth.uid])
-            && request.resource.data.officerIds.hasAny([resource.data.leaderId])
-            && request.resource.data.pendingLeaderTransfer == null)
-))
-        || (onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
-          && ((resource.data.leaderId == request.auth.uid
-            && request.resource.data.sponsorId is string
-            && request.resource.data.sponsorName is string
-            && request.resource.data.sponsorStatus == 'pending'
-            && get(/databases/$(database)/documents/users/$(request.resource.data.sponsorId)).data.role == 'teacher')
-            || (isTeacher()
+          && getAfter(/databases/$(database)/documents/officerInvitations/$(clubId + '_' + request.auth.uid)).data.invitedUserId == request.auth.uid
+        )
+        || (
+          onlyChanged(['pendingLeaderTransfer'])
+          && (
+            (
+              resource.data.leaderId == request.auth.uid
+              && resource.data.get('pendingLeaderTransfer', null) == null
+              && request.resource.data.pendingLeaderTransfer.fromId == request.auth.uid
+              && request.resource.data.pendingLeaderTransfer.toId is string
+              && request.resource.data.pendingLeaderTransfer.toId != request.auth.uid
+              && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.toId])
+            )
+            || (
+              resource.data.get('pendingLeaderTransfer', {}).toId == request.auth.uid
+              && request.resource.data.pendingLeaderTransfer == null
+            )
+          )
+        )
+        || (
+          onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
+          && resource.data.get('pendingLeaderTransfer', {}).toId == request.auth.uid
+          && resource.data.leaderId == resource.data.pendingLeaderTransfer.fromId
+          && resource.data.get('officerIds', []).hasAny([request.auth.uid])
+          && request.resource.data.leaderId == request.auth.uid
+          && request.resource.data.leaderTitle is string
+          && request.resource.data.officerIds.hasAny([request.auth.uid])
+          && request.resource.data.officerIds.hasAny([resource.data.leaderId])
+          && request.resource.data.pendingLeaderTransfer == null
+        )
+        || (
+          onlyChanged(['sponsorId','sponsorName','sponsorStatus'])
+          && (
+            (
+              resource.data.leaderId == request.auth.uid
+              && request.resource.data.sponsorId is string
+              && request.resource.data.sponsorName is string
+              && request.resource.data.sponsorStatus == 'pending'
+              && get(/databases/$(database)/documents/users/$(request.resource.data.sponsorId)).data.role == 'teacher'
+            )
+            || (
+              isTeacher()
               && resource.data.sponsorId == request.auth.uid
               && resource.data.sponsorStatus == 'pending'
-              && request.resource.data.sponsorStatus in ['accepted','declined'])
-            || (isTeacher()
+              && request.resource.data.sponsorStatus in ['accepted','declined']
+            )
+            || (
+              isTeacher()
               && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.teacherId == request.auth.uid
               && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
               && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
               && request.resource.data.sponsorId == request.auth.uid
-              && request.resource.data.sponsorStatus == 'accepted'))); 
+              && request.resource.data.sponsorStatus == 'accepted'
+            )
+          )
+        );
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
