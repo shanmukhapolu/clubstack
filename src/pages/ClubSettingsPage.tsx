@@ -30,6 +30,9 @@ export function ClubSettingsPage() {
   const [invitations, setInvitations] = useState<OfficerInvitation[]>([])
   const [inviting, setInviting] = useState(false)
   const [transferTargetId, setTransferTargetId] = useState('')
+  const [ownershipSearch, setOwnershipSearch] = useState('')
+  const [ownershipResults, setOwnershipResults] = useState<AppUser[]>([])
+  const [selectedOwnershipStudent, setSelectedOwnershipStudent] = useState<AppUser | null>(null)
   const [deletionRequest, setDeletionRequest] = useState<ClubDeletionRequest | null>(null)
   const [teacherSearch, setTeacherSearch] = useState('')
   const [teacherResults, setTeacherResults] = useState<AppUser[]>([])
@@ -67,6 +70,18 @@ export function ClubSettingsPage() {
   const isLeader = !!(user && club && club.leaderId === user.id)
   const isAcceptedAdvisor = !!(user && club && user.role === 'teacher' && club.sponsorId === user.id && club.sponsorStatus === 'accepted')
   const canManage = !!(user && club && (isAdmin || isLeader || isAcceptedAdvisor || (club.officerIds ?? []).includes(user.id)))
+
+  useEffect(() => {
+    const prefix = ownershipSearch.trim()
+    if (prefix.length < 2 || (!isAcceptedAdvisor && !isAdmin)) { setOwnershipResults([]); return }
+    let active = true
+    void api.users.searchDirectory(prefix, 'student', 100).then(results => {
+      if (active) setOwnershipResults(results.filter(person => person.id !== club?.leaderId))
+    }).catch(caught => {
+      if (active) { setOwnershipResults([]); notify(friendlyError(caught), 'error') }
+    })
+    return () => { active = false }
+  }, [ownershipSearch, isAcceptedAdvisor, isAdmin, club?.leaderId, notify])
 
   useEffect(() => {
     if (!club || !canManage) return
@@ -181,23 +196,61 @@ export function ClubSettingsPage() {
   }
 
   async function transferOwnership() {
-    if (!club || !user || !isLeader || !transferTargetId) return
-    const target = club.officers.find((officer) => officer.uid === transferTargetId)
+    if (!club || !user) return
+    const directTransfer = isAcceptedAdvisor || isAdmin
+    const target = directTransfer
+      ? selectedOwnershipStudent
+      : club.officers.find(officer => officer.uid === transferTargetId)
     if (!target) return
-    const confirmed = window.confirm(`Transfer ownership of ${club.name} to ${target.displayName}? You will no longer be the club leader.`)
-    if (!confirmed) return
+    if (!directTransfer && !isLeader) return
+    if (!window.confirm(`Transfer platform ownership of ${club.name} to ${target.displayName}? Their club officer title will be preserved, or set to Officer if they do not already hold a role.`)) return
     setBusy(true)
     try {
-      await api.clubs.transferOwnership(club.id, target.uid, user)
-      const updated = await api.clubs.get(club.id)
-      setClub(updated)
+      if (directTransfer) {
+        const existing = club.officers.find(officer => officer.uid === target.id)
+        const officer: ClubOfficer = { uid: target.id, displayName: target.displayName, email: target.email, title: existing?.title || 'Officer' }
+        const officers = [...club.officers.filter(item => item.uid !== target.id), officer]
+        await api.clubs.update(club.id, {
+          leaderId: target.id,
+          leaderName: target.displayName,
+          leaderTitle: officer.title,
+          officers,
+          officerIds: officers.map(item => item.uid),
+          pendingLeaderTransfer: null,
+        })
+        const updated = await api.clubs.get(club.id)
+        setClub(updated)
+        setSelectedOwnershipStudent(null)
+        setOwnershipSearch('')
+        setOwnershipResults([])
+        notify(`Platform ownership transferred to ${target.displayName}.`)
+      } else {
+        await api.clubs.transferOwnership(club.id, target.uid, user)
+        const updated = await api.clubs.get(club.id)
+        setClub(updated)
+        notify(`Ownership transfer request sent to ${target.displayName}. They must accept it before ownership changes.`)
+      }
       await refresh()
-      notify(`Ownership transfer request sent to ${target.displayName}. They must accept it before ownership changes.`)
     } catch (caught) {
       notify(friendlyError(caught), 'error')
     } finally {
       setBusy(false)
     }
+  }
+
+  async function updateOfficerTitle(officer: ClubOfficer, title: string) {
+    if (!club || (!isAcceptedAdvisor && !isAdmin && !isLeader) || !title.trim()) return
+    const officers = club.officers.map(item => item.uid === officer.uid ? { ...item, title: title.trim() } : item)
+    try {
+      await api.clubs.update(club.id, {
+        officers,
+        officerIds: [...new Set([...club.officerIds, officer.uid])],
+        ...(club.leaderId === officer.uid ? { leaderTitle: title.trim() } : {}),
+      })
+      setClub(current => current ? { ...current, officers, officerIds: [...new Set([...current.officerIds, officer.uid])], ...(club.leaderId === officer.uid ? { leaderTitle: title.trim() } : {}) } : null)
+      await refresh()
+      notify(`${officer.displayName}'s role updated.`)
+    } catch (caught) { notify(friendlyError(caught), 'error') }
   }
 
   async function requestDeletion() {
@@ -294,9 +347,11 @@ export function ClubSettingsPage() {
           <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-[15px] font-bold">Student officers</h2><Badge>{(club.officers ?? []).length}</Badge></div>
           {(club.officers ?? []).length === 0 ? <p className="rounded-xl bg-canvas px-3 py-4 text-[12.5px] text-muted">No officers have accepted invitations yet.</p> : (
             <div className="space-y-2">
-              {(club.officers ?? []).map((officer) => <div key={officer.uid} className="flex items-center gap-3 rounded-xl border border-line p-3">
-                <div className="min-w-0 flex-1"><p className="text-[13px] font-semibold">{officer.displayName}</p><p className="mt-0.5 text-[11.5px] text-muted">{officer.title}</p></div>
-                {(isLeader || isAdmin) && <button type="button" onClick={() => void removeOfficer(officer)} className="rounded-lg p-2 text-muted hover:bg-[#fff0eb] hover:text-[#9c2f18]" aria-label={`Remove ${officer.displayName} as officer`} title="Remove officer"><UserMinus size={16}/></button>}
+              {[...(club.officers ?? []), ...(club.leaderId && !(club.officers ?? []).some(item => item.uid === club.leaderId) ? [{ uid: club.leaderId, displayName: club.leaderName || 'Club owner', email: '', title: club.leaderTitle || 'Officer' }] : [])].map((officer) => <div key={officer.uid} className="flex items-center gap-3 rounded-xl border border-line p-3">
+                <div className="min-w-0 flex-1"><p className="text-[13px] font-semibold">{officer.displayName}{officer.uid === club.leaderId ? <span className="ml-2 text-[10px] font-semibold text-muted">Club owner</span> : null}</p>
+                  {(isAcceptedAdvisor || isAdmin || isLeader) ? <select className="field mt-1 h-8 py-0 text-[11.5px]" aria-label={`Role for ${officer.displayName}`} value={officer.title} onChange={event => void updateOfficerTitle(officer, event.target.value)}>{['President','Vice President','Secretary','Treasurer','Officer','Event Coordinator','Other'].map(title => <option key={title} value={title}>{title}</option>)}</select> : <p className="mt-0.5 text-[11.5px] text-muted">{officer.title}</p>}
+                </div>
+                {officer.uid !== club.leaderId && (isLeader || isAdmin || isAcceptedAdvisor) && <button type="button" onClick={() => void removeOfficer(officer)} className="rounded-lg p-2 text-muted hover:bg-[#fff0eb] hover:text-[#9c2f18]" aria-label={`Remove ${officer.displayName} as officer`} title="Remove officer"><UserMinus size={16}/></button>}
               </div>)}
             </div>
           )}
@@ -314,10 +369,16 @@ export function ClubSettingsPage() {
         <section className="card space-y-4 p-5 sm:p-6">
           <div><h2 className="text-[15px] font-bold">Transfer club ownership</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">Request an ownership transfer to an existing student officer. Ownership changes only after they accept.</p></div>
           {club.pendingLeaderTransfer && <div className="rounded-xl border border-line bg-canvas p-3"><p className="text-[12.5px] font-semibold">Ownership transfer pending</p><p className="mt-1 text-[11.5px] text-muted">Waiting for {club.pendingLeaderTransfer.toName} to accept or decline.</p></div>}
-          {isLeader ? (club.officers.length > 0 ? <>
+          {(isAcceptedAdvisor || isAdmin) ? <>
+            <p className="text-[12px] text-muted">As the club's teacher advisor, you can transfer platform ownership directly to any student. The student will be added to the officer list if needed.</p>
+            <div><label className="label" htmlFor="owner-student-search">Find any student</label><input id="owner-student-search" className="field" value={ownershipSearch} placeholder="Search student name…" onChange={event => { setOwnershipSearch(event.target.value); setSelectedOwnershipStudent(null) }}/></div>
+            {ownershipResults.map(person => <button key={person.id} type="button" onClick={() => { setSelectedOwnershipStudent(person); setOwnershipSearch(person.displayName); setOwnershipResults([]) }} className={`flex w-full items-center rounded-xl border px-3 py-2 text-left text-[12.5px] ${selectedOwnershipStudent?.id === person.id ? 'border-brand-300 bg-brand-50' : 'border-line hover:bg-canvas'}`}>{person.displayName}</button>)}
+            {selectedOwnershipStudent && <p className="text-[12px] text-muted">Selected: <strong className="text-ink">{selectedOwnershipStudent.displayName}</strong></p>}
+            <Button variant="secondary" disabled={!selectedOwnershipStudent || busy} loading={busy} onClick={() => void transferOwnership()}><Crown size={15}/> Transfer ownership</Button>
+          </> : isLeader ? (club.officers.length > 0 ? <>
             <div><label className="label" htmlFor="ownership-target">New club leader</label><select id="ownership-target" className="field" value={transferTargetId} onChange={(event) => setTransferTargetId(event.target.value)}><option value="">Select an officer…</option>{club.officers.map((officer) => <option key={officer.uid} value={officer.uid}>{officer.displayName} · {officer.title}</option>)}</select></div>
             <Button variant="secondary" disabled={!transferTargetId || busy || !!club.pendingLeaderTransfer} loading={busy} onClick={() => void transferOwnership()}><Crown size={15}/> Request ownership transfer</Button>
-          </> : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Invite a student officer and have them accept the invitation before transferring ownership.</p>) : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Only the current club leader can transfer ownership.</p>}
+          </> : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Invite a student officer and have them accept the invitation before transferring ownership.</p>) : <p className="rounded-xl bg-canvas p-3 text-[12px] text-muted">Only the current club leader or accepted teacher advisor can transfer ownership.</p>}
         </section>
 
         <section className="card space-y-3 p-4 sm:p-5">
