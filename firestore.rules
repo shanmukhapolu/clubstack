@@ -205,24 +205,11 @@ service cloud.firestore {
           && (resource.data.leaderId == request.auth.uid || isSponsor(clubId) || isOfficer(clubId))
         )
         || (
-          onlyChanged(['officers','officerIds','leaderTitle','pendingLeaderTransfer'])
-          && (resource.data.leaderId == request.auth.uid || (isTeacher() && resource.data.sponsorId == request.auth.uid && resource.data.sponsorStatus == 'accepted'))
+          onlyChanged(['officers','officerIds','leaderTitle'])
+          && (resource.data.leaderId == request.auth.uid || isSponsor(clubId))
           && request.resource.data.officerIds is list
           && request.resource.data.officers is list
           && request.resource.data.officerIds.hasAny([resource.data.leaderId])
-          && (
-            request.resource.data.get('pendingLeaderTransfer', null) == resource.data.get('pendingLeaderTransfer', null)
-            || (
-              isTeacher()
-              && resource.data.sponsorId == request.auth.uid
-              && resource.data.sponsorStatus == 'accepted'
-              && resource.data.get('pendingLeaderTransfer', null) == null
-              && request.resource.data.pendingLeaderTransfer.fromId == resource.data.leaderId
-              && request.resource.data.pendingLeaderTransfer.toId is string
-              && request.resource.data.pendingLeaderTransfer.toId != resource.data.leaderId
-              && request.resource.data.officerIds.hasAny([request.resource.data.pendingLeaderTransfer.toId])
-            )
-          )
         )
         || (
           signedIn()
@@ -249,6 +236,16 @@ service cloud.firestore {
             || (
               resource.data.get('pendingLeaderTransfer', {}).toId == request.auth.uid
               && request.resource.data.pendingLeaderTransfer == null
+            )
+            || (
+              isTeacher()
+              && resource.data.sponsorId == request.auth.uid
+              && resource.data.sponsorStatus == 'accepted'
+              && resource.data.get('pendingLeaderTransfer', null) == null
+              && request.resource.data.pendingLeaderTransfer.fromId == resource.data.leaderId
+              && request.resource.data.pendingLeaderTransfer.toId is string
+              && request.resource.data.pendingLeaderTransfer.toId != resource.data.leaderId
+              && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.toId])
             )
           )
         )
