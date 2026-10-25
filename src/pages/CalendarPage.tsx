@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { api } from '../lib/backend'
 import {
@@ -25,8 +26,9 @@ function dayKey(date: Date): string {
 }
 
 export function CalendarPage() {
+  const { user } = useAuth()
   const { clubs, joinedIds } = useClubs()
-  const [scope, setScope] = useState<Scope>('mine')
+  const [scope, setScope] = useState<Scope>(() => user?.role === 'admin' ? 'all' : 'mine')
   const [viewDate, setViewDate] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
   const [events, setEvents] = useState<ClubEvent[]>([])
