@@ -385,8 +385,7 @@ try {
     await assertSucceeds(updateDoc(doc(leader, 'clubs', 'club-visible'), {
       pendingLeaderTransfer: { fromId: 'leader', fromName: 'Club Leader', toId: 'member-visible', toName: 'Visible Club Member', createdAt: 11 },
     }))
-    const acceptance = writeBatch(member)
-    acceptance.update(doc(member, 'clubs', 'club-visible'), {
+    await assertSucceeds(updateDoc(doc(member, 'clubs', 'club-visible'), {
       leaderId: 'member-visible',
       leaderName: 'Visible Club Member',
       leaderTitle: 'Officer',
@@ -396,9 +395,8 @@ try {
       ],
       officerIds: ['leader', 'member-visible'],
       pendingLeaderTransfer: null,
-    })
-    acceptance.update(doc(member, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' })
-    await assertSucceeds(acceptance.commit())
+    }))
+    await assertSucceeds(updateDoc(doc(member, 'clubDirectory', 'club-visible'), { leaderName: 'Visible Club Member' }))
     await assertSucceeds(getDoc(doc(member, 'clubs', 'club-visible')))
   })
 
