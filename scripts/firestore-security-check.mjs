@@ -355,17 +355,19 @@ try {
     await assertSucceeds(deleteDoc(doc(leader, 'clubs', 'club-accepted-sponsor-one')))
   })
 
-  await check('accepted teacher can transfer platform ownership directly to any student', async () => {
+  await check('accepted teacher can initiate an ownership transfer to any student', async () => {
     const teacherBatch = writeBatch(acceptedAdvisor)
     teacherBatch.update(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
-      leaderId: 'student-outsider',
-      leaderName: 'Student Outsider',
-      leaderTitle: 'Officer',
-      officers: [{ uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' }],
-      officerIds: ['student-outsider'],
-      pendingLeaderTransfer: null,
+      leaderId: 'leader',
+      leaderName: 'Club Leader',
+      leaderTitle: 'President',
+      officers: [
+        { uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'President' },
+        { uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' },
+      ],
+      officerIds: ['leader', 'student-outsider'],
+      pendingLeaderTransfer: { fromId: 'leader', fromName: 'Club Leader', toId: 'student-outsider', toName: 'Student Outsider', createdAt: 12 },
     })
-    teacherBatch.update(doc(acceptedAdvisor, 'clubDirectory', 'club-accepted-sponsor-one'), { leaderName: 'Student Outsider' })
     await assertSucceeds(teacherBatch.commit())
   })
 
