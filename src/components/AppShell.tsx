@@ -114,7 +114,6 @@ export function AppShell() {
         { to: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
         { to: '/admin/security', label: 'Safety', icon: ShieldCheck },
         { to: '/discover', label: 'Discover clubs', icon: Compass },
-        { to: '/clubs/new', label: 'Create a club', icon: Plus },
         { to: '/notifications', label: 'Notifications', icon: Bell },
       ]
     : isTeacher
