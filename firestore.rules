@@ -252,16 +252,7 @@ service cloud.firestore {
               resource.data.get('pendingLeaderTransfer', null) != null && resource.data.pendingLeaderTransfer.toId == request.auth.uid
               && request.resource.data.pendingLeaderTransfer == null
             )
-            || (
-              isTeacher()
-              && resource.data.sponsorId == request.auth.uid
-              && resource.data.sponsorStatus == 'accepted'
-              && resource.data.get('pendingLeaderTransfer', null) == null
-              && request.resource.data.pendingLeaderTransfer.fromId == resource.data.leaderId
-              && request.resource.data.pendingLeaderTransfer.toId is string
-              && request.resource.data.pendingLeaderTransfer.toId != resource.data.leaderId
-              && resource.data.get('officerIds', []).hasAny([request.resource.data.pendingLeaderTransfer.toId])
-            )
+
           )
         )
         || (
