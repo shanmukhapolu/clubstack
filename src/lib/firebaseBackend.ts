@@ -579,6 +579,21 @@ export const firebaseApi: ClubStackApi = {
       await batch.commit()
     },
 
+    async transferOwnershipDirect(id, leaderId, leaderName, leaderTitle, officers, officerIds) {
+      const db = requireDb()
+      const clubRef = doc(db, 'clubs', id)
+      const directoryRef = doc(db, 'clubDirectory', id)
+      await updateDoc(clubRef, {
+        leaderId,
+        leaderName,
+        leaderTitle,
+        officers,
+        officerIds,
+        pendingLeaderTransfer: null,
+      })
+      await updateDoc(directoryRef, { leaderName })
+    },
+
     async transferOwnership(id, newLeaderId, currentLeader) {
       const db = requireDb()
       const clubRef = doc(db, 'clubs', id)
@@ -618,10 +633,8 @@ export const firebaseApi: ClubStackApi = {
       if (!previousOwner) officers.push({ uid: stringOr(transfer.fromId, ''), displayName: stringOr(transfer.fromName, 'Previous owner'), email: '', title: 'Officer' })
       const officerIds = [...new Set([...(Array.isArray(data.officerIds) ? data.officerIds as string[] : []), currentUser.id, stringOr(transfer.fromId, '')])]
       const leaderTitle = stringOr(target.title, 'Officer')
-      const batch = writeBatch(db)
-      batch.update(clubRef, { leaderId: currentUser.id, leaderName: currentUser.displayName, leaderTitle, officers, officerIds, pendingLeaderTransfer: null })
-      batch.update(doc(db, 'clubDirectory', id), { leaderName: currentUser.displayName })
-      await batch.commit()
+      await updateDoc(clubRef, { leaderId: currentUser.id, leaderName: currentUser.displayName, leaderTitle, officers, officerIds, pendingLeaderTransfer: null })
+      await updateDoc(doc(db, 'clubDirectory', id), { leaderName: currentUser.displayName })
     },
 
     async getDeletionRequest(id) {
