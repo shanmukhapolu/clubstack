@@ -91,19 +91,8 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.emoji == request.resource.data.emoji
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.color == request.resource.data.color
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.status == request.resource.data.status
-        && (!('hidden' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.hidden == request.resource.data.hidden)
         && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('leaderName', '') == request.resource.data.leaderName
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('sponsorName', '') == request.resource.data.sponsorName
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('meetingDay', 'Flexible') == request.resource.data.meetingDay
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('meetingTime', '') == request.resource.data.meetingTime
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('location', '') == request.resource.data.location
-        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('contactEmail', '') == request.resource.data.contactEmail
-        && (!('meetingFrequency' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingFrequency == request.resource.data.meetingFrequency)
-        && (!('meetingOrdinal' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.meetingOrdinal == request.resource.data.meetingOrdinal)
-        && (!('customMeetingSchedule' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.customMeetingSchedule == request.resource.data.customMeetingSchedule)
-        && (!('prerequisites' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.prerequisites == request.resource.data.prerequisites)
-        && (!('dues' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.dues == request.resource.data.dues)
-        && (!('instagramHandle' in getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.keys()) || getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.instagramHandle == request.resource.data.instagramHandle);
+        && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.get('sponsorName', '') == request.resource.data.sponsorName;
     }
 
     // Tombstones block deleted accounts from recreating their profile on the next sign-in.
