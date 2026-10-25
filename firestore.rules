@@ -165,16 +165,7 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId != get(/databases/$(database)/documents/clubs/$(clubId)).data.leaderId
           && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
         || (onlyChanged(['sponsorName'])
-          && isTeacher()
-          && isSponsorCandidate(clubId)
-          && privateClub(clubId).sponsorStatus == 'pending'
-          && request.resource.data.sponsorName is string
-          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName)
-        || (onlyChanged(['sponsorName'])
-          && isTeacher()
-          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.teacherId == request.auth.uid
-          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
-          && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
+          && signedIn()
           && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName);
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
