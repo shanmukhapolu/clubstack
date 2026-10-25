@@ -218,12 +218,10 @@ export function ClubSettingsPage() {
           toName: target.displayName,
           createdAt: Date.now(),
         }
-        await api.clubs.update(club.id, {
-          officers,
-          officerIds: [...new Set([...club.officerIds, target.id, ...(club.leaderId ? [club.leaderId] : [])])],
-          pendingLeaderTransfer,
-        })
-        setClub(current => current ? { ...current, officers, officerIds: [...new Set([...current.officerIds, target.id, ...(current.leaderId ? [current.leaderId] : [])])], pendingLeaderTransfer } : null)
+        const officerIds = [...new Set([...club.officerIds, target.id, ...(club.leaderId ? [club.leaderId] : [])])]
+        await api.clubs.update(club.id, { officers, officerIds })
+        await api.clubs.update(club.id, { pendingLeaderTransfer })
+        setClub(current => current ? { ...current, officers, officerIds, pendingLeaderTransfer } : null)
         setSelectedOwnershipStudent(null)
         setOwnershipSearch('')
         setOwnershipResults([])
