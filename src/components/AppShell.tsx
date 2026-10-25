@@ -3,7 +3,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   Compass,
-  Plus,
   House,
   LogOut,
   ShieldCheck,
