@@ -33,7 +33,7 @@ export function AdminPage() {
   const { pathname } = useLocation()
   const { clubs, loading: clubsLoading, refresh } = useClubs()
   const { notify } = useToast()
-  const page = pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs'
+  const page = pathname === '/admin' ? 'home' : pathname === '/admin/users' ? 'people' : pathname === '/admin/security' ? 'reports' : 'clubs'
   const [peopleRoleTab, setPeopleRoleTab] = useState<Role>('student')
   const [users, setUsers] = useState<AppUser[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
@@ -263,8 +263,8 @@ export function AdminPage() {
     <div className="fade-in">
       <PageHeader
         eyebrow="Admin console"
-        title={page === 'people' ? 'People.' : page === 'reports' ? 'Safety and reports.' : pathname === '/admin/calendar' ? 'Platform calendar.' : 'Club administration.'}
-        description={page === 'people' ? 'Manage student, teacher, and administrator accounts.' : page === 'reports' ? 'Review moderation reports and resolve platform safety concerns.' : pathname === '/admin/calendar' ? 'Review events across ClubStack.' : 'Review club submissions, manage existing clubs, and edit club leadership directly.'}
+        title={page === 'home' ? 'Admin overview.' : page === 'people' ? 'People.' : page === 'reports' ? 'Safety and reports.' : 'Club administration.'}
+        description={page === 'home' ? 'A central overview of platform activity and direct links to each admin workspace.' : page === 'people' ? 'Manage student, teacher, and administrator accounts.' : page === 'reports' ? 'Review moderation reports and resolve platform safety concerns.' : 'Review club submissions, manage existing clubs, and edit club leadership directly.'}
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3.5">
@@ -286,7 +286,12 @@ export function AdminPage() {
         </div>
       </div>
 
-      {page === 'clubs' ? (
+      {page === 'home' ? (
+        <section className="mt-5 grid gap-3 sm:grid-cols-2">
+          {[{to:'/admin/clubs',title:'Manage clubs',description:'Review submissions, edit leadership, change sponsors, and remove clubs.'},{to:'/admin/users',title:'Manage people',description:'Separate lists for students, teachers, and administrators.'},{to:'/admin/calendar',title:'Platform calendar',description:'Review events across the platform.'},{to:'/admin/security',title:'Safety and reports',description:'Review reports and update their status.'}].map(item => <Link key={item.to} to={item.to} className="card block p-5 transition hover:-translate-y-0.5 hover:border-brand-300"><h2 className="text-[14px] font-bold">{item.title}</h2><p className="mt-1 text-[12px] leading-relaxed text-muted">{item.description}</p><span className="mt-3 inline-block text-[12px] font-semibold text-brand-700">Open page →</span></Link>)}
+          <div className="card p-5 sm:col-span-2"><h2 className="text-[14px] font-bold">Platform snapshot</h2><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p className="text-[22px] font-extrabold">{clubs.length}</p><p className="text-[11px] text-muted">Club pages</p></div><div><p className="text-[22px] font-extrabold">{pendingClubs.length}</p><p className="text-[11px] text-muted">Awaiting approval</p></div><div><p className="text-[22px] font-extrabold">{users.length}</p><p className="text-[11px] text-muted">Accounts</p></div><div><p className="text-[22px] font-extrabold">{reports.filter(report => report.status === 'open').length}</p><p className="text-[11px] text-muted">Open reports</p></div></div></div>
+        </section>
+      ) : page === 'clubs' ? (
         <div className="mt-5 space-y-6">
           <section>
             <h2 className="mb-2.5 flex items-center gap-2 text-[15px] font-extrabold">
