@@ -267,24 +267,26 @@ export function AdminPage() {
         description={page === 'home' ? 'A central overview of platform activity and direct links to each admin workspace.' : page === 'people' ? 'Manage student, teacher, and administrator accounts.' : page === 'reports' ? 'Review moderation reports and resolve platform safety concerns.' : 'Review club submissions, manage existing clubs, and edit club leadership directly.'}
       />
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3.5">
-        <div className="card p-4">
-          <p className="text-[22px] font-extrabold leading-none">{clubs.length}</p>
-          <p className="mt-1 text-[12px] font-medium text-muted">Club pages</p>
+      {page === 'home' && (
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3.5">
+          <div className="card p-4">
+            <p className="text-[22px] font-extrabold leading-none">{clubs.length}</p>
+            <p className="mt-1 text-[12px] font-medium text-muted">Club pages</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[22px] font-extrabold leading-none text-[#8a5a00]">{pendingClubs.length}</p>
+            <p className="mt-1 text-[12px] font-medium text-muted">Awaiting approval</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[22px] font-extrabold leading-none">{approvedCount}</p>
+            <p className="mt-1 text-[12px] font-medium text-muted">Live in directory</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[22px] font-extrabold leading-none">{leaderCount}</p>
+            <p className="mt-1 text-[12px] font-medium text-muted">Club leaders</p>
+          </div>
         </div>
-        <div className="card p-4">
-          <p className="text-[22px] font-extrabold leading-none text-[#8a5a00]">{pendingClubs.length}</p>
-          <p className="mt-1 text-[12px] font-medium text-muted">Awaiting approval</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-[22px] font-extrabold leading-none">{approvedCount}</p>
-          <p className="mt-1 text-[12px] font-medium text-muted">Live in directory</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-[22px] font-extrabold leading-none">{leaderCount}</p>
-          <p className="mt-1 text-[12px] font-medium text-muted">Club leaders</p>
-        </div>
-      </div>
+      )}
 
       {page === 'home' ? (
         <section className="mt-5 grid gap-3 sm:grid-cols-2">
