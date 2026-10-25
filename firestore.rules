@@ -146,9 +146,9 @@ service cloud.firestore {
         && (isAdmin() || isManager(clubId))
         && directoryMirrorMatchesPrivate(clubId);
       allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
-        || (isManager(clubId)
-          && onlyChanged(['name','description','category','emoji','color','status','sponsorName','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','contactEmail','prerequisites','dues','instagramHandle','requiresApproval','membersVisible','hidden','createdAt'])
+        || (onlyChanged(['name','description','category','emoji','color','status','sponsorName','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','contactEmail','prerequisites','dues','instagramHandle','requiresApproval','membersVisible','hidden','createdAt'])
           && directoryFieldsValid(request.resource.data)
+          && isManager(clubId)
           && directoryMirrorMatchesPrivate(clubId))
         || (isTeacher()
           && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorId == request.auth.uid
