@@ -355,17 +355,23 @@ try {
     await assertSucceeds(deleteDoc(doc(leader, 'clubs', 'club-accepted-sponsor-one')))
   })
 
-  await check('accepted teacher can initiate an ownership transfer to any student', async () => {
-    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
+  await check('accepted teacher can transfer platform ownership directly to any student', async () => {
+    const transfer = writeBatch(acceptedAdvisor)
+    transfer.update(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
+      leaderId: 'student-outsider',
+      leaderName: 'Student Outsider',
+      leaderTitle: 'Officer',
       officers: [
         { uid: 'leader', displayName: 'Club Leader', email: 'club.leader@example.test', title: 'President' },
         { uid: 'student-outsider', displayName: 'Student Outsider', email: 'student.outsider@example.test', title: 'Officer' },
       ],
       officerIds: ['leader', 'student-outsider'],
-    }))
-    await assertSucceeds(updateDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'), {
-      pendingLeaderTransfer: { fromId: 'leader', fromName: 'Club Leader', toId: 'student-outsider', toName: 'Student Outsider', createdAt: 12 },
-    }))
+      pendingLeaderTransfer: null,
+    })
+    transfer.update(doc(acceptedAdvisor, 'clubDirectory', 'club-accepted-sponsor-one'), { leaderName: 'Student Outsider' })
+    await assertSucceeds(transfer.commit())
+    const updated = await getDoc(doc(acceptedAdvisor, 'clubs', 'club-accepted-sponsor-one'))
+    if (updated.data()?.leaderId !== 'student-outsider') throw new Error('Teacher transfer did not update platform ownership.')
   })
 
   await check('ownership transfer requires the invited officer to accept', async () => {
