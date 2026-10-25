@@ -199,8 +199,7 @@ service cloud.firestore {
           && request.resource.data.leaderTitle is string
           && request.resource.data.officerIds is list
           && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
-          && request.resource.data.officers is list
-          && request.resource.data.pendingLeaderTransfer == null);
+          && request.resource.data.officers is list);
       allow update: if (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (
           onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
