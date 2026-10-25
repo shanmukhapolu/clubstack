@@ -36,11 +36,11 @@ export function DiscoverPage() {
         eyebrow="Club directory"
         title="Find your people."
         description={`Browse ${approved.length} clubs at Northgate. Search by name, interest, or meeting day — then join in one tap.`}
-        action={
+        action={user?.role === 'student' ? (
           <Link to="/clubs/new" className={buttonStyles('primary', 'md')}>
             <Plus size={17} /> Create a club
           </Link>
-        }
+        ) : undefined}
       />
 
       {pendingMine.length > 0 && (
