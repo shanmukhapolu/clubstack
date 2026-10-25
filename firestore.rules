@@ -134,7 +134,12 @@ service cloud.firestore {
         && privateClubExists(clubId)
         && (isAdmin() || isManager(clubId))
         && directoryMirrorMatchesPrivate(clubId);
-      allow update: if (directoryFieldsValid(request.resource.data)
+      allow update: if (isTeacher()
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorStatus == 'accepted'
+          && onlyChanged(['leaderName'])
+          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName)
+        || ((directoryFieldsValid(request.resource.data)
           && (isAdmin()
             || (onlyChanged(['name','description','category','emoji','color','status','sponsorName','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','contactEmail','prerequisites','dues','instagramHandle','requiresApproval','membersVisible','hidden','createdAt'])
               && isManager(clubId)
@@ -144,7 +149,7 @@ service cloud.firestore {
           && request.resource.data.leaderName == privateClub(clubId).leaderName)
         || (onlyChanged(['sponsorName'])
           && signedIn()
-          && request.resource.data.sponsorName == privateClub(clubId).sponsorName);
+          && request.resource.data.sponsorName == privateClub(clubId).sponsorName););
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
