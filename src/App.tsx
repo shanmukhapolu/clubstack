@@ -12,7 +12,7 @@ import { DiscoverPage } from './pages/DiscoverPage'
 import { ClubPage } from './pages/ClubPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { RoleWorkspacePage } from './pages/RoleWorkspacePage'
-import { AdminPage } from './pages/AdminPage'
+import { AdminClubsPage, AdminHomePage, AdminSafetyPage, AdminUsersPage } from './pages/AdminPage'
 import { ClubSettingsPage } from './pages/ClubSettingsPage'
 import { ClubMeetingsPage } from './pages/ClubMeetingsPage'
 import { CreateClubPage } from './pages/CreateClubPage'
@@ -112,11 +112,11 @@ export default function App() {
                     <Route path="teacher/reports" element={<RoleWorkspacePage />} />
                   </Route>
                   <Route element={<RequireAdmin />}>
-                    <Route path="admin" element={<AdminPage />} />
-                    <Route path="admin/users" element={<AdminPage />} />
-                    <Route path="admin/clubs" element={<AdminPage />} />
+                    <Route path="admin" element={<AdminHomePage />} />
+                    <Route path="admin/users" element={<AdminUsersPage />} />
+                    <Route path="admin/clubs" element={<AdminClubsPage />} />
                     <Route path="admin/calendar" element={<CalendarPage />} />
-                    <Route path="admin/security" element={<AdminPage />} />
+                    <Route path="admin/security" element={<AdminSafetyPage />} />
                   </Route>
                 </Route>
               </Route>
