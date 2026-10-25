@@ -112,11 +112,11 @@ export default function App() {
                     <Route path="teacher/reports" element={<RoleWorkspacePage />} />
                   </Route>
                   <Route element={<RequireAdmin />}>
-                    <Route path="admin" element={<RoleWorkspacePage />} />
+                    <Route path="admin" element={<AdminPage />} />
                     <Route path="admin/users" element={<AdminPage />} />
                     <Route path="admin/clubs" element={<AdminPage />} />
-                    <Route path="admin/calendar" element={<RoleWorkspacePage />} />
-                    <Route path="admin/security" element={<RoleWorkspacePage />} />
+                    <Route path="admin/calendar" element={<CalendarPage />} />
+                    <Route path="admin/security" element={<AdminPage />} />
                   </Route>
                 </Route>
               </Route>
