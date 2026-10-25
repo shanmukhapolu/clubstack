@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Search, ShieldCheck, Users, UserMinus, Crown, GraduationCap, UserRound } from 'lucide-react'
+import { Search, ShieldCheck, Users, UserMinus, GraduationCap, UserRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useClubs } from '../context/ClubsContext'
 import { useToast } from '../context/ToastContext'
