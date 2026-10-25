@@ -109,7 +109,7 @@ export function AppShell() {
   const links = isAdmin
     ? [
         { to: '/admin', label: 'Home', icon: House, end: true },
-        { to: '/admin/users', label: 'Users', icon: Users },
+        { to: '/admin/members', label: 'Members', icon: Users },
         { to: '/admin/clubs', label: 'Clubs', icon: Building2 },
         { to: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
         { to: '/admin/security', label: 'Safety', icon: ShieldCheck },
