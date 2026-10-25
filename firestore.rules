@@ -169,14 +169,13 @@ service cloud.firestore {
           && isSponsorCandidate(clubId)
           && privateClub(clubId).sponsorStatus == 'pending'
           && request.resource.data.sponsorName is string
-          && directoryMirrorMatchesPrivate(clubId))
+          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName)
         || (onlyChanged(['sponsorName'])
           && isTeacher()
           && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.teacherId == request.auth.uid
           && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.stage == 'newSponsorApproval'
           && getAfter(/databases/$(database)/documents/clubSponsorRequests/$(clubId + '_sponsor_change')).data.status == 'accepted'
-          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName
-          && directoryMirrorMatchesPrivate(clubId));
+          && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName);
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
