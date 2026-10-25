@@ -145,7 +145,7 @@ service cloud.firestore {
         && privateClubExists(clubId)
         && (isAdmin() || isManager(clubId))
         && directoryMirrorMatchesPrivate(clubId);
-      allow update: if (isAdmin() && directoryFieldsValid(request.resource.data)
+      allow update: if (isAdmin() && directoryFieldsValid(request.resource.data))
         || (isManager(clubId)
           && directoryFieldsValid(request.resource.data)
           && directoryMirrorMatchesPrivate(clubId))
