@@ -272,7 +272,7 @@ service cloud.firestore {
         )
         || (
           onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && resource.data.get('pendingLeaderTransfer', null) != null && resource.data.pendingLeaderTransfer.toId == request.auth.uid
+          && pendingTransferTo(resource.data) == request.auth.uid
           && resource.data.leaderId == pendingTransferFrom(resource.data)
           && resource.data.get('officerIds', []).hasAny([request.auth.uid])
           && request.resource.data.leaderId == request.auth.uid
