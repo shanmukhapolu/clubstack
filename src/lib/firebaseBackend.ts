@@ -545,8 +545,17 @@ export const firebaseApi: ClubStackApi = {
       }
       const batch = writeBatch(db)
       if (Object.keys(privatePatch).length) batch.update(clubRef, privatePatch)
-      if (directorySnapshot.exists()) batch.set(directoryRef, directoryPatch, { merge: true })
-      else batch.set(directoryRef, directoryPatch)
+      const directoryRelevantKeys = [
+        'name','description','category','emoji','color','status','leaderName','sponsorName',
+        'meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime',
+        'location','contactEmail','prerequisites','dues','instagramHandle','hidden',
+        'requiresApproval','membersVisible',
+      ]
+      const directoryRelevant = directoryRelevantKeys.some(key => Object.prototype.hasOwnProperty.call(patch, key))
+      if (directoryRelevant || !directorySnapshot.exists()) {
+        if (directorySnapshot.exists()) batch.set(directoryRef, directoryPatch, { merge: true })
+        else batch.set(directoryRef, directoryPatch)
+      }
       await batch.commit()
     },
 
