@@ -207,15 +207,14 @@ service cloud.firestore {
       allow update: if (isTeacher()
           && resource.data.sponsorId == request.auth.uid
           && resource.data.sponsorStatus == 'accepted'
-          && onlyChanged(['leaderId','leaderName','leaderTitle','officers','officerIds','pendingLeaderTransfer'])
-          && request.resource.data.leaderId is string
-          && request.resource.data.leaderId != resource.data.leaderId
-          && get(/databases/$(database)/documents/users/$(request.resource.data.leaderId)).data.role == 'student'
-          && request.resource.data.officerIds is list
-          && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
-          && request.resource.data.officers is list
-          && request.resource.data.pendingLeaderTransfer == null)
-        || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status','memberCount','createdAt','sponsorId','sponsorName','sponsorStatus'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId'])
+            || (request.resource.data.leaderId is string
+              && request.resource.data.leaderId.size() > 0
+              && get(/databases/$(database)/documents/users/$(request.resource.data.leaderId)).data.role == 'student'
+              && request.resource.data.officerIds is list
+              && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])))
+          || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
           && (resource.data.leaderId == request.auth.uid || isSponsor(clubId) || isOfficer(clubId)))
         || (onlyChanged(['officers','officerIds','leaderTitle'])
