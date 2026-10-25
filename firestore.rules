@@ -191,15 +191,13 @@ service cloud.firestore {
         && request.resource.data.sponsorId is string
         && request.resource.data.sponsorName is string
         && request.resource.data.sponsorStatus in ['pending', 'none'];
-      allow update: if (resource.data.sponsorId == request.auth.uid
+      allow update: if (signedIn()
+          && resource.data.sponsorId == request.auth.uid
           && resource.data.sponsorStatus == 'accepted'
           && request.resource.data.leaderId is string
           && request.resource.data.leaderId != resource.data.leaderId
-          && request.resource.data.leaderName is string
-          && request.resource.data.leaderTitle is string
           && request.resource.data.officerIds is list
-          && request.resource.data.officerIds.hasAny([request.resource.data.leaderId])
-          && request.resource.data.officers is list);
+          && request.resource.data.officerIds.hasAny([request.resource.data.leaderId]));
       allow update: if (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']))
         || (
           onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle'])
