@@ -162,11 +162,6 @@ service cloud.firestore {
           && request.resource.data.sponsorName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorName
           && directoryMirrorMatchesPrivate(clubId));
 
-      allow update: if (isTeacher()
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorId == request.auth.uid
-          && getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.sponsorStatus == 'accepted'
-          && onlyChanged(['leaderName'])
-          && request.resource.data.leaderName == getAfter(/databases/$(database)/documents/clubs/$(clubId)).data.leaderName);
       allow delete: if isAdmin() || (isLeader(clubId) && deletionApproved(clubId));
     }
 
@@ -210,10 +205,8 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['leaderId','status','createdAt','memberCount','officers','officerIds','sponsorId','sponsorName','sponsorStatus']))
         || ((isSponsor(clubId) || isOfficer(clubId))
           && onlyChanged(['name','description','category','meetingDay','meetingFrequency','meetingOrdinal','customMeetingSchedule','meetingTime','location','emoji','color','contactEmail','prerequisites','dues','instagramHandle','leaderTitle']))
-        || (isAdmin() && onlyChanged(['officers','officerIds']))
-        || (isManager(clubId)
+        || ((isLeader(clubId) || isSponsor(clubId) || isAdmin())
           && onlyChanged(['officers','officerIds'])
-          && resource.data.get('officerIds', []) is list
           && request.resource.data.officerIds is list
           && resource.data.get('officerIds', []).hasAll(request.resource.data.officerIds))
         || (signedIn()
