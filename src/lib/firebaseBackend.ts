@@ -601,16 +601,16 @@ export const firebaseApi: ClubStackApi = {
       if (data.leaderId !== transfer.fromId || !Array.isArray(data.officerIds) || !data.officerIds.includes(currentUser.id)) {
         throw new Error('The club leadership changed before this transfer could be accepted.')
       }
-      const target = (Array.isArray(data.officers) ? data.officers : []).find((officer) => officer && typeof officer === 'object' && (officer as Record<string, unknown>).uid === currentUser.id) as Record<string, unknown> | undefined
+      const existingOfficers = Array.isArray(data.officers) ? data.officers as Record<string, unknown>[] : []
+      const target = existingOfficers.find((officer) => officer && officer.uid === currentUser.id)
       if (!target) throw new Error('Your officer record could not be found.')
-      const officers = (Array.isArray(data.officers) ? data.officers : []).filter((officer) => {
-        const person = officer as Record<string, unknown>
-        return person.uid !== currentUser.id && person.uid !== transfer.fromId
-      })
-      officers.push({ uid: stringOr(transfer.fromId, ''), displayName: stringOr(transfer.fromName, 'Former leader'), email: '', title: 'Former President' })
-      const officerIds = [...new Set((data.officerIds as string[]).filter((uid) => uid !== currentUser.id).concat(stringOr(transfer.fromId, '')))]
+      const previousOwner = existingOfficers.find(officer => officer.uid === transfer.fromId)
+      const officers = [...existingOfficers]
+      if (!previousOwner) officers.push({ uid: stringOr(transfer.fromId, ''), displayName: stringOr(transfer.fromName, 'Previous owner'), email: '', title: 'Officer' })
+      const officerIds = [...new Set([...(Array.isArray(data.officerIds) ? data.officerIds as string[] : []), currentUser.id, stringOr(transfer.fromId, '')])]
+      const leaderTitle = stringOr(target.title, 'Officer')
       const batch = writeBatch(db)
-      batch.update(clubRef, { leaderId: currentUser.id, leaderName: currentUser.displayName, leaderTitle: 'President', officers, officerIds, pendingLeaderTransfer: null })
+      batch.update(clubRef, { leaderId: currentUser.id, leaderName: currentUser.displayName, leaderTitle, officers, officerIds, pendingLeaderTransfer: null })
       batch.update(doc(db, 'clubDirectory', id), { leaderName: currentUser.displayName })
       await batch.commit()
     },
